@@ -1,0 +1,214 @@
+import "enum.proto";
+
+message role_base {
+    optional string name=1;
+    optional uint32 tpltid=2;
+    optional uint32 roleid=3;
+    optional uint32 create_time=4;
+    optional uint32 race=5;
+    optional uint32 level=6;
+    optional uint32 sex=7;
+}
+
+message pass_ectype {
+    optional uint32 ectypeid=1;
+    optional uint32 star=2;
+}
+
+message user_skill {
+    optional uint32 skill_type=1;
+    optional uint32 skill_level=2;
+}
+
+message user_partners {
+    optional uint32 pos=1;
+}
+
+message role_info {
+    optional uint32 mapid=1;
+    optional float  posx=2;
+    optional float  posy=3;
+    optional uint32 coin=4;
+    optional uint32 gold=5;
+    optional uint32 package_size=6;
+    optional uint32 exp=7;
+    optional uint32 refresh_time=8;
+    optional uint32 oid=9;// 对象ID, 角色起始对象ID由ROLE_STARTOID指定
+    repeated pass_ectype ectype=10; 
+    repeated user_skill skills=11;
+    optional role_attribute attribute=12;
+    optional uint32 map_entertime=13;
+    optional uint32 last_city=14;
+    optional uint32 cards_size=15;
+    optional uint32 partner_size=16;
+	repeated dazzle_base_info dazzles=17;
+}
+
+message sync_role {
+    optional uint32 coin=1;
+    optional uint32 gold=2;
+    optional uint32 exp=3;
+    optional uint32 level=4;
+}
+
+message role_attribute {
+    optional uint32 atk=1;//物理攻击
+    optional uint32 def=2;//物理防御
+    optional uint32 mag=3;//魔法攻击
+    optional uint32 mag_def=4;//魔法防御
+    optional uint32 hp=5;
+    optional uint32 mp=6;
+    optional uint32 atk_crit=7;//物理暴击
+    optional uint32 mag_crit=8;//
+    optional uint32 atk_res=9;//物理抗暴击
+    optional uint32 mag_res=10;//
+    optional uint32 block=11;//格挡率
+    optional uint32 dodge=12;//闪避率
+    optional uint32 mp_reply=13;//法力回复率
+    optional uint32 hits=14;//命中率
+    optional uint32 block_value=15;//格挡值
+    optional uint32 hp_reply=16;//血球回复率
+}
+
+// now just for role
+message scene_object {
+    optional string name=1;
+    optional uint32 tpltid=2;
+    optional uint32 oid=3; 
+    optional int32 posx=4;
+    optional int32 posy=5;
+}
+
+message equip_info {
+     optional uint32 itemid=1;
+
+     optional uint32 level=2;//强化等级
+     optional uint32 star=3;//星级
+     optional uint32 refinecnt=4;//精炼次数
+     optional uint32 attack=5;//攻击
+     optional uint32 defense=6;//防御
+     optional uint32 magic=7;//魔法攻击
+     optional uint32 magicdef=8;//魔法防御
+     optional uint32 hp=9;//
+     optional uint32 atk_crit=10;//物理暴击
+     optional uint32 mag_crit=11;//
+     optional uint32 atk_res=12;//物理抗暴击
+     optional uint32 mag_res=13;//
+     optional uint32 block=14;//格挡率
+     optional uint32 dodge=15;//闪避率
+     optional uint32 mp_reply=16;//法力回复率
+     optional uint32 block_value=17;//格挡值
+     optional uint32 hits=18;//命中率
+     optional uint32 hp_reply=19;//血球回复率
+
+
+}
+
+message item_info {
+    optional uint32 tpltid=1;
+    optional uint32 pos=2;
+    optional uint32 stack=3;
+    optional equip_info info=4;
+}
+
+message item_list {
+    repeated item_info package=1;
+    repeated item_info equip=2;
+    repeated item_info mat=3;
+}
+
+message intW {
+    optional uint32 int1=1;
+    optional uint32 int2=2;
+}
+
+message task_base {
+    optional uint32 taskid=1;
+    optional uint32 finish=2;
+    optional uint32 taskprogress=3;
+}
+
+message task_reward {
+    optional uint32 itemid=1;
+    optional uint32 itemcnt=2;
+}
+
+message task_list {
+    repeated task_base list =1;
+}
+
+// 副本通关记录
+message ectype_fast {
+    optional uint32 ectype_id=1; // 副本id
+    optional string first_role_guild=2; // 首次完成的玩家公会名
+    optional string first_role_name=3;  // 首次完成的玩家名字
+    optional uint32 first_value=4;
+    optional string fast_role_guild=5;  // 最快完成的玩家公会名
+    optional string fast_role_name=6;   // 最快完成的玩家名字
+    optional uint32 fast_value=7;
+}
+
+//卡牌数据
+
+message card_skill {
+    optional uint32 skill_type=1;
+    optional uint32 skill_level=2;
+}
+
+message card_info {
+    optional uint32 cardid=1;
+    optional uint32 level=2;
+    optional uint32 pos=3;
+    optional uint32 break_through_num=4;
+    optional uint32 card_exp=5;
+    repeated item_info equip=6;
+    repeated card_skill skills=7;
+
+}
+
+message card_container {
+    repeated card_info list=1;
+    repeated user_partners partners=2; 
+}
+
+message card_list {
+    optional card_container list =1;//repeated card_info list=1
+}
+
+message card_material {
+    optional uint32 cardid=1;
+    optional uint32 pos=2;
+}
+
+message skill_up_info {
+    optional uint32 skill_type=1;
+    optional uint32 skill_level=2;//技能等级
+    optional uint32 card_pos=3;//卡牌位置
+}
+
+message drop_item_info {
+	optional uint32 itemid=1;
+	optional uint32 cnt=2;
+} 
+
+message pickup_item_info {
+	optional uint32 itemid=1;
+	optional uint32 cnt=2;
+	optional uint32 targetid=3;//预留字段(所属玩家id)
+} 
+
+message turn_card_info {
+	optional uint32 itemid=1;
+	optional uint32 cnt=2;
+	optional uint32 type=3;
+}
+
+//炫纹
+message dazzle_base_info {
+    optional uint32 dazzle_type=1;//类型
+    optional uint32 dazzle_level=2;//等级
+	optional uint32 dazzle_use=3;//是否激活
+    repeated uint32 dazzle_fragment=4;//炫纹碎片
+	optional uint32 dazzle_have=5;//是否拥有
+}
+

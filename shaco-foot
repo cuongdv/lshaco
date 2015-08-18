@@ -1,0 +1,205 @@
+#!/bin/bash
+
+SERVERS="game"
+VLOGDIR=$HOME/vallog
+
+error() {
+    echo -ne "\033[40;31;1m"
+    echo "$@"
+    echo -ne "\033[0m"
+}
+info() {
+    echo -ne "\033[40;32;1m"
+    echo "$@"
+    echo -ne "\033[0m"
+}
+count() {
+    NSERVER=0
+    for s in $SERVERS;do
+        NSERVER=$(($NSERVER+1))
+    done
+}
+ls() {
+    ps -u ${USER} u |grep shaco |grep config
+    local n=`ps -u ${USER} u |grep shaco |grep config |wc -l`
+    if [ ${n} -eq $NSERVER ] 
+    then
+        info "node count [${n}] OK"
+    else
+        error "node count [${n} != ${NSERVER}] FAIL"
+    fi
+    #ps -u ${USER} u |grep commandd |grep lua
+}
+startone() {
+    cd bin
+    if [ $MEMCHECK -eq 0 ]
+    then
+        info "start ${1}"
+        ./shaco config_${1} --daemon 1
+    else
+        info "start-memcheck ${1}"
+        valgrind -v \
+        --leak-check=full \
+        --show-reachable=yes \
+        --track-origins=yes \
+        --suppressions=shaco.supp \
+        --log-file=$VLOGDIR/${1}.%p.vallog \
+        ./shaco config_${1} --daemon 1
+    fi
+    cd ..
+    sleep ${2}
+}
+stopone() {
+    local list="ps -u ${USER} u |grep shaco |grep config_${1}"
+    info -n "stop ${1}"
+    
+    local n=`eval "${list} |wc -l"`
+    if [ ${n} -eq 0 ]
+    then
+        error " NONE"
+        return
+    fi
+
+    local a=`eval "${list} | awk -F' ' '{print \\$2}'"`
+    OLD_IFS="$IFS"
+    IFS=$"\n"
+    arr=($a)
+    IFS="$OLD_IFS"
+    for pid in ${arr[@]}
+    do
+        printf " $pid"
+        while [ 1 ]
+        do
+            if [ -d /proc/$pid ]
+            then
+                kill -2 $pid
+                sleep ${2}
+            else
+                break
+            fi
+        done
+    done
+    info " OK"
+}
+startcmdd() {
+    cd bin && 2>&1 ./shaco config_commandd --daemon 1
+    ps -u ${USER} u |grep commandd
+}
+startcn() {
+    cd bin && ./shaco config_test --luamod cn --host 120.131.70.4:7998 --logdir $HOME/log --id 7001 --daemon 1
+}
+
+startch() {
+    cd bin && ./shaco config_test --luamod ch --logdir $HOME/log --id 7000 --daemon 1 
+}
+startall() {
+    for S in $SERVERS;do
+        startone $S 0.5
+    done
+    sleep 1
+    ls
+}
+start() {
+    for S in $@;do
+        startone $S 0.5
+    done
+    ls
+}
+stopall() {
+    local col=12
+    if [ $MEMCHECK -ne 0 ]
+    then
+        col=19
+    fi
+    local list="ps -u ${USER} u |grep shaco |grep config |awk -F ' ' '{print \$$col}'"
+    local a=`eval "${list}"`
+    OLD_IFS="$IFS"
+    IFS=$'\n'
+    arr=($a)
+    IFS="$OLD_IFS"
+    for one in ${arr[@]}
+    do
+        one=${one#config_}
+        one=${one%}
+        stopone $one 0.1
+    done
+}
+stop() {
+    for one in $@;do
+        stopone $one 0.1
+    done
+}
+stopcmdd() {
+    stopone commandd 0.1 
+}
+
+deploy() {
+    local IP=120.131.70.4
+    local PORT=22422
+    local USER=builder
+    local KEY=~/.ssh/id_rsa_coolsoft
+    local PAK=quanzhi-svr
+    #printf "Enter Password:"
+    #read -s PASSWORD 
+    local PASSWORD=111
+    rm -rf $PAK.tar
+    tar -cf $PAK.tar res bin lua sql shaco-foot shaco-init
+    expect scp.exp $IP $PORT $USER $PASSWORD $KEY /data/builder $PAK.tar
+    rm -rf $PAK.tar
+    expect ssh.exp $IP $PORT $USER $PASSWORD $KEY \
+    "[ -f bin/config_self ] && mv bin/config_self bin/config_self.bak;
+     tar -xf $PAK.tar;
+     [ -f bin/config_self.bak ] && mv bin/config_self.bak bin/config_self"
+}
+
+#tar -xf $PAK.tar && rm -rf $PAK.tar;
+
+pulldeploy() {
+cd bin && ./shaco config_test --luamod cc --command "cd .. && svn up && make && ./shaco-foot deploy"
+cd ..
+printf "Restart Game [Y/N]:"
+read YES
+if [ "$YES" = "Y" ] || [ "$YES" = "y" ]
+then
+./shaco-foot restart game
+else
+echo "exit"
+fi 
+}
+
+USAGE="Usage: shaco-foot [cmd] [startall] [start [svr .. ]] [stop [svr ..]] [ls] [startcmdd] [stopcmdd] [dist] -m"
+MEMCHECK=0
+CMD=$1
+shift
+while getopts ":m" optname
+do
+    case "$optname" in
+    "m")
+        MEMCHECK=1
+        shift
+        mkdir -pv $VLOGDIR
+        echo [memcheck mode]
+        ;;
+    *)
+        #echo shout not be here
+        ;;
+    esac
+done
+
+count
+case "$CMD" in
+restartall)     stopall;startall;;
+restart)        stop "$@";start "$@";;
+startall)       startall;;
+start)          start "$@";;
+stopall)        stopall;;
+stop)           stop "$@";;
+startcmdd)      startcmdd;;
+stopcmdd)       stopcmdd;;
+startcn)        startcn;;
+startch)        startch;;
+ls)             ls;;
+deploy)         deploy;;
+pulldeploy)     pulldeploy;;
+*)              echo $USAGE;;
+esac

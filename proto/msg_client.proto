@@ -1,0 +1,469 @@
+import "enum.proto";
+import "struct.proto";
+
+enum IDUM_CLI {
+IDUM_TEXT   =0;
+//-----------------------------------------
+//c->s
+//-----------------------------------------
+IDUM_GATEB =10;
+IDUM_HEARTBEAT  =11;
+IDUM_GM = 12;
+
+//login
+IDUM_LOGIN      =20;
+IDUM_CREATEROLE =21;
+IDUM_SELECTROLE =22;
+IDUM_EXITGAME   =23;
+
+//scene
+IDUM_SCENEENTER =25;
+IDUM_MOVEREQ =26;
+IDUM_MOVESTOP =27;
+
+// item
+IDUM_ITEMSALE   =30;
+IDUM_EQUIP = 31;
+IDUM_UNEQUIP = 32;
+
+// task
+IDUM_GETREWARD = 40;
+IDUM_ACCEPTTASK = 41;
+IDUM_TASKCHECK = 42;
+
+// equip
+IDUM_EQUIPINTENSIFY = 50;
+IDUM_EQUIPFORGE = 51;
+IDUM_EQUIPGODCAST = 52;
+IDUM_EQUIPCOMPOSE = 53;
+
+//ectype
+IDUM_PASSECTYPE = 60;
+IDUM_GETTURNCARDREWARD = 61;
+IDUM_GETDROPITEM = 62;
+
+//skill
+IDUM_UPSKILL = 70;
+
+//card
+IDUM_EQUIPCARD = 80;
+IDUM_CARDUP = 81;
+IDUM_CARDPARTNER = 82;
+IDUM_CARDSKILLUP = 83;
+IDUM_UNEQUIPCARD = 84;
+
+//shop
+IDUM_SHOPBUYITEM = 90;
+IDUM_BUYCARDSIZE = 91;
+
+//dazzle
+IDUM_EQUIPDAZZLEFRAGMENT = 100;
+IDUM_COMPOSEDAZZLE =101;
+IDUM_COMPOSEFRAGMENT = 102;
+IDUM_USEDAZZLE = 103;
+
+IDUM_GATEE      =999;
+
+//------------------------------------------
+//s->c
+//------------------------------------------
+IDUM_CLIB =1000;
+
+// login
+IDUM_LOGOUT =1001;
+IDUM_ERROR  =1002;
+IDUM_ROLELIST =1003;
+IDUM_RESPONSE = 1004;
+IDUM_ENTERGAME  =1005;
+
+//scene
+IDUM_SCENECHANGE =1010;
+IDUM_MOVESYNC =1011;
+IDUM_MOVESTOPSYNC =1012;
+IDUM_OBJECTAPPEAR =1013;
+IDUM_OBJECTDISAPPEAR =1014;
+
+// item
+IDUM_ITEMLIST = 1020;
+
+// task
+IDUM_TASKLIST = 1030;
+IDUM_TASKREWARD = 1031;
+IDUM_UPDATETASK = 1032;
+
+//equip
+IDUM_SUCCESSRETURN = 1040;
+IDUM_EQUIPCOMPOSERESULT = 1041;
+
+//syncdata
+IDUM_SYNCROLEDATA = 1050;
+IDUM_ITEMDROPLIST = 1051;
+
+//skill
+IDUM_UPDATESKILL = 1060;
+
+//copy
+IDUM_COPYRECORD = 1070;
+IDUM_TURNCARDRESULT = 1071;
+IDUM_GETTURNCARDRESULT = 1072;
+
+//card
+IDUM_CARDLIST = 1080;
+IDUM_CONFIRMPARTNER = 1081;
+IDUM_UPDATECARDEQUIP = 1082;
+IDUM_CARDUPDATESKILL = 1083;
+IDUM_CARDPARTNERLIST = 1084;
+IDUM_UPDATE_CARD_WEAPON = 1085;
+IDUM_CARDUP_RESULT = 1086;
+
+//shop
+IDUM_BUYCARDSUCCESS = 1090;
+IDUM_BUYCARDSIZERESULT = 1091;
+
+//dazzle
+IDUM_HANDLEDAZZLERESULT = 1100;
+IDUM_DAZZLERETURN = 1101;
+
+IDUM_CLIE =1999;
+}
+
+//-----------------------------------------
+//base
+//-----------------------------------------
+message UM_TEXT {
+    optional string str=1;//[0]
+}
+message UM_LOGOUT {
+    optional int32 err=1; // see SERR_OK, if err == SERR_OK, then gate force close connection
+}
+
+message UM_HEARTBEAT {
+}
+
+message UM_ERROR {
+    optional int32 err=1;// SERR
+}
+
+message UM_RESPONSE {
+    optional uint32 msgid=1;
+    optional int32 err=2;
+}
+
+message UM_GM {
+    optional string command=1;
+}
+
+//---------------------------------------
+//login
+//---------------------------------------
+message UM_LOGIN {
+    optional string acc=1;//[MAX_ACC_LEN]
+    optional string passwd=2;//[MAX_PASSWD_LEN]
+}
+
+message UM_CREATEROLE {
+    optional uint32 tpltid=1;
+    optional string name=2;//[MAX_ROLE_NAME]
+}
+
+message UM_SELECTROLE {
+    optional uint32 index=1;
+}
+
+message UM_EXITGAME {
+}
+
+message UM_ROLELIST {
+    repeated role_base roles=1;//[max=0]
+}
+message UM_ENTERGAME {
+    optional role_info info=1;
+}
+
+message UM_SYNCROLEDATA {
+    optional sync_role info=1;
+}
+//--------------------------------------
+//scene
+//--------------------------------------
+message UM_SCENEENTER {
+    optional uint32 mapid=1;
+}
+
+message UM_SCENECHANGE {
+    optional uint32 mapid=1;
+    optional int32 posx=2;
+    optional int32 posy=3;
+}
+
+message UM_MOVEREQ {
+    optional int32 posx=1;
+    optional int32 posy=2;
+    optional uint32 speed=3;
+    optional int32 dirx=4;
+    optional int32 diry=5;
+}
+
+message UM_MOVESTOP {
+    optional int32 posx=1;
+    optional int32 posy=2;
+}
+
+message UM_MOVESYNC {
+    optional uint32 oid=1;
+    optional int32 posx=2;
+    optional int32 posy=3;
+    optional uint32 speed=4;
+    optional int32 dirx=5;
+    optional int32 diry=6;
+}
+
+message UM_MOVESTOPSYNC {
+    optional uint32 oid=1;
+    optional int32 posx=2;
+    optional int32 posy=3;
+}
+
+message UM_OBJECTAPPEAR {
+    optional scene_object info=1; 
+}
+message UM_OBJECTDISAPPEAR {
+    optional uint32 oid=1;
+}
+
+//--------------------------------------
+//item
+//--------------------------------------
+message UM_ITEMLIST {
+    optional int32 bag_type=1; // enum BAG_T
+    repeated item_info info=2; // item_info::stack == 0表示此物品删除，否则更新stack值，iteminfo::pos可以定位物品(实际值代表物品所在格子索引，从0开始)
+}
+
+message UM_ITEMSALE {
+    optional int32 bag_type=1; // enum BAG_T
+    repeated intW posnumv=2; // intW:int1 表示pos, intW:int2表示数量，0代表该物品整个stack
+}
+
+message UM_EQUIP {
+   optional uint32 bag_type=1;//背包的类型
+   optional uint32 pos=2;//被装备的物品在背包里的位置或者被卸下的装备的部位
+}
+message UM_UNEQUIP {
+   optional uint32 bag_type=1;//背包的类型
+   optional uint32 pos=2;//被卸下的装备的部位
+}
+//--------------------------------------
+//task
+//--------------------------------------
+message UM_GETREWARD { 
+   optional uint32  taskid = 1; 
+}
+
+message UM_ACCEPTTASK { 
+   optional uint32  taskid = 1; 
+}
+
+message UM_TASKREWARD {
+   optional uint32  taskid=1;
+}
+
+message UM_TASKLIST {
+    repeated task_base info = 1;
+}
+
+message UM_TASKCHECK { 
+   optional uint32  taskid = 1; 
+}
+
+message UM_UPDATETASK {
+   optional uint32 taskid = 1;
+}
+
+//--------------------------------------
+//equip
+//--------------------------------------
+message UM_EQUIPINTENSIFY { 
+   optional uint32 pos = 1;
+   optional uint32 bag_type=2;
+}
+
+message UM_SUCCESSRETURN { 
+   optional uint32 success_type = 1;//
+}
+
+message UM_EQUIPFORGE {
+   optional uint32 bag_type=1;
+   optional uint32 drawingid=2;
+   optional uint32 targetid=3;
+}
+
+
+message UM_EQUIPGODCAST {
+   optional uint32 pos = 1;
+   optional uint32 star = 2;
+   optional uint32 bag_type=3;
+}
+
+message UM_EQUIPCOMPOSE {
+   repeated uint32 posv = 1;
+}
+
+message UM_EQUIPCOMPOSERESULT {
+    optional uint32 itemid=1;
+}
+
+//--------------------------------------
+//ectype
+//--------------------------------------
+message UM_PASSECTYPE { 
+   optional uint32 ectypeid=1; 
+}
+
+message UM_COPYRECORD {
+   optional ectype_fast record=1;
+}
+//--------------------------------------
+//skill
+//--------------------------------------
+message UM_UPSKILL {
+   optional uint32 skillid=1;
+	
+}
+
+message UM_UPDATESKILL {
+   optional uint32 skill_type=1;
+   optional uint32 skill_level=2;
+}
+//--------------------------------------
+//card
+//--------------------------------------
+message UM_CARDLIST {
+   repeated card_info info=1;//卡牌
+}
+
+message UM_UPDATECARDEQUIP {
+   optional card_info info=1;
+}
+
+message UM_EQUIPCARD {
+   optional uint32 bag_type=1;//背包的类型
+   optional uint32 pos=2;//被装备的物品在背包里的位置
+   optional uint32 card_pos=3;
+}
+message UM_CARDPARTNERLIST {
+    repeated user_partners partners=1;
+}
+message UM_UNEQUIPCARD {
+   optional uint32 pos=1;//被卸下的装备的部位
+   optional uint32 card_pos=2;
+}
+
+message UM_CARDUP {
+   optional uint32 targetid=1;
+   optional uint32 tarpos=2;	//目标卡牌的位置
+   repeated  card_material material=3;//材料卡牌的位置
+}
+
+message UM_CARDUP_RESULT {
+	optional card_info info=1;
+}
+
+message UM_CARDPARTNER {
+   repeated uint32 pos=1;//卡牌在卡包里的位置
+}
+
+message UM_CONFIRMPARTNER {
+   repeated uint32 pos=1;
+}
+
+message UM_CARDSKILLUP {
+   optional skill_up_info up_level_info=1;
+}
+
+message UM_CARDUPDATESKILL {
+   optional skill_up_info update_skill_info=1;
+}
+
+message UM_BUYCARDSIZE {
+}
+
+message UM_BUYCARDSIZERESULT {
+   optional uint32 card_grid_cnt=1;
+}
+
+message UM_UPDATE_CARD_WEAPON {
+	optional card_info info=1;//卡牌 
+}
+
+//--------------------------------------
+//shop
+//--------------------------------------
+message UM_SHOPBUYITEM {
+   optional uint32 buy_type=1;//抽卡的种类
+   optional uint32 random_id=2; 
+}
+
+message UM_BUYCARDSUCCESS {
+   repeated uint32 card_array=1; 
+}
+//--------------------------------------
+//copy
+//--------------------------------------
+message UM_ITEMDROPLIST {
+	repeated drop_item_info list=1;
+}
+
+message UM_TURNCARDRESULT {
+	repeated turn_card_info info=1;
+}
+
+message UM_GETTURNCARDREWARD {
+	optional uint32 turn_type=1;//翻牌的类型
+}
+
+message UM_GETTURNCARDRESULT {
+	optional uint32 itemid=1;//领取的奖励ID
+}
+
+message UM_GETDROPITEM {
+	repeated pickup_item_info info=1;//得到掉落物品
+}
+//--------------------------------------
+//dazzle
+//--------------------------------------
+message UM_DAZZLELIST {
+	repeated dazzle_base_info info=1; //炫纹列表
+}
+
+message UM_EQUIPDAZZLEFRAGMENT {
+	optional uint32 fragmentid=1;//碎片id
+	optional uint32 dazzle_type=2;//炫纹类型
+	optional uint32 dazzle_level=3;//炫纹等级
+}
+
+message UM_HANDLEDAZZLERESULT {
+	optional uint32 success_type=1;//炫纹返回类型(DAZZLE_RETURN)
+	optional dazzle_base_info info=2;//
+}
+
+message UM_COMPOSEDAZZLE {
+	optional uint32 dazzle_type=1;
+	optional uint32 dazzle_level=2;
+}
+
+message UM_COMPOSEFRAGMENT {
+	optional uint32 dazzle_type=1;
+	optional uint32 dazzle_level=2;
+	optional uint32 fragmentid=3;
+}
+
+message UM_USEDAZZLE {
+	optional uint32 dazzle_type=1;
+	optional uint32 dazzle_level=2;
+}
+
+message UM_DAZZLERETURN {
+	optional uint32 success_type=1;
+	//optional dazzle_base_info info=1;
+}
+

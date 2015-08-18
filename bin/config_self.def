@@ -1,0 +1,18 @@
+oip = "yourip" --修改ip
+logdir = "/home/yourname/log" --修改日志目录
+
+portoffset = 0 -- 修改端口
+gateport=18002+portoffset
+cmdport =18001+portoffset
+
+gamedb_host="127.0.0.1" -- 修改mysql ip
+gamedb_user="dbuser"      -- 修改mysql user
+gamedb_passwd="123456"    -- 修改mysql passwd
+gamedb_name="dbname"      -- 修改mysql db
+gamedb_port=3306
+
+logdb_host="127.0.0.1"
+logdb_user="logbduser"
+logdb_passwd="123456"
+logdb_name="logdbname"
+logdb_port=3306

@@ -1,0 +1,11 @@
+dofile "config_self"
+log="log"
+loglevel="DEBUG"
+connmax=1256
+--luapackpath="./base.lso"
+luapath="../lua/?.lua;../res/lua/?.lua;../lua/base/?.lua;../lua/test/?.lua;../lua/game/?.lua;../lua/msg/?.lua"
+luacpath="../3rdlib/?.so;./3rdlib/?.so"
+luamodpath="../lua/chicken/?.lua;../lua/test/?.lua;../lua/base/?.lua;../lua/node/?.lua"
+luamod="webclient"
+
+gateaddress="127.0.0.1:18002"

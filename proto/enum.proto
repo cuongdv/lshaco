@@ -1,0 +1,152 @@
+
+enum COMMON_T {
+    option allow_alias = true;
+    ROLE_STARTOID=10000;
+    BAG_MAT_SIZE=100;
+}
+
+enum SEX_T {
+    SEX_MAN=0;
+    SEX_WOMAN=1;
+}
+
+enum eOccupDef {
+    eOccup_ZS = 10;//剑客
+    eOccup_KZ = 11; //狂战
+    eOccup_GZ = 12; //鬼阵
+    eOccup_MJS = 13; //魔剑士
+    eOccup_QPS = 20; //枪炮师
+    eOccup_SQShou = 21;	//神枪手
+    eOccup_DYZJ = 22; //弹药专家
+    eOccup_JXS = 23; //机械师
+    eOccup_QFJ = 30; //拳法家
+    eOccup_LM = 31; //流氓
+    eOccup_QGS = 32; //气功师
+    eOccup_RD = 33; //柔道
+    eOccup_ZDFS = 40; //战斗法师
+    eOccup_YSFS = 41; //元素法师
+    eOccup_ZHS = 42; //召唤师
+    eOccup_MDXZ = 43; //魔道学者
+    eOccup_MS = 50; //牧师
+    eOccup_SQShi = 51; //圣骑士
+    eOccup_QMS = 52; //驱魔师
+    eOccup_SYZ = 53; //圣言者
+    eOccup_CK = 60; //刺客
+    eOccup_SS = 61; //术士
+    eOccup_RZ = 62; //忍者
+    eOccup_DZ = 63; //盗贼
+    eOccup_Max = 64;
+}
+
+enum ITEM_T {
+    ITEM_CANUSE = 1; // 可以使用道具
+    ITEM_BAG    = 2; // 礼包
+    ITEM_RANDBAG= 3; // 随机礼包
+    ITEM_EQUIP  = 4; // 装备
+    ITEM_PAPER  = 5; // 图纸
+    ITEM_MATERIAL= 6; // 材料
+}
+
+enum BAG_T {
+    BAG_PACKAGE=1;
+    BAG_EQUIP=2;
+    BAG_MAT=3;
+    BAG_WAREHOUSE=4;
+    BAG_MAX=5;
+}
+
+enum EQUIP_T {
+    option allow_alias = true;
+    EQUIP_UNKNOW=0;
+    EQUIP_WEAPON=1;  // 武器
+    EQUIP_CLOTHES=2; // 衣服
+    EQUIP_HELMET=3;  // 头盔
+    EQUIP_SHOES=4;   // 鞋子
+    EQUIP_NECKLACE=5;// 裤子
+    EQUIP_BRACELET=6;// 饰品
+    EQUIP_MAX=6;
+}
+
+enum TASK_CLIENT_REQ {
+    TASK_ACCEPT = 1;
+    TASK_GET_REWARD = 2;
+}
+
+enum TASK_T {
+    TASK_SYSTEM = 1;
+}
+
+enum TASK_TYPE {
+    TASK_DIALOG = 0;
+    TASK_PASS_COPY = 1;
+    TASK_KILL_MONSTER = 2;
+    TASK_COMBO_NUMBER = 3;
+    TASK_INTENSIFY_EQUIP = 4;
+    TASK_COST_INGOT = 5;
+    TASK_LEARN_SKILL = 6;
+    TASK_PASSIVE_SKILL = 7;
+    TASK_LEARN_THE_HEART = 8;
+    TASK_HERO_COPY = 9;
+    TASK_LUCKY_CAT = 10;
+    TASK_WISH_OF_MAKING_MONEY = 11;
+    TASK_ARENA = 12;
+}
+
+enum QUALITY_T {
+    WHITE = 0;
+    GREEN = 1;
+    BLUE = 2;
+	YELLOW = 3;
+    PURPLE = 4;
+    ORANGE = 5;
+}
+
+enum BUY_TYPE {
+	BUY_UNKNOWN = 0;
+    BUY_SINGLE = 1;
+    BUY_TEN = 2;//十连抽
+}
+
+enum COST_TYPE {
+   COST_COIN = 0;
+   COST_GOLD = 1;
+}
+
+enum SCENE_TYPR {
+	SCENE_CITY = 1;
+	SCENE_COPY = 2;
+	SCENE_ARENA= 3;//竞技场
+	SCENE_BOSS = 4;
+}
+
+enum TURN_CARD_TYPE {
+	UN_GOLD_TURN = 1;//免费翻牌
+	GOLD_TURN =2;
+}
+
+enum UP_EUIP_TYPE {
+	INTENSIFY = 1;//强化
+	FORGE = 2;//锻造
+	GODCAST = 3;//精炼
+	COMPOSE = 4;//合成
+}
+
+enum DAZZLE_RETURN {
+	USE_DAZZLE = 1;//激活炫纹
+	EQUIP_FRAGEMENT = 2;//装备炫纹碎片
+	DAZZLE_COMPOSE = 3;//炫纹合成
+	FRAGEMENT_COMPOSE = 4;//炫纹碎片合成
+}
+
+enum ATTRIBUTE_TYPE {
+	MAX_HP =1;//最大生命值
+	MAX_MP =2;//最大魔法值
+	ATTACK =3;//攻击力
+	DEFENSE = 4;//防御值
+	MAGIC_ATK = 5;//魔法攻击力
+	MAGIC_DEFENSE = 6;//魔法防御
+	ATK_CRIT = 7;//暴击
+	MAGIC_CRIT = 8;//魔法暴击
+	TAK_RES = 9;//抗暴击
+	MAGIC_RES = 10;//魔法抗暴击
+}

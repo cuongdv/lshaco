@@ -1,0 +1,7 @@
+loglevel="ERROR"
+connmax=1
+luapackpath="./base.lso"
+luapath="../lua/base/?.lua;../lua/msg/?.lua"
+luamodpath="../lua/base/?.lua"
+luamod="cmdcli"
+host="127.0.0.1:18001"

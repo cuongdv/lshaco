@@ -1,0 +1,13 @@
+dofile "config_self"
+
+loglevel="DEBUG"
+connmax=5000
+luapackpath="./base.lso"
+luapath="../lua/?.lua;../res/lua/?.lua;../lua/base/?.lua;../lua/test/?.lua;../lua/game/?.lua;../lua/msg/?.lua"
+luacpath="../3rdlib/?.so;./3rdlib/?.so"
+luamodpath="../lua/test/?.lua;../lua/base/?.lua"
+luamod="robot"
+ip=oip
+port=gateport
+client_count=connmax
+robotid=1

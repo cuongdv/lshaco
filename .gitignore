@@ -10,6 +10,3 @@ bin/shaco
 bin/shaco-cli
 bin/test
 bin/*.history
-3rd/lua/src/lua
-3rd/lua/src/luac
-3rd/lua/src/liblua.a

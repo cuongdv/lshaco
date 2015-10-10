@@ -34,12 +34,13 @@ local function host()
                 CN = true
                 socket.start(id)
                 socket.readenable(id, true)
+                local last_active = shaco.now()
                 local cmd, len, ret
                 while true do
                     cmd = table.remove(C,1)
                     if cmd then
                         shaco.info ("[cmd send] "..cmd)
-                        assert(socket.send(id, cmd..'\n'))
+                        assert(socket.send(id, ':'..cmd..'\n'))
                         while true do
                             len = assert(socket.read(id, "*2"))
                             if len > 0 then
@@ -50,9 +51,18 @@ local function host()
                                 break
                             end
                         end
+                        last_active = shaco.now()
                         shaco.info ("[ret read] ok")
                     else
-                        shaco.sleep(1)
+                        local now = shaco.now()
+                        if now - last_active > 1000*50 then
+                            assert(socket.send(id, '+\n'))
+                            assert(socket.read(id, 1))
+                            shaco.trace('ping')
+                            last_active = now
+                        else
+                            shaco.sleep(1)
+                        end
                     end
                 end
             end)

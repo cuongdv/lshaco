@@ -25,7 +25,9 @@ local function exec(id, cmd)
     f:close()
 end
 
-shaco.start(function()
+local g_run = true
+
+local function main()
     local host = shaco.getenv("host") or "127.0.0.1:7998"
     local ip, port = host:match("^([^:]+):?(%d+)$")
     while true do
@@ -34,9 +36,14 @@ shaco.start(function()
             shaco.info("[connected] "..host)
             socket.readenable(id, true)
             local cmd
-            while true do
+            while g_run do
                 cmd = assert(socket.read(id, "*l"))
-                exec(id, cmd)
+                if string.byte(cmd, 1) == 58 then -- ':'
+                    exec(id, string.sub(cmd,2))
+                else
+                    shaco.trace('response ping')
+                    assert(socket.send(id, '0'))
+                end
             end
         end)
         if not ok then
@@ -44,4 +51,8 @@ shaco.start(function()
             shaco.sleep(3000)
         end
     end
+end
+
+shaco.start(function()
+    shaco.fork(main)
 end)

@@ -106,19 +106,21 @@ end
 local function read_ok_packet(id, s, pack)
     local pos = 2
     pack.__type = "OK"
-    pack.effected_rows, pos = lenenc_int(s, pos)
-    pack.last_insert_id, pos = lenenc_int(s, pos)
-    pack.status_flag, pos = extract_int2(s, pos)
-    pack.warnings, pos = extract_int2(s, pos)
-    if pos < #s then
-        --if (0 & CLIENT_SESSION_TRACK) ~= 0 then -- todo
-            pack.info, pos = string_lenenc(s, pos)
-            if (pack.status_flag & SERVER_SESSION_STATE_CHANGED) ~= 0 then
-                pack.session_state_changes = string_lenenc(s, pos)
-            end
-        --else
-            --pack.info = string_eof(s, pos)
-        --end
+    if #s > 1 then -- #s==1 in if row is empty in read one row
+        pack.effected_rows, pos = lenenc_int(s, pos)
+        pack.last_insert_id, pos = lenenc_int(s, pos)
+        pack.status_flag, pos = extract_int2(s, pos)
+        pack.warnings, pos = extract_int2(s, pos)
+        if pos < #s then
+            --if (0 & CLIENT_SESSION_TRACK) ~= 0 then -- todo
+                pack.info, pos = string_lenenc(s, pos)
+                if (pack.status_flag & SERVER_SESSION_STATE_CHANGED) ~= 0 then
+                    pack.session_state_changes = string_lenenc(s, pos)
+                end
+            --else
+                --pack.info = string_eof(s, pos)
+            --end
+        end
     end
     return pack
 end
@@ -223,7 +225,9 @@ local function read_resultset(id, s, pack, self)
         gres = read_generic_response(id, self.__row_reader, columns)
         if gres.__type == nil then
             table.insert(rows, gres)
-        else break end
+        elseif gres.__type == 'EOF' then
+            break
+        end
     end
     if gres.__type == "EOF" or
        gres.__type == "OK" then

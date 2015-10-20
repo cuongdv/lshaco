@@ -31,6 +31,7 @@ local function __collect_up_f(f, name, upold, upnew, ups)
     if __cache[name] then
         return
     end
+    __cache[name] = true
     local i = 1
     while true do
         local upn, upv = dgetupvalue(f, i)
@@ -50,6 +51,7 @@ local function __collect_up_t(t, name, upold, upnew, ups)
     if __cache[name] then
         return
     end
+    __cache[name] = true
     for k, v in pairs(t) do
         local fulln = name.."."..k
         if type(v) == "table" then

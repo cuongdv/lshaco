@@ -1,4 +1,4 @@
-.PHONY: all clean cleanall 3rd 3rdclean 3rduninstall pack deploy
+.PHONY: all clean cleanall 3rd 3rdclean 3rduninstall pack deploy patch
  #-Wpointer-arith -Winline
 
 BIN_DIR=bin
@@ -184,6 +184,9 @@ DEPLOY_PATH=~/server/trunk
 deploy:
 	cp -r bin/*.so bin/base.lso bin/shaco bin/shaco-cli $(DEPLOY_PATH)/bin
 	cp -r 3rdlib $(DEPLOY_PATH)
+
+patch:
+	scp bin/base.lso lvxiaojun@192.168.1.220:~/server/trunk/bin
 
 clean:	
 	rm -f $(all_t) 

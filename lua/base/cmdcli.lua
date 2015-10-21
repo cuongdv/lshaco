@@ -28,6 +28,25 @@ shaco.start(function()
         end
     end
     
+    local function interact()
+        if not id then
+            id = assert(socket.connect(ip, tonumber(port)))
+            socket.readenable(id, true)
+        end
+        while true do
+            local s = linenoise.linenoise("> ")
+            if s == nil then
+                linenoise.savehistory(history_file)
+                os.exit(1)
+            end
+            s = string.match(s, "^%s*(.-)%s*$")
+            if s ~= "" then
+                rpc(s)
+                linenoise.addhistory(s)
+            end
+        end
+    end
+
     if single_command then
         rpc(single_command)
         os.exit(1)
@@ -35,15 +54,12 @@ shaco.start(function()
     rpc("hi")
     linenoise.loadhistory(history_file)
     while true do
-        local s = linenoise.linenoise("> ")
-        if s == nil then
-            linenoise.savehistory(history_file)
-            os.exit(1)
-        end
-        s = string.match(s, "^%s*(.-)%s*$")
-        if s ~= "" then
-            rpc(s)
-            linenoise.addhistory(s)
+        local ok, err = pcall(interact)
+        if not ok then
+            print ('[error]'..err..', wait to connect ...')
+            shaco.sleep(1000)
+            socket.close(id)
+            id = nil
         end
     end
 end)

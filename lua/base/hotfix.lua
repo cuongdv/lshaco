@@ -12,8 +12,6 @@ local assert = assert
 local type = type
 
 local hotfix = {}
-local __cache 
-
 local function __getupvaluei(f, name)
     local i=1
     while true do
@@ -27,11 +25,15 @@ local function __getupvaluei(f, name)
     end
 end
 
-local function __collect_up_f(f, name, upold, upnew, ups)
-    if __cache[name] then
-        return
+local function __collect_up_f(cache, f, name, upold, upnew, ups)
+    if cache then
+        if cache[name] then
+            return
+        end
+        cache[name] = true
+    else
+        cache = {}
     end
-    __cache[name] = true
     local i = 1
     while true do
         local upn, upv = dgetupvalue(f, i)
@@ -41,23 +43,20 @@ local function __collect_up_f(f, name, upold, upnew, ups)
         if upv == upold then
             tinsert(ups, {f, i, upnew, name, upn})
         elseif type(upv) == "function" then
-            __collect_up_f(upv, upn, name, upold, upnew, ups)
+            __collect_up_f(cache, upv, upn, name, upold, upnew, ups)
         end
         i = i+1
     end
 end
 
 local function __collect_up_t(t, name, upold, upnew, ups)
-    if __cache[name] then
-        return
-    end
-    __cache[name] = true
+    local cache = {}
     for k, v in pairs(t) do
         local fulln = name.."."..k
         if type(v) == "table" then
             --__collect_up_t(v, fulln, upold, upnew, ups)
         elseif type(v) == "function" then
-            __collect_up_f(v, fulln, upold, upnew, ups)
+            __collect_up_f(cache, v, fulln, upold, upnew, ups)
         end
     end
 end
@@ -65,12 +64,11 @@ end
 local function __collect_up_all(upold, upnew)
     local ups = {}
     for k, p in pairs(package.loaded) do
-        __cache = {}
         local fulln = k
         if type(p) == "table" then
             __collect_up_t(p, fulln, upold, upnew, ups)
         elseif type(p) == "function" then
-            __collect_up_f(p, fulln, upold, upnew, ups)
+            __collect_up_f(nil, p, fulln, upold, upnew, ups)
         end
     end
     return ups
@@ -84,7 +82,8 @@ local function __collect_patch_fun_ups(fnew, fold)
         if not upn then
             break
         end
-        if type(upv) ~= "function" then
+        -- keep old, except local function or '_ENV'
+        if upn ~= '_ENV' and type(upv) ~= "function" then
             tinsert(ups, {upn, i, __getupvaluei(fold, upn)})
         end
         i = i+1

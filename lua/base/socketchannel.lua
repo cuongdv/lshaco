@@ -147,7 +147,9 @@ function socketchannel:request(req, response)
     if self.__error then
         error(self.__error)
     else
-        return self.__result_data[co]
+        local r = self.__result_data[co]
+        self.__result_data[co] = nil
+        return r 
     end
 end
 

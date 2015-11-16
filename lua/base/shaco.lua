@@ -142,7 +142,7 @@ function shaco.call(dest, name, v)
 end
 
 local function dispatch_wakeup()
-    --if not __wakeuping then
+    if not __wakeuping then
         while #__wakeup_queue > 0 do
             local co = table.remove(__wakeup_queue, 1)
             __wakeup_map[co] = nil
@@ -150,7 +150,7 @@ local function dispatch_wakeup()
             assert(coroutine.resume(co))
             __wakeuping = nil
         end
-    --end
+    end
 end
 
 local function dispatch_task()

@@ -30,7 +30,6 @@ mod_so=\
 	$(BIN_DIR)/mod_master.so
 	#$(BIN_DIR)/mod_keepalivec.so \
 	#$(BIN_DIR)/mod_keepalived.so \
-	#$(BIN_DIR)/mod_gate.so
 
 all_t=\
 	$(BIN_DIR)/shaco \

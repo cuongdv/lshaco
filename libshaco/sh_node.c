@@ -429,50 +429,6 @@ sh_node_exit(int nodeid) {
     return 0;
 }
 
-int 
-sh_handle_startb(const char *name) {
-    int vhandle = _vhandle(name);
-    if (vhandle == -1)
-        return 1;
-    struct rhandle *s = _get_module(vhandle);
-    assert(s);
-
-    int i;
-    for (i=0; i<s->mor.nelem; ++i) {
-        struct sh_monitor *sm = sh_array_get(&s->mor, i);
-        int start_handle = sm->start_handle;
-        if (start_handle != -1) {
-            uint8_t msg[5];
-            msg[0] = MONITOR_STARTB;
-            sh_to_littleendian32(vhandle, &msg[1]);
-            sh_handle_send(-1, start_handle, MT_MONITOR, msg, sizeof(msg));
-        }
-    }
-    return 0;
-}
-
-int 
-sh_handle_starte(const char *name) {
-    int vhandle = _vhandle(name);
-    if (vhandle == -1)
-        return 1;
-    struct rhandle *s = _get_module(vhandle);
-    assert(s);
-
-    int i;
-    for (i=0; i<s->mor.nelem; ++i) {
-        struct sh_monitor *sm = sh_array_get(&s->mor, i);
-        int start_handle = sm->start_handle;
-        if (start_handle != -1) {
-            uint8_t msg[5];
-            msg[0] = MONITOR_STARTE;
-            sh_to_littleendian32(vhandle, &msg[1]);
-            sh_handle_send(-1, start_handle, MT_MONITOR, msg, sizeof(msg));
-        }
-    }
-    return 0;
-}
-
 // init
 static void
 sh_handle_init() {

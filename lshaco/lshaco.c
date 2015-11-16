@@ -171,27 +171,15 @@ lbroadcast(lua_State *L) {
 
 static int
 lsend(lua_State *L) {
-    struct module *ctx = lua_touserdata(L, lua_upvalueindex(1));
-    assert(ctx);
     int session = luaL_checkinteger(L, 1);
-    int dest = luaL_checkinteger(L, 2);
-    int type = luaL_checkinteger(L, 3);
-    luaL_checktype(L, 4, LUA_TLIGHTUSERDATA);
-    void *msg = lua_touserdata(L, 4);
-    int sz = luaL_checkinteger(L, 5);
-    if (sh_handle_call(session, ctx->moduleid, dest, type, msg, sz)) {
-        sh_free(msg);
-        return luaL_error(L, "send %d ~ %d, session:%d, type:%d", ctx->moduleid, dest, session, type);
+    int source;
+    if (lua_type(L, 2) == LUA_TNIL) {
+        struct module *ctx = lua_touserdata(L, lua_upvalueindex(1));
+        assert(ctx);
+        source = ctx->moduleid;
     } else {
-        sh_free(msg);
-        return 0;
+        source = luaL_checkinteger(L, 2);
     }
-}
-
-static int
-lsendraw(lua_State *L) {
-    int session = luaL_checkinteger(L, 1);
-    int source = luaL_checkinteger(L, 2);
     int dest = luaL_checkinteger(L, 3);
     int type = luaL_checkinteger(L, 4);
     luaL_checktype(L, 5, LUA_TLIGHTUSERDATA);
@@ -281,7 +269,6 @@ luaopen_shaco_c(lua_State *L) {
         { "uniquemodule",   luniquemodule},
         { "broadcast",      lbroadcast },
         { "send",           lsend },
-        { "sendraw",        lsendraw },
         { "timer",          ltimer },
         { "main",           lmain },
         { NULL, NULL },

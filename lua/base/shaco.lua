@@ -114,10 +114,10 @@ shaco.broadcast = c.broadcast
 shaco.sendraw = c.sendraw
 
 function shaco.send(dest, msg, sz)
-    return c.send(0, dest, shaco.PTYPE_UM, msg, sz)
+    return c.send(0, nil, dest, shaco.PTYPE_UM, msg, sz)
 end
 function shaco.ret(session, dest, msg, sz)
-    return c.send(session, dest, shaco.PTYPE_RET, msg, sz)
+    return c.send(session, nil, dest, shaco.PTYPE_RET, msg, sz)
 end
 
 local session_map = {}
@@ -135,7 +135,7 @@ function shaco.call(dest, name, v)
         session_id = 1
     end
     session_map[session_id] = co
-    c.send(session_id, dest, shaco.PTYPE_UM, shaco.pack(name, v))
+    c.send(session_id, nil, dest, shaco.PTYPE_UM, shaco.pack(name, v))
     local session, msg, sz = coroutine.yield()
     session_map[session] = nil
     return shaco.unpack(msg, sz)

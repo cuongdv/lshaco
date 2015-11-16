@@ -20,17 +20,10 @@
 
 #define MONITOR_START 0
 #define MONITOR_EXIT  1
-#define MONITOR_MAX 2
-#define MONITOR_STARTB 2
-#define MONITOR_STARTE 3
-#define MONITOR_SUSPEND 4
 
-#define sh_monitor_type(msg) (((uint8_t*)(msg))[0])
-#define sh_monitor_vhandle(msg) sh_from_littleendian32((const uint8_t *)(msg)+1)
 #define sh_handleid(nodeid, moduleid) ((((nodeid) & 0xff) << 8) | ((moduleid) & 0xff))
 #define sh_moduleid_from_handle(handle) ((handle) & 0x00ff)
 #define sh_nodeid_from_handle(handle) (((handle) >> 8) & 0x00ff)
-#define sh_handle_local(handle) ((handle)<=0xff)
 
 struct sh_node_addr {
     char naddr[40];
@@ -64,8 +57,6 @@ int sh_handle_publish(const char *name, int flag);
 int sh_handle_monitor(const char *name, const struct sh_monitor *h, int *vhandle, int active);
 int sh_handle_start(const char *name, int handle);
 int sh_handle_exit(int handle);
-int sh_handle_startb(const char *name);
-int sh_handle_starte(const char *name);
 int sh_node_exit(int nodeid);
 
 #endif

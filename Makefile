@@ -144,7 +144,7 @@ $(BIN_DIR)/util.so: lshaco/lutil.c
 
 $(BIN_DIR)/crypt.so: lshaco/lcrypt.c lshaco/lsha1.c 
 	@rm -f $@
-	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO) $(ILUA) 
+	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO) $(ILUA) -lcrypto
 
 $(BIN_DIR)/mysqlaux.so: lshaco/lmysqlaux.c 
 	@rm -f $@

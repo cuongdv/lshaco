@@ -6,12 +6,12 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
-/*
+
 #include <openssl/bn.h>
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
-*/
+
 #define SMALL_CHUNK 256
 
 /* the eight DES S-boxes */
@@ -845,7 +845,7 @@ lb64decode(lua_State *L) {
 // defined in lsha1.c
 int lsha1(lua_State *L);
 int lhmac_sha1(lua_State *L);
-/*
+
 #define torsa(L) (*(RSA**)luaL_checkudata(L,1,"RSA*"))
 
 static int
@@ -944,7 +944,7 @@ lrsa_new(lua_State *L) {
     lua_setmetatable(L, -2);
     return 1;
 }
-*/
+
 int
 luaopen_crypt_c(lua_State *L) {
 	luaL_checkversion(L);
@@ -963,7 +963,7 @@ luaopen_crypt_c(lua_State *L) {
 		{ "base64decode", lb64decode },
 		{ "sha1", lsha1 },
 		{ "hmac_sha1", lhmac_sha1 },
- //       { "rsa_new", lrsa_new },
+        { "rsa_new", lrsa_new },
 		{ NULL, NULL },
 	};
 	luaL_newlib(L,l);

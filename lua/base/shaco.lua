@@ -93,7 +93,6 @@ shaco.sendpack_um = socket.sendpack_um
 shaco.subscribe = c.subscribe
 shaco.publish = c.publish
 shaco.queryid = c.queryid
-shaco.querynext = c.querynext
 
 local monitor_map = {}
 function shaco.uniquemodule(name, active, eventcb)

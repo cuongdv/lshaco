@@ -307,14 +307,6 @@ module_query_module_name(int moduleid) {
 }
 
 int 
-module_next(int idx) {
-    if (idx >= 0 && idx < M->sz)
-        return M->p[idx]->moduleid;
-    else
-        return MODULE_INVALID;
-}
-
-int 
 module_main(int moduleid, int session, int source, int type, const void *msg, int sz) {
     struct module *s = _index(moduleid);
     if (s && s->dl.main) {

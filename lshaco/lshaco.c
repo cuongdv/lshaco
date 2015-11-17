@@ -121,17 +121,6 @@ lqueryid(lua_State *L) {
 }
 
 static int
-lquerynext(lua_State *L) {
-    int idx = luaL_checkinteger(L,1);
-    int handle = module_next(idx);
-    if (handle == -1)
-        lua_pushinteger(L,handle);
-    else
-        lua_pushnil(L);
-    return 1;
-}
-
-static int
 luniquemodule(lua_State *L) {
     struct module *s = lua_touserdata(L, lua_upvalueindex(1));
     assert(s);
@@ -265,7 +254,6 @@ luaopen_shaco_c(lua_State *L) {
         { "publish",        lpublish },
         { "subscribe",      lsubscribe },
         { "queryid",        lqueryid },
-        { "querynext",      lquerynext },
         { "uniquemodule",   luniquemodule},
         { "broadcast",      lbroadcast },
         { "send",           lsend },

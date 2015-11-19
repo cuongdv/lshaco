@@ -10,10 +10,8 @@
 #define LOG_PANIC   6
 #define LOG_MAX     7
 
-struct shaco_context;
-
-void shaco_log_attach(struct shaco_context *ctx);
-void shaco_log_fini();
+void shaco_log_open(const char *filename);
+void shaco_log_close();
 
 const char* shaco_log_level();
 int shaco_log_setlevel(const char* level);

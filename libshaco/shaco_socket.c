@@ -1,8 +1,6 @@
 #include "shaco_socket.h"
-#include "shaco_env.h"
-#include "shaco_log.h"
-#include "sh_module.h"
 #include "socket.h"
+#include "shaco.h"
 #include <stdlib.h>
 #include <arpa/inet.h>
 #include <signal.h>

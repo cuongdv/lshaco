@@ -71,21 +71,17 @@ daemonize() {
 
 void 
 shaco_init() {
-    if (shaco_optint("daemon", 0)) {
+    int daemon = shaco_optint("daemon", 0);
+    if (daemon)
         daemonize();
-    }
+    if (daemon)
+        shaco_log_open(shaco_optstr("logfile", ""));
+    else
+        shaco_log_open(NULL);
     shaco_log_setlevel(shaco_optstr("loglevel", ""));
     shaco_timer_init();
     shaco_module_init();
     shaco_handle_init();
-    const char *name = shaco_getenv("log");
-    if (name) {
-        struct shaco_context *log = shaco_context_create(name);
-        if (log)
-            shaco_log_attach(log);
-        else
-            return;
-    }
     sig_handler_init();
     rlimit_check();
     struct shaco_socket_config cfg;
@@ -98,11 +94,11 @@ void
 shaco_fini() {
     shaco_msg_dispatcher_fini();
     shaco_socket_fini();
-    shaco_log_attach(NULL);
     shaco_handle_fini();
     shaco_module_fini();
     shaco_timer_fini();
     shaco_env_fini();
+    shaco_log_close();
 }
 
 void

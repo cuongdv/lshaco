@@ -1,6 +1,9 @@
 #include "shaco_clusternode.h"
-#include "sahco_context.h"
+#include "shaco_context.h"
 #include "shaco_malloc.h"
+#include "shaco_handle.h"
+#include "shaco.h"
+#include <string.h>
 
 #define SHACO_MSG_BATCH 10
 
@@ -47,7 +50,7 @@ shaco_msg_pop() {
     if (Q->head == Q->tail) {
         return NULL;
     }
-    struct message *m =  Q->q[Q->head];
+    struct message *m = Q->q[Q->head];
     Q->head ++;
     if (Q->head == Q->cap) {
         Q->head = 0;
@@ -86,8 +89,8 @@ void
 shaco_msg_dispatcher_fini() {
     if (Q) {
         if (Q->q)
-            free(Q->q);
-        free(Q);
+            shaco_free(Q->q);
+        shaco_free(Q);
         Q=NULL;
     }
 }
@@ -103,10 +106,10 @@ shaco_send_local_directly(int dest, int source, int session, int type, const voi
 }
 
 void
-shaco_send(int dest, int source, int session, int type, const void *msg, int sz)  {
+shaco_send(int dest, int source, int session, int type, const void *msg, int sz) {
     if (shaco_clusternode_isremote(dest)) {
         shaco_clusternode_send(dest, source, session, type, msg, sz);
     } else {
-        shaco_msg_push(dest, source, session type, msg, sz);
+        shaco_msg_push(dest, source, session, type, msg, sz);
     }
 }

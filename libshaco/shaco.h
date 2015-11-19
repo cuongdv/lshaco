@@ -26,8 +26,8 @@ __attribute__((noreturn))
 #endif
 ;
 void shaco_callback(struct shaco_context *context, shaco_cb cb, void *ud);
-void shaco_send(int dest, int source, int session, int type, const char *msg, int sz);
-void shaco_send_local_directly(int dest, int source, int session, int type, int msg, int sz);
+void shaco_send(int dest, int source, int session, int type, const void *msg, int sz);
+void shaco_send_local_directly(int dest, int source, int session, int type, const void *msg, int sz);
 void shaco_backtrace();
 void shaco_panic(const char* fmt, ...)
 #ifdef __GNUC__

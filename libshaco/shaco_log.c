@@ -1,15 +1,16 @@
 #include "shaco_log.h"
 #include "shaco.h"
-#include <stdlib.h>
+#include "shaco_timer.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
-#include <stdarg.h>
+#include <errno.h>
 #include <string.h>
-#include <time.h>
 #include <execinfo.h>
-#include <assert.h>
+#include <stdarg.h>
+#include <time.h>
 
-static struct shaco_context *H;
+static FILE *F;
 static int LEVEL = LOG_INFO;
 
 static const char* STR_LEVELS[LOG_MAX] = {
@@ -49,43 +50,29 @@ shaco_log_setlevel(const char* level) {
     }
 }
 
-static int
-_prefix(int level, char* buf, int sz) {
+static inline void
+_prefix(int level) {
+    char tmp[64];
     uint64_t now = shaco_timer_now();
     time_t sec = now / 1000;
     uint32_t msec = now % 1000;
-    int n;
-    n  = sh_snprintf(buf, sz, "[%d ", (int)getpid());
-    n += strftime(buf+n, sz-n, "%y%m%d-%H:%M:%S.", localtime(&sec));
-    n += sh_snprintf(buf+n, sz-n, "%03d] %s: ", msec, _levelstr(level));
-    return n;
+    strftime(tmp, sizeof(tmp), "%y%m%d-%H:%M:%S.", localtime(&sec));
+    fprintf(F, "%d %s%03d %s: ", (int)getpid(), tmp, msec, _levelstr(level));
 }
 
 static inline void
-_dolog(int level, char* log, int sz) {
-    if (H==NULL)
-        fprintf(stderr, "%s", log);
-    else 
-        shaco_context_send(H, 0, 0, MT_LOG, log, sz);
+_log(int level, const char *log) {
+    _prefix(level);
+    fprintf(F, "%s\n", log);
+    fflush(F);
 }
 
-static void
-_logv(int level, const char* fmt, va_list ap) {
-    char buf[4096] = {0};
-    int n;
-    n = _prefix(level, buf, sizeof(buf));
-    n += sh_vsnprintf(buf+n, sizeof(buf)-n, fmt, ap);
-    n += sh_snprintf(buf+n, sizeof(buf)-n, "\n");
-    _dolog(level, buf, n);
-}
-
-static void
-_log(int level, const char* log) {
-    char buf[4096] = {0};
-    int n;
-    n = _prefix(level, buf, sizeof(buf));
-    n += sh_snprintf(buf+n, sizeof(buf)-n, "%s\n", log);
-    _dolog(level, buf, n);
+static inline void
+_logv(int level, const char *fmt, va_list ap) {
+    _prefix(level);
+    vfprintf(F, fmt, ap);
+    fprintf(F, "%s", "\n");
+    fflush(F);
 }
 
 void
@@ -105,11 +92,12 @@ shaco_backtrace() {
     char** symbols;
     n = backtrace(addrs, sizeof(addrs)/sizeof(addrs[0]));
     symbols = backtrace_symbols(addrs, n);
-    assert(symbols);
-    for (i=0; i<n; ++i) {
-        _log(LOG_PANIC, symbols[i]);
+    if (symbols) {
+        for (i=0; i<n; ++i) {
+            _log(LOG_PANIC, symbols[i]);
+        }
+        free(symbols);
     }
-    free(symbols);
 }
 
 void
@@ -134,6 +122,22 @@ shaco_panic(const char* fmt, ...) {
 }
 
 void
-shaco_log_attach(struct shaco_context *ctx) {
-    H = ctx;
+shaco_log_open(const char *filename) {
+    if (filename && filename[0]) {
+        F = fopen(filename, "a+");
+        if (F==NULL) {
+            fprintf(stderr, "log open `%s` fail: %s", filename, strerror(errno));
+            exit(1);
+        }
+    } else {
+        F = stdout;
+    }
+}
+
+void
+shaco_log_close() {
+    if (F && F != stdout) {
+        fclose(F);
+        F=NULL;
+    }
 }

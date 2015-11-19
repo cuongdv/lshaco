@@ -1,5 +1,5 @@
 oip = "127.0.0.1" --修改ip
-logdir = "/home/lvxiaojun/log" --修改日志目录
+logfile = "/home/lvxiaojun/log/1.log" --修改日志目录
 
 portoffset = 0 -- 修改端口
 gateport=18002+portoffset

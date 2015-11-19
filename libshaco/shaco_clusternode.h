@@ -11,6 +11,7 @@ struct shaco_remote_message {
 };
 
 void shaco_clusternode_start(struct shaco_context *ctx);
+int  shaco_clusternode_isremote(int handle);
 void shaco_clusternode_send(int dest, int source, int session, int type, const void *msg, int sz);
 
 #endif

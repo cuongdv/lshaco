@@ -3,7 +3,6 @@ dofile "config_self"
 id=1
 --address="127.0.0.1:8001"
 loglevel="DEBUG"
-log="log"
 connmax=5256
 --cluster=1
 

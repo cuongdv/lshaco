@@ -1,4 +1,4 @@
-#include "sh.h"
+#include "shaco.h"
 
 struct handle_slot {
     char *name;
@@ -25,7 +25,7 @@ cmd_BROADCAST(int nodeid, char *cmd, int n) {
 // master
 struct master*
 master_create() {
-    struct master* self = sh_malloc(sizeof(*self));
+    struct master* self = shaco_malloc(sizeof(*self));
     memset(self, 0, sizeof(*self));
     return self;
 }
@@ -38,14 +38,14 @@ master_free(struct master* self) {
         struct handle_slot *slot = sh_array_get(&self->ps, i);
         sh_array_fini(&slot->pubs);
         sh_array_fini(&slot->subs);
-        sh_free(slot->name);
+        shaco_free(slot->name);
     }
     sh_array_fini(&self->ps);
-    sh_free(self);
+    shaco_free(self);
 }
 
 int
-master_init(struct module* s) {
+master_init(struct shaco_module* s) {
     struct master *self = MODULE_SELF;
     self->node_handle = module_query_id("node");
     if (self->node_handle == -1) return 1;
@@ -63,7 +63,7 @@ handle_name_insert(struct sh_array *ps, const char *name) {
             return slot;
     }
     slot = sh_array_push(ps);
-    slot->name = sh_strdup(name);
+    slot->name = shaco_strdup(name);
     sh_array_init(&slot->pubs, sizeof(int), 1);
     sh_array_init(&slot->subs, sizeof(int), 1);
     return slot;
@@ -99,7 +99,7 @@ handle_remove(struct sh_array *a, int nodeid) {
 }
 
 static void
-node_reg(struct module *s, int nodeid) {
+node_reg(struct shaco_module *s, int nodeid) {
     struct master *self = MODULE_SELF;
     char cmd[64];
     int sz = cmd_BROADCAST(nodeid, cmd, sizeof(cmd));
@@ -107,7 +107,7 @@ node_reg(struct module *s, int nodeid) {
 }
 
 static void
-node_unreg(struct module *s, int nodeid) {
+node_unreg(struct shaco_module *s, int nodeid) {
     struct master *self = MODULE_SELF;
     struct sh_array* a = &self->ps;
     int i;
@@ -119,7 +119,7 @@ node_unreg(struct module *s, int nodeid) {
 }
 
 static void
-handle_sub(struct module *s, int source, const char *name) {
+handle_sub(struct shaco_module *s, int source, const char *name) {
     struct master *self = MODULE_SELF;
     struct handle_slot *slot = handle_name_insert(&self->ps, name);
     assert(slot);
@@ -138,7 +138,7 @@ handle_sub(struct module *s, int source, const char *name) {
 }
 
 static void
-handle_pub(struct module *s, int source, const char *name, int handle) {
+handle_pub(struct shaco_module *s, int source, const char *name, int handle) {
     struct master *self = MODULE_SELF;
     struct handle_slot *slot = handle_name_insert(&self->ps, name);
     assert(slot);
@@ -157,13 +157,13 @@ handle_pub(struct module *s, int source, const char *name, int handle) {
 }
 
 static void
-redirect_to_node(struct module *s, const void *msg, int sz) {
+redirect_to_node(struct shaco_module *s, const void *msg, int sz) {
     struct master *self = MODULE_SELF;
     sh_handle_send(MODULE_ID, self->node_handle, MT_TEXT, msg, sz);
 }
 
 void
-master_main(struct module *s, int session, int source, int type, const void *msg, int sz) {
+master_main(struct shaco_module *s, int session, int source, int type, const void *msg, int sz) {
     if (type != MT_TEXT) return;
     
     char cmd[sz+1];

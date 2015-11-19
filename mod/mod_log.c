@@ -1,4 +1,4 @@
-#include "sh.h"
+#include "shaco.h"
 #include "elog_include.h"
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -10,7 +10,7 @@ struct log {
 
 struct log*
 log_create() {
-    struct log* self = sh_malloc(sizeof(*self));
+    struct log* self = shaco_malloc(sizeof(*self));
     memset(self, 0, sizeof(*self));
     return self;
 }
@@ -21,11 +21,11 @@ log_free(struct log* self) {
         elog_free(self->el);
         self->el = NULL;
     }
-    sh_free(self);
+    shaco_free(self);
 }
 
 int
-log_init(struct module* s) {
+log_init(struct shaco_module* s) {
     struct log* self = MODULE_SELF;
     
     struct elog* el;
@@ -79,7 +79,7 @@ log_init(struct module* s) {
 }
 
 void
-log_main(struct module* s, int session, int source, int type, const void *msg, int sz) {
+log_main(struct shaco_module* s, int session, int source, int type, const void *msg, int sz) {
     struct log* self = MODULE_SELF;
     if (type == MT_LOG) {
         elog_append(self->el, msg, sz);

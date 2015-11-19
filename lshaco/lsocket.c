@@ -1,4 +1,4 @@
-#include "sh.h"
+#include "shaco.h"
 #include <lua.h>
 #include <lauxlib.h>
 #include <stdlib.h>
@@ -9,7 +9,7 @@
 
 static int
 llisten(lua_State *L) {
-    struct module *mod = lua_touserdata(L, lua_upvalueindex(1));
+    struct shaco_module *mod = lua_touserdata(L, lua_upvalueindex(1));
     const char *ip = luaL_checkstring(L, 1);
     int port = luaL_checkinteger(L, 2);
     int id = sh_socket_listen(ip, port, mod->moduleid);
@@ -18,19 +18,19 @@ llisten(lua_State *L) {
         return 1;
     } else {
         lua_pushnil(L);
-        lua_pushstring(L, SH_SOCKETERR);
+        lua_pushstring(L, SHACO_SOCKETERR);
         return 2;
     }
 }
 
 static int
 lconnect(lua_State *L) {
-    struct module *mod = lua_touserdata(L, lua_upvalueindex(1));
+    struct shaco_module *mod = lua_touserdata(L, lua_upvalueindex(1));
     const char *ip = luaL_checkstring(L, 1);
     int port = luaL_checkinteger(L, 2);
-    int id = sh_socket_connect(ip, port, mod->moduleid);
+    int id = shaco_socket_connect(ip, port, mod->moduleid);
     if (id >= 0) {
-        if (sh_socket_lasterrno() == LS_CONNECTING) {
+        if (shaco_socket_lasterrno() == LS_CONNECTING) {
             lua_pushinteger(L, id);
             lua_pushnil(L);
             lua_pushboolean(L, 1);
@@ -41,7 +41,7 @@ lconnect(lua_State *L) {
         }
     } else {
         lua_pushnil(L);
-        lua_pushinteger(L, sh_socket_lasterrno());
+        lua_pushinteger(L, shaco_socket_lasterrno());
         return 2;
     }
 }
@@ -50,7 +50,7 @@ static int
 lread(lua_State *L) {
     int id = luaL_checkinteger(L, 1);
     void *data;
-    int n = sh_socket_read(id, &data);
+    int n = shaco_socket_read(id, &data);
     if (n > 0) {
         lua_pushlightuserdata(L, data);
         lua_pushinteger(L, n);
@@ -60,7 +60,7 @@ lread(lua_State *L) {
         return 1;
     } else {
         lua_pushnil(L);
-        lua_pushinteger(L, sh_socket_lasterrno());
+        lua_pushinteger(L, shaco_socket_lasterrno());
         return 2;
     }
 }
@@ -88,13 +88,13 @@ lsend(lua_State *L) {
             return 1;
         }
         sz = end-start+1;
-        msg = sh_malloc(sz);
+        msg = shaco_malloc(sz);
         memcpy(msg, s+start-1, sz);
         break; }
     default:
         return luaL_argerror(L, 2, "invalid type");
     }
-    int err = sh_socket_write(id,msg,sz);
+    int err = shaco_socket_send_nodispatcherror(id,msg,sz);
     if (err != 0) lua_pushinteger(L,err);
     else lua_pushnil(L);
     return 1;
@@ -104,7 +104,7 @@ static int
 lclose(lua_State *L) {
     int id = luaL_checkinteger(L, 1);
     int force = lua_toboolean(L, 2);
-    int ok = sh_socket_close(id, force) == 0;
+    int ok = shaco_socket_close(id, force) == 0;
     lua_pushboolean(L, ok);
     return 1;
 }
@@ -113,7 +113,7 @@ static int
 lreadenable(lua_State *L) {
     int id = luaL_checkinteger(L, 1);
     int enable = lua_toboolean(L, 2);
-    sh_socket_subscribe(id, enable);
+    shaco_socket_enableread(id, enable);
     return 0;
 }
 
@@ -121,7 +121,7 @@ static int
 laddress(lua_State *L) {
     struct socket_addr addr;
     int id = luaL_checkinteger(L, 1); 
-    if (!sh_socket_address(id, &addr)) {
+    if (!shaco_socket_address(id, &addr)) {
         lua_pushstring(L, addr.ip);
         lua_pushinteger(L, addr.port);
         return 2;
@@ -136,17 +136,17 @@ llimit(lua_State *L) {
     int id = luaL_checkinteger(L, 1);
     int slimit = luaL_checkinteger(L, 2);
     int rlimit = luaL_checkinteger(L, 3);
-    sh_socket_limit(id, slimit, rlimit);
+    shaco_socket_limit(id, slimit, rlimit);
     return 0;
 }
 
 static int
 lerror(lua_State *L) {
     if (lua_gettop(L) == 0)
-        lua_pushstring(L, SH_SOCKETERR);
+        lua_pushstring(L, SHACO_SOCKETERR);
     else {
         int err = luaL_checkinteger(L, 1);
-        lua_pushstring(L, sh_socket_error(err));
+        lua_pushstring(L, shaco_socket_error(err));
     }
     return 1;
 }
@@ -195,10 +195,10 @@ lsendpack(lua_State *L) {
     }
     if (!p || sz<=0)
         return 0;
-    uint8_t *msg = sh_malloc(sz+2);
+    uint8_t *msg = shaco_malloc(sz+2);
     sh_to_littleendian16(sz, msg);
     memcpy(msg+2, p, sz);
-    int ok = sh_socket_send(id,msg,sz+2) == 0;
+    int ok = shaco_socket_send(id,msg,sz+2) == 0;
     lua_pushboolean(L,ok);
     return 1;
 }
@@ -221,12 +221,12 @@ lsendpack_um(lua_State *L) {
     } else {
         return luaL_argerror(L, 2, "invalid type");
     }
-    uint8_t *msg = sh_malloc(sz+4);
+    uint8_t *msg = shaco_malloc(sz+4);
     sh_to_littleendian16(sz+2, msg);
     sh_to_littleendian16(msgid, msg+2);
     if (p && sz > 0)
         memcpy(msg+4, p, sz);
-    int ok = sh_socket_send(id,msg,sz+4) == 0;
+    int ok = shaco_socket_send(id,msg,sz+4) == 0;
     lua_pushboolean(L,ok);
     return 1;
 }
@@ -274,7 +274,7 @@ luaopen_socket_c(lua_State *L) {
     };
     luaL_newlibtable(L, l);
 	lua_getfield(L, LUA_REGISTRYINDEX, "shaco_context");
-	struct module *mod = lua_touserdata(L,-1);
+	struct shaco_module *mod = lua_touserdata(L,-1);
 	if (mod == NULL)
 		return luaL_error(L, "init shaco context first");
 	luaL_setfuncs(L,l,1);

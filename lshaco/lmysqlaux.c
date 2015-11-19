@@ -1,4 +1,4 @@
-#include "sh_malloc.h"
+#include "shaco_malloc.h"
 #include <lua.h>
 #include <lauxlib.h>
 #include <stdlib.h>
@@ -11,7 +11,7 @@ lquote_string(lua_State* L) {
         lua_pushlstring(L, "''", 2);
         return 1;
     }   
-    char *tmp = sh_malloc(l*2+2);
+    char *tmp = shaco_malloc(l*2+2);
     const char *src = sql;
     char *dst = tmp;
     
@@ -39,7 +39,7 @@ lquote_string(lua_State* L) {
     *dst++ = '\'';
    
     lua_pushlstring(L, tmp, dst-tmp);
-    sh_free(tmp);
+    shaco_free(tmp);
     return 1;
 }
 

@@ -1,4 +1,4 @@
-#include "sh.h"
+#include "shaco.h"
 
 #include <lua.h>
 #include <lauxlib.h>
@@ -21,7 +21,7 @@ _traceback(lua_State *L) {
 //
 static int
 llog(lua_State *L) {
-    struct module *s = lua_touserdata(L, lua_upvalueindex(1));
+    struct shaco_module *s = lua_touserdata(L, lua_upvalueindex(1));
     sh_log(luaL_checkinteger(L, 1), "[%s] %s", MODULE_NAME, luaL_checkstring(L, 2));
 	return 0;
 }
@@ -40,50 +40,26 @@ lsetloglevel(lua_State *L) {
 }
 
 static int 
-lgetnum(lua_State *L) {
-    const char *opt = luaL_checkstring(L, 1);
-    double def = 0;
-    if (lua_gettop(L) == 2) {
-        def = luaL_checknumber(L, 2);
-    }
-    lua_pushnumber(L, sh_getnum(opt, def));
-    return 1;
-}
-
-static int 
-lgetstr(lua_State *L) {
-    const char *opt = luaL_checkstring(L, 1);
-    const char *def = "";
-    if (lua_gettop(L) == 2) {
-        def = luaL_checkstring(L, 2);
-    }
-    lua_pushstring(L, sh_getstr(opt, def));
-    return 1;
-}
-
-static int 
 lgetenv(lua_State *L) {
-    const char *s = sh_getenv(luaL_checkstring(L, 1));
-    if (s) lua_pushstring(L, s);
-    else lua_pushnil(L);
+    shaco_pushenv(luaL_checkstring(L,1), L);
     return 1;
 }
 
 static int 
 lnow(lua_State *L) {
-    lua_pushnumber(L, sh_timer_now());
+    lua_pushnumber(L, shaco_timer_now());
     return 1;
 }
 
 static int
 lstarttime(lua_State *L) {
-    lua_pushnumber(L, sh_timer_start_time());
+    lua_pushnumber(L, shaco_timer_start_time());
     return 1;
 }
 
 static int 
 ltime(lua_State *L) {
-    lua_pushnumber(L, sh_timer_time());
+    lua_pushnumber(L, shaco_timer_time());
     return 1;
 }
 
@@ -122,7 +98,7 @@ lqueryid(lua_State *L) {
 
 static int
 luniquemodule(lua_State *L) {
-    struct module *s = lua_touserdata(L, lua_upvalueindex(1));
+    struct shaco_module *s = lua_touserdata(L, lua_upvalueindex(1));
     assert(s);
     const char *name = luaL_checkstring(L,1);
     int active = lua_toboolean(L,2);
@@ -145,7 +121,7 @@ luniquemodule(lua_State *L) {
 
 static int
 lbroadcast(lua_State *L) {
-    struct module *ctx = lua_touserdata(L, lua_upvalueindex(1));
+    struct shaco_module *ctx = lua_touserdata(L, lua_upvalueindex(1));
     assert(ctx);
     int dest = luaL_checkinteger(L, 1);
     int type = luaL_checkinteger(L, 2);
@@ -154,7 +130,7 @@ lbroadcast(lua_State *L) {
     int sz = luaL_checkinteger(L, 4);
     int n = sh_handle_broadcast(ctx->moduleid, dest, type, msg, sz);
     lua_pushinteger(L, n);
-    sh_free(msg);
+    shaco_free(msg);
     return 1;
 }
 
@@ -163,7 +139,7 @@ lsend(lua_State *L) {
     int session = luaL_checkinteger(L, 1);
     int source;
     if (lua_type(L, 2) == LUA_TNIL) {
-        struct module *ctx = lua_touserdata(L, lua_upvalueindex(1));
+        struct shaco_module *ctx = lua_touserdata(L, lua_upvalueindex(1));
         assert(ctx);
         source = ctx->moduleid;
     } else {
@@ -175,26 +151,26 @@ lsend(lua_State *L) {
     void *msg = lua_touserdata(L, 5);
     int sz = luaL_checkinteger(L, 6);
     if (sh_handle_call(session, source, dest, type, msg, sz)) {
-        sh_free(msg);
+        shaco_free(msg);
         return luaL_error(L, "send %d ~ %d, session:%d, type:%d", source, dest, session, type);
     } else {
-        sh_free(msg);
+        shaco_free(msg);
         return 0;
     }
 }
 
 static int
 ltimer(lua_State *L) {
-    struct module *s = lua_touserdata(L, lua_upvalueindex(1));
+    struct shaco_module *s = lua_touserdata(L, lua_upvalueindex(1));
     int session = luaL_checkinteger(L, 1);
     int interval = luaL_checkinteger(L, 2);
-    sh_timer_register(s->moduleid, session, interval);
+    shaco_timer_register(s->moduleid, session, interval);
     return 0;
 }
 
 static void
-_maincb(struct module *s, int session, int source, int type, const void *msg, int sz) {
-    lua_State *L = s->dl.main_ud;
+_maincb(struct shaco_module *s, int session, int source, int type, const void *msg, int sz) {
+    lua_State *L = s->dl.udata;
     lua_pushcfunction(L, _traceback);
     int trace = lua_gettop(L);
     lua_rawgetp(L, LUA_REGISTRYINDEX, _maincb);
@@ -224,7 +200,7 @@ _maincb(struct module *s, int session, int source, int type, const void *msg, in
 
 static int
 lmain(lua_State *L) {
-    struct module *s = lua_touserdata(L, lua_upvalueindex(1));
+    struct shaco_module *s = lua_touserdata(L, lua_upvalueindex(1));
     assert(s); 
     luaL_checktype(L, 1, LUA_TFUNCTION);
     lua_rawsetp(L, LUA_REGISTRYINDEX, _maincb);
@@ -234,7 +210,7 @@ lmain(lua_State *L) {
     assert(gL);
 
     s->dl.main = _maincb;
-    s->dl.main_ud = gL;
+    s->dl.udata= gL;
     return 0;
 }
 
@@ -245,8 +221,6 @@ luaopen_shaco_c(lua_State *L) {
         { "log",            llog },
         { "setloglevel",    lsetloglevel },
         { "getloglevel",    lgetloglevel },
-        { "getnum",         lgetnum },
-        { "getstr",         lgetstr },
         { "getenv",         lgetenv },
         { "now",            lnow},
         { "starttime",      lstarttime},
@@ -258,12 +232,11 @@ luaopen_shaco_c(lua_State *L) {
         { "broadcast",      lbroadcast },
         { "send",           lsend },
         { "timer",          ltimer },
-        { "main",           lmain },
-        { NULL, NULL },
+
 	}; 
 	luaL_newlibtable(L, l);
 	lua_getfield(L, LUA_REGISTRYINDEX, "shaco_context");
-	struct module *m = lua_touserdata(L,-1);
+	struct shaco_module *m = lua_touserdata(L,-1);
 	if (m == NULL)
 		return luaL_error(L, "init shaco context first");
 	luaL_setfuncs(L,l,1);

@@ -1,5 +1,6 @@
-#include "sh.h"
-#include "sh_env.h"
+#include "shaco.h"
+#include "shaco_env.h"
+#include "shaco_malloc.h"
 #include "lua.h"
 #include "lualib.h"
 #include "lauxlib.h"
@@ -26,10 +27,13 @@ _init_env(lua_State *L) {
         switch (lua_type(L, -1)) {
         case LUA_TBOOLEAN:
         case LUA_TNUMBER:
-            sh_setnumenv(key, lua_tonumber(L, -1));
+            if (lua_isinteger(L,-1))
+                shaco_setinteger(key, lua_tointeger(L,-1));
+            else
+                shaco_setfloat(key, lua_tonumber(L,-1));
             break;
         case LUA_TSTRING:
-            sh_setenv(key, lua_tostring(L, -1));
+            shaco_setenv(key, lua_tostring(L, -1));
             break;
         default:
             //fprintf(stderr, "Invalid config table key %s\n", key);
@@ -43,7 +47,7 @@ _init_env(lua_State *L) {
 
 static void
 sh_env_load(const char* file) {
-    lua_State* L = lua_newstate(sh_lalloc, NULL);
+    lua_State* L = lua_newstate(shaco_lalloc, NULL);
     luaL_openlibs(L);
     if (luaL_dofile(L, file) != LUA_OK) {
         fprintf(stderr, "Error load config file, %s\n", lua_tostring(L, -1));
@@ -60,7 +64,7 @@ usage(const char* app) {
 
 int 
 main(int argc, char* argv[]) {
-    sh_env_init();
+    shaco_env_init();
 
     int i;
     if (argc > 1) {
@@ -77,7 +81,7 @@ main(int argc, char* argv[]) {
             if (!strncmp(argv[i], "--", 2) && 
                  argv[i][2] != '\0' &&
                 !lastarg) {
-                sh_setenv(&(argv[i][2]), argv[i+1]);
+                shaco_setenv(&(argv[i][2]), argv[i+1]);
                 i++;
             } else {
                 usage(argv[0]);
@@ -85,60 +89,27 @@ main(int argc, char* argv[]) {
             }
         }
     }
-    int len = argc-1;
-    for (i=0; i<argc; ++i) {
-        len += strlen(argv[i]);
-    }
-    char *args = sh_malloc(len+1);
-    char *p = args;
-    int n;
-    for (i=0; i<argc; ++i) {
-        strcpy(p, argv[i]);
-        n = strlen(argv[i]);
-        p += n;
-        *p = ' ';
-        p += 1;
-    }
-    *(p-1) = '\0';
-
-    sh_setenv("startup_args", args);
-    sh_free(args);
-
-    if (sh_getint("daemon", 0)) {
-        daemon(1, 1);
-    }
-
-    //for (;;) {
-    //fprintf(stderr, "mem ago:%f\n", sh_memory_used()/1024.f);
-    //int action=0;
-    //fprintf(stderr, "action 1 to continue:");
-    //scanf("%d", &action);
-    //if (action == 0) 
-        //break;
-    //int count, size;
-    //scanf("%d %d", &size, &count);
-    //fprintf(stderr, "alloc begin: size=%d, count=%d\n", size, count);
-    //char **pp = sh_malloc(sizeof(char*)*count);
-    //for (i=0;i<count;++i) {
-        //pp[i] = sh_malloc(size);
+    //int len = argc-1;
+    //for (i=0; i<argc; ++i) {
+    //    len += strlen(argv[i]);
     //}
-
-    //fprintf(stderr, "alloc ok\n");
-    //fprintf(stderr, "mem alloc:%f", sh_memory_used()/1024.f);
-
-    //scanf("%d", &i);
-    //fprintf(stderr, "free begin\n");
-    //for (i=0; i<count;++i) {
-        //sh_free(pp[i]);
+    //char *args = shaco_malloc(len+1);
+    //char *p = args;
+    //int n;
+    //for (i=0; i<argc; ++i) {
+    //    strcpy(p, argv[i]);
+    //    n = strlen(argv[i]);
+    //    p += n;
+    //    *p = ' ';
+    //    p += 1;
     //}
-    //fprintf(stderr, "free ok %d\n",count);
-    //sh_free(pp);
-    
-    //fprintf(stderr, "mem free:%f", sh_memory_used()/1024.f);
-    //}
+    //*(p-1) = '\0';
 
-    sh_init();
-    sh_start();
-    sh_env_fini();
+    //shaco_setenv("startup_args", args);
+    //shaco_free(args);
+
+    shaco_init();
+    shaco_start();
+    shaco_fini();
     return 0;
 }

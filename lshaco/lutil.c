@@ -1,4 +1,4 @@
-#include "sh_malloc.h"
+#include "shaco_malloc.h"
 #include <lua.h>
 #include <lauxlib.h>
 #include <stdlib.h>
@@ -70,7 +70,7 @@ liconv(lua_State* L) {
     }
     size_t outsz = l*4;
     size_t avail = outsz;
-    char *out = sh_malloc(outsz);
+    char *out = shaco_malloc(outsz);
     memset(out, 0, outsz);
    
     char *p = out;
@@ -79,12 +79,12 @@ liconv(lua_State* L) {
         lua_pushnil(L);
         lua_pushstring(L,strerror(errno));
         iconv_close(h);
-        sh_free(out);
+        shaco_free(out);
         return 2;
     } else { 
         lua_pushlstring(L, out, outsz-avail); 
         iconv_close(h);
-        sh_free(out);
+        shaco_free(out);
         return 1;
     }
 #else
@@ -123,7 +123,7 @@ static int
 lfreebytes(lua_State *L) {
     luaL_checktype(L, 1, LUA_TLIGHTUSERDATA);
     void *p = lua_touserdata(L,1);
-    sh_free(p);
+    shaco_free(p);
     return 0;
 }
 

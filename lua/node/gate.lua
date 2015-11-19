@@ -104,13 +104,13 @@ shaco.start(function()
 
     gateserver.start(handle, {
         timeout = 1000,
-        address = shaco.getstr("gateaddress"),
-        slimit = shaco.getnum("clientslimit"),
-        rlimit = shaco.getnum("clientrlimit"),
-        livetime = shaco.getnum("clientlive", 3)*1000,
+        address = shaco.getenv("gateaddress"),
+        slimit = shaco.getenv("clientslimit"),
+        rlimit = shaco.getenv("clientrlimit"),
+        livetime = shaco.getenv("clientlive", 3)*1000,
         logintime = 60*1000,
         logouttime = 5*1000,
-        clientmax = shaco.getnum("clientmax"),
+        clientmax = shaco.getenv("clientmax"),
     })
 
     shaco.dispatch("um", function(_,_, msgid, p1,p2,p3,p4,p5) 

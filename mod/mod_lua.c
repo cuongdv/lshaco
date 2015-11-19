@@ -1,7 +1,7 @@
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
-#include "sh.h"
+#include "shaco.h"
 
 static const char *LOADER_SCRIPT =
 "local mod, _ = ...\n"
@@ -39,12 +39,12 @@ static const char *LOADER_SCRIPT =
 
 struct lua {
     lua_State *L;
-    struct module *context;
+    struct shaco_module *context;
 };
 
 struct lua *
 lua_create() {
-    struct lua *l = sh_malloc(sizeof(*l));
+    struct lua *l = shaco_malloc(sizeof(*l));
     memset(l, 0, sizeof(*l));
     return l;
 }
@@ -55,7 +55,7 @@ lua_free(struct lua *self) {
         lua_close(self->L);
         self->L = NULL;
     }
-    sh_free(self);
+    shaco_free(self);
 }
 
 static int                                        
@@ -70,10 +70,10 @@ _traceback(lua_State *L) {
 }
 
 int
-lua_init(struct module *s, const char *args) {
+lua_init(struct shaco_module *s, const char *args) {
     struct lua *self = MODULE_SELF;
     self->context = s;
-    lua_State *L = lua_newstate(sh_lalloc, NULL);
+    lua_State *L = lua_newstate(shaco_lalloc, NULL);
     luaL_openlibs(L);
     lua_pushlightuserdata(L, s);
     lua_setfield(L, LUA_REGISTRYINDEX, "shaco_context");

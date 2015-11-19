@@ -1,0 +1,16 @@
+#ifndef __shaco_handle_h__
+#define __shaco_handle_h__
+
+#include <stdint.h>
+
+struct shaco_context;
+
+void shaco_handle_init();
+void shaco_handle_fini();
+
+int shaco_handle_register(struct shaco_context *context);
+struct shaco_context *shaco_handle_context(uint32_t handle);
+uint32_t shaco_handle_query(const char *name);
+void shaco_handle_bindname(uint32_t handle, const char *name);
+
+#endif

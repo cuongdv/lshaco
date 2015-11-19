@@ -1,4 +1,4 @@
-#include "sh.h"
+#include "shaco.h"
 #include "args.h"
 #include "socket_buffer.h"
 #include "socket_platform.h"
@@ -220,7 +220,7 @@ node_bound_entry(struct node *no, int handle) {
 static inline void
 node_bound_connection(struct node *no, int id) {
     no->id = id;
-    no->last_heartbeat = sh_timer_now();
+    no->last_heartbeat = shaco_timer_now();
 }
 
 static inline struct node *
@@ -238,7 +238,7 @@ node_find(struct remote *self, int id) {
 }
 
 static int
-node_connect(struct module *s, struct node *o) {
+node_connect(struct shaco_module *s, struct node *o) {
     struct remote *self = MODULE_SELF;
     if (o->id != -1) return 0;
     int32_t nodeid = o-self->nodes;
@@ -261,7 +261,7 @@ node_connect(struct module *s, struct node *o) {
 }
 
 static void
-node_disconnect(struct module *s, int id) {
+node_disconnect(struct shaco_module *s, int id) {
     struct remote *self = MODULE_SELF;
     struct node *o = node_find(self, id);
     if (o) {
@@ -300,7 +300,7 @@ conn_send(struct remote *self, int id, int session, int source, int dest, int ty
     source |= (self->myid << 8);
     dest   &= 0x00ff;
     dest   |= (type << 8);
-    uint8_t *tmp = sh_malloc(len);
+    uint8_t *tmp = shaco_malloc(len);
     sh_to_littleendian16(len-2, tmp);
     sh_to_littleendian16(source, tmp+2);
     sh_to_littleendian16(dest, tmp+4);
@@ -333,7 +333,7 @@ handle_send(struct remote *self, int session, int source, int dest, int type, co
 }
 
 static int
-handle_connect(struct module *s, const char *name, int handle) {
+handle_connect(struct shaco_module *s, const char *name, int handle) {
     struct remote *self = MODULE_SELF;
     int id = sh_nodeid_from_handle(handle);
     if (id == 0) id = self->myid;
@@ -352,7 +352,7 @@ handle_connect(struct module *s, const char *name, int handle) {
 }
 
 static int
-handle_subscribe(struct module *s, const char *name) {
+handle_subscribe(struct shaco_module *s, const char *name) {
     struct remote *self = MODULE_SELF;
     int handle = module_query_id(name);
     if (handle != -1) {
@@ -364,7 +364,7 @@ handle_subscribe(struct module *s, const char *name) {
 }
 
 static int
-handle_publish(struct module *s, const char *name, int handle) {
+handle_publish(struct shaco_module *s, const char *name, int handle) {
     struct remote *self = MODULE_SELF;
     handle &= 0xff;
     handle |= (self->myid << 8) & 0xff00;
@@ -385,11 +385,11 @@ cache_fini(struct remote *self) {
     int i;
     for (i=0; i<self->subs.nelem; ++i) {
         struct sub_ent *e = sh_array_get(&self->subs, i);
-        sh_free(e->name);
+        shaco_free(e->name);
     }
     for (i=0; i<self->pubs.nelem; ++i) {
         struct pub_ent *e = sh_array_get(&self->pubs, i);
-        sh_free(e->name);
+        shaco_free(e->name);
     }
     sh_array_fini(&self->subs);
     sh_array_fini(&self->pubs);
@@ -417,7 +417,7 @@ cache_sub(struct sh_array *a, const char *name, bool active) {
     }
     struct sub_ent *e = sh_array_push(a);
     e->handle = -1;
-    e->name = sh_strdup(name);
+    e->name = shaco_strdup(name);
     e->active = active;
 }
 
@@ -430,11 +430,11 @@ cache_pub(struct sh_array *pubs, const char *name, int handle) {
     }
     struct pub_ent *e = sh_array_push(pubs);
     e->handle = handle;
-    e->name = sh_strdup(name);
+    e->name = shaco_strdup(name);
 }
 
 static void
-cache_redo(struct module *s) {
+cache_redo(struct shaco_module *s) {
     struct remote *self = MODULE_SELF;
     int i;
     for (i=0; i<self->subs.nelem; ++i) {
@@ -464,7 +464,7 @@ getaddr(const char *addr, char ip[40], int *port) {
 
 // initialize
 static int
-node_me_init(struct module *s) {
+node_me_init(struct shaco_module *s) {
     struct remote *self = MODULE_SELF; 
     int nodeid = sh_getint("id", 0);
     struct node *o = node_index(self, nodeid);
@@ -488,7 +488,7 @@ node_me_init(struct module *s) {
 }
 
 static int
-node_listen(struct module *s) {
+node_listen(struct shaco_module *s) {
     struct remote *self = MODULE_SELF;
     struct node *my = NODE_ME(self);
     assert(my);
@@ -503,7 +503,7 @@ node_listen(struct module *s) {
 }
 
 static int
-connect_to_master(struct module* s) {
+connect_to_master(struct shaco_module* s) {
     struct remote *self = MODULE_SELF;
     const char *addr = sh_getstr("master", "0");
     char ip[40];
@@ -550,7 +550,7 @@ connect_to_master(struct module* s) {
 }
 
 static int
-broadcast_node(struct module *s, int nodeid) {
+broadcast_node(struct shaco_module *s, int nodeid) {
     struct remote *self = MODULE_SELF;
     struct node *me = node_index(self, nodeid);
     if (me == NULL) return 1;
@@ -586,7 +586,7 @@ broadcast_node(struct module *s, int nodeid) {
 // node
 struct remote *
 node_create() {
-    struct remote* self = sh_malloc(sizeof(*self));
+    struct remote* self = shaco_malloc(sizeof(*self));
     memset(self, 0, sizeof(*self));
     self->master_handle = -1;
     int i;
@@ -604,11 +604,11 @@ node_free(struct remote* self) {
 
     buffer_finiall(self);
     cache_fini(self); 
-    sh_free(self);
+    shaco_free(self);
 }
 
 int
-node_init(struct module* s) {
+node_init(struct shaco_module* s) {
     struct remote *self = MODULE_SELF;
     if (node_me_init(s)) {
         return 1;
@@ -630,13 +630,13 @@ node_init(struct module* s) {
         heartbeat_tick = 30;
 
     self->heartbeat_tick = heartbeat_tick * 1000;
-    sh_timer_register(MODULE_ID, 0, self->heartbeat_tick);
+    shaco_timer_register(MODULE_ID, 0, self->heartbeat_tick);
     return 0;
 }
 static int COUNT=0;
 static uint64_t LAST_TIME=0;
 static void
-node_read(struct module *s, struct socket_event *event) {
+node_read(struct shaco_module *s, struct socket_event *event) {
     struct remote *self = MODULE_SELF;
   
     struct socket_buffer *sb = buffer_find(self, event->id);
@@ -651,7 +651,7 @@ node_read(struct module *s, struct socket_event *event) {
         return;
     } 
     sb_push(sb, data, n);
-    uint64_t now = sh_timer_now();
+    uint64_t now = shaco_timer_now();
     if (COUNT==0) {
         LAST_TIME = now;
     }
@@ -662,7 +662,7 @@ node_read(struct module *s, struct socket_event *event) {
         if (sb_pop(sb, &pk)) 
             break;
         if (pk.sz <= HEADSZ) {
-            sh_free(pk.p);
+            shaco_free(pk.p);
             err = LS_ERR_MSG;
             goto errout;
         }
@@ -671,7 +671,7 @@ node_read(struct module *s, struct socket_event *event) {
         sh_handle_call(hd.session, hd.source, 
                 hd.dest, hd.type, 
                 p, pk.sz-HEADSZ);
-        sh_free(pk.p);
+        shaco_free(pk.p);
         c++;
     } 
     COUNT += c;
@@ -687,12 +687,12 @@ errout:
 }
 
 void
-node_send(struct module *s, int session, int source, int dest, int type, const void *msg, int sz) {
+node_send(struct shaco_module *s, int session, int source, int dest, int type, const void *msg, int sz) {
     handle_send(MODULE_SELF, session, source, dest, type, msg, sz);
 }
 
 void
-_socket(struct module* s, struct socket_event* event) {
+_socket(struct shaco_module* s, struct socket_event* event) {
     struct remote *self = MODULE_SELF;
     switch (event->type) {
     case LS_EREAD:
@@ -779,9 +779,9 @@ _socket(struct module* s, struct socket_event* event) {
 }
 
 void
-_time(struct module* s) {
+_time(struct shaco_module* s) {
     struct remote *self = MODULE_SELF;
-    uint64_t now = sh_timer_now();
+    uint64_t now = shaco_timer_now();
     int i;
     for (i=0; i<NODE_MAX; ++i) {
         struct node *o = &self->nodes[i];
@@ -799,20 +799,11 @@ _time(struct module* s) {
                 cache_redo(s);
         }
     }
-    sh_timer_register(MODULE_ID, 0, self->heartbeat_tick);
+    shaco_timer_register(MODULE_ID, 0, self->heartbeat_tick);
 }
 
-void
-node_main(struct module *s, int session, int source, int type, const void *msg, int sz) {
-    //sh_trace("command in");
-  
-    if (type == MT_SOCKET) {
-        struct socket_event *event = (struct socket_event *)msg;
-        assert(sizeof(*event) == sz);
-        _socket(s, event);
-    } else if (type == MT_TIME) {
-        _time(s);
-    } else if (type == MT_TEXT) {
+static void
+_handle(struct shaco_module *s, int session, int source, int type, const void *msg, int sz) {
     struct remote *self = MODULE_SELF;
     struct args A;
     if (args_parsestrl(&A, 0, msg, sz, ' ') < 1)
@@ -899,5 +890,31 @@ node_main(struct module *s, int session, int source, int type, const void *msg, 
         }
         sub->handle=handle;
     } 
+}
+
+int
+node_main(struct shaco_module *s, int session, int source, int type, const void *msg, int sz) {
+    //sh_trace("command in");
+ 
+    switch (type) {
+    case MT_SOCKET: {
+        struct socket_event *event = (struct socket_event *)msg;
+        assert(sizeof(*event) == sz);
+        _socket(s, event);
+        break; }
+    case MT_TIME:
+        _time(s);
+        break;
+    case MT_TEXT: 
+        _handle(s, session, source, type, msg, sz);
+        break;
+    case MT_REMOTE:
+        struct remote_message *rmsg = (struct remote_message *)msg;
+        assert(sizeof(*rmsg) == sz);
+        handle_send(MODULE_SELF, session, source, rmsg->dest, rmsg->type, rmsg->msg, rmsg->sz);
+        break;
+    default:
+        return 1;
     }
+    return 0;
 }

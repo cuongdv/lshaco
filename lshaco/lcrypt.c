@@ -1,4 +1,4 @@
-#include "sh_malloc.h"
+#include "shaco_malloc.h"
 #include <lua.h>
 #include <lauxlib.h>
 
@@ -864,16 +864,16 @@ lrsa_private_encrypt(lua_State *L) {
         return luaL_argerror(L,2,"empty string");
     }
     int sz = RSA_size(rsa);
-    char *p = sh_malloc(sz);
+    char *p = shaco_malloc(sz);
     int r = RSA_private_encrypt(l, 
             (const unsigned char*)str, 
             (unsigned char*)p, rsa, RSA_PKCS1_PADDING);
     if (r==-1) {
-        sh_free(p);
+        shaco_free(p);
         return luaL_error(L, "rsa private encrypt error");
     }
     lua_pushlstring(L,p,r);
-    sh_free(p);
+    shaco_free(p);
     return 1;
 }
 
@@ -889,16 +889,16 @@ lrsa_public_decrypt(lua_State *L) {
     if (sz<=0) {
         return luaL_argerror(L,1,"invalid rsa");
     }
-    char *p = sh_malloc(sz);
+    char *p = shaco_malloc(sz);
     int r = RSA_public_decrypt(l, 
             (const unsigned char *)str, 
             (unsigned char*)p, rsa, RSA_PKCS1_PADDING);
     if (r==-1) {
-        sh_free(p);
+        shaco_free(p);
         return luaL_error(L, "rsa public encrypt error");
     }
     lua_pushlstring(L,p,r);
-    sh_free(p);
+    shaco_free(p);
     return 1;
 }
 

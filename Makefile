@@ -9,27 +9,21 @@ ILUA=-I3rd/lua/src
 ISHACO=-Ilibshaco -I3rd/lsocket/src
 
 LIBSHACO_SRC=\
-	libshaco/sh_init.c \
-	libshaco/sh_start.c \
-	libshaco/sh_prepare.c \
-	libshaco/sh_sig.c \
-	libshaco/sh_check.c \
-	libshaco/sh_env.c \
- 	libshaco/sh_socket.c \
- 	libshaco/sh_module.c \
- 	libshaco/sh_timer.c \
- 	libshaco/sh_log.c \
-	libshaco/sh_reload.c \
-	libshaco/sh_node.c \
-	libshaco/sh_util.c \
-	libshaco/sh_array.c \
-	libshaco/sh_malloc.c \
+	libshaco/shaco_start.c \
+	libshaco/shaco_env.c \
+ 	libshaco/shaco_socket.c \
+ 	libshaco/shaco_module.c \
+ 	libshaco/shaco_timer.c \
+	libshaco/shaco_context.c \
+	libshaco/shaco_handle.c \
+	libshaco/shaco_clusternode.c \
+	libshaco/shaco_msg_dispatcher.c \
+ 	libshaco/shaco_log.c \
+	libshaco/shaco_malloc.c \
 	3rd/lsocket/src/socket.c
 
-mod_so=\
-	$(BIN_DIR)/mod_master.so
-	#$(BIN_DIR)/mod_keepalivec.so \
-	#$(BIN_DIR)/mod_keepalived.so \
+#mod_so=\
+#	$(BIN_DIR)/mod_master.so
 
 all_t=\
 	$(BIN_DIR)/shaco \
@@ -101,9 +95,9 @@ $(JEMALLOC_A): 3rd/jemalloc/Makefile
 #	cd 3rd/openssl && make libcrypto.a
 
 # shaco
-$(mod_so): $(BIN_DIR)/%.so: $(MOD_DIR)/%.c
-	@rm -f $@
-	gcc $(CFLAGS) $(SHARED) -o $@ $< $(ISHACO)
+#$(mod_so): $(BIN_DIR)/%.so: $(MOD_DIR)/%.c
+#	@rm -f $@
+#	gcc $(CFLAGS) $(SHARED) -o $@ $< $(ISHACO)
 
 $(BIN_DIR)/mod_node.so: $(MOD_DIR)/mod_node.c $(MOD_DIR)/socket_buffer.c 
 	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO)
@@ -153,7 +147,7 @@ $(BIN_DIR)/md5.so: 3rd/lua-md5/md5lib.c 3rd/lua-md5/md5.c 3rd/lua-md5/compat-5.2
 	@rm -f $@
 	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ILUA) -I3rd/lua-md5
 
-$(BIN_DIR)/shaco: main/shaco.c $(LIBSHACO_SRC) $(LUA_A) $(JEMALLOC_A)
+$(BIN_DIR)/shaco: main/shaco_main.c $(LIBSHACO_SRC) $(LUA_A) $(JEMALLOC_A)
 	gcc $(CFLAGS) $(EXPORT) -o $@ $^ $(ISHACO) $(ILUA) $(IJEMALLOC) $(LDLIB) -lpthread
 
 $(BIN_DIR)/test: main/test.c

@@ -1,4 +1,4 @@
-#include "sh.h"
+#include "shaco.h"
 #include "cmdctl.h"
 #include <stdlib.h>
 
@@ -15,18 +15,18 @@ tmp_free(struct tmp *self) {
 }
 
 int
-tmp_init(struct module *s) {
+tmp_init(struct shaco_module *s) {
     //struct tmp *self = MODULE_SELF;
     return 0;
 }
 
 void
-tmp_time(struct module *s) {
+tmp_time(struct shaco_module *s) {
     //struct tmp *self = MODULE_SELF;
 }
 
 void
-tmp_main(struct module *s, int session, int source, int type, const void *msg, int sz) {
+tmp_main(struct shaco_module *s, int session, int source, int type, const void *msg, int sz) {
     //struct tmp *self = MODULE_SELF;
     switch (type) {
     case MT_UM: {

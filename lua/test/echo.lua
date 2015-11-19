@@ -53,7 +53,7 @@ shaco.start(function()
         timeout = 1000,
         address = shaco.getstr("gateaddress"),
         livetime = 3000*1000,
-        clientmax = shaco.getnum("clientmax"),
+        clientmax = shaco.getenv("clientmax"),
     })
 
     --shaco.dispatch("um", function(_,_,cid,msg,sz)

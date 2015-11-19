@@ -6,9 +6,9 @@ local pb = require "protobuf"
 local MRES = require "msg_resname"
 local MREQ = require "msg_reqname"
 
-local ip=shaco.getstr("ip")
-local port=shaco.getnum("port")
-local client_count = shaco.getnum("client_count")
+local ip=shaco.getenv("ip")
+local port=shaco.getenv("port")
+local client_count = shaco.getenv("client_count")
 local robotid  = tonumber(shaco.getenv("robotid"))
 local TRACE = shaco.getenv("trace")
 local start_time

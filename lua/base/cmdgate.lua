@@ -59,11 +59,11 @@ shaco.start(function()
 
     gateserver.start(handle, {
         timeout = 1000,
-        address = shaco.getstr("cmdaddress"),
-        livetime = shaco.getnum("ccmdlive", 3)*1000,
+        address = shaco.getenv("cmdaddress"),
+        livetime = shaco.getenv("ccmdlive", 3)*1000,
         logintime = 10*1000,
         logouttime = 1*1000,
-        clientmax = shaco.getnum("ccmdmax"),
+        clientmax = shaco.getenv("ccmdmax"),
     })
 
     shaco.dispatch("um", function(_,_, id, info) 

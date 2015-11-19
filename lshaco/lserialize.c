@@ -1,4 +1,4 @@
-#include "sh_malloc.h"
+#include "shaco_malloc.h"
 #include <lua.h>
 #include <lauxlib.h>
 #include <stdlib.h>
@@ -52,7 +52,7 @@ struct read_block {
 
 inline static struct block *
 blk_alloc(void) {
-	struct block *b = sh_malloc(sizeof(struct block));
+	struct block *b = shaco_malloc(sizeof(struct block));
 	b->next = NULL;
 	return b;
 }
@@ -115,7 +115,7 @@ wb_free(struct write_block *wb) {
 	struct block *blk = wb->head;
 	while (blk) {
 		struct block * next = blk->next;
-		sh_free(blk);
+		shaco_free(blk);
 		blk = next;
 	}
 	wb->head = NULL;
@@ -160,7 +160,7 @@ rb_read(struct read_block *rb, void *buffer, int sz) {
 
 	if (rb->ptr == BLOCK_SIZE) {
 		struct block * next = rb->current->next;
-		sh_free(rb->current);
+		shaco_free(rb->current);
 		rb->current = next;
 		rb->ptr = 0;
 	}
@@ -183,7 +183,7 @@ rb_read(struct read_block *rb, void *buffer, int sz) {
 
 	for (;;) {
 		struct block * next = rb->current->next;
-		sh_free(rb->current);
+		shaco_free(rb->current);
 		rb->current = next;
 
 		if (sz < BLOCK_SIZE) {
@@ -203,7 +203,7 @@ static void
 rb_close(struct read_block *rb) {
 	while (rb->current) {
 		struct block * next = rb->current->next;
-		sh_free(rb->current);
+		shaco_free(rb->current);
 		rb->current = next;
 	}
 	rb->len = 0;
@@ -716,7 +716,7 @@ lserialize(lua_State *L) {
 	uint32_t len = 0;
 	memcpy(&len, b->buffer ,sizeof(len));
 
-	uint8_t * buffer = sh_malloc(len);
+	uint8_t * buffer = shaco_malloc(len);
 	uint8_t * ptr = buffer;
 	int sz = len;
 	while(len>0) {
@@ -726,12 +726,12 @@ lserialize(lua_State *L) {
 			len -= BLOCK_SIZE;
 		} else {
 			memcpy(ptr, b->buffer, len);
-            sh_free(b);
+            shaco_free(b);
 			break;
 		}
         // free
         struct block * next = b->next;
-		sh_free(b);
+		shaco_free(b);
 		b = next;
 		//b = b->next;
 	}
@@ -789,7 +789,7 @@ seristring(lua_State *L) {
 	void *buffer = lua_touserdata(L, -2);
 	int sz = lua_tointeger(L, -1);
 	lua_pushlstring(L, buffer, sz);
-	sh_free(buffer);
+	shaco_free(buffer);
 	return 1;
 }
 

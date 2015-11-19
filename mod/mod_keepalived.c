@@ -86,14 +86,14 @@ c_create(struct keepalived *self, const char *args) {
         if (self->cap == 0) {
             self->cap = 1;
         }
-        self->p = sh_realloc(self->p, sizeof(self->p[0]) * self->cap);
+        self->p = shaco_realloc(self->p, sizeof(self->p[0]) * self->cap);
     }
     c = &self->p[self->sz++];
     c->connid = -1;
     c->status = ST_INVALID;
     c->pid = -1;
     c->alive_always = false;
-    c->args = sh_strdup(args);
+    c->args = shaco_strdup(args);
     c->last_tick = 0; 
 
     sh_info("Keepalived client(%s) create", c->args);
@@ -113,7 +113,7 @@ c_kick(struct keepalived *self, struct client *c) {
 
     c_close_socket(self, c);
     if (c->args) {
-        sh_free(c->args);
+        shaco_free(c->args);
         c->args = NULL;
     }
     int idx = c - self->p;
@@ -242,7 +242,7 @@ c_disconned(struct keepalived *self, struct client *c) {
 // keepalived
 struct keepalived *
 keepalived_create() {
-    struct keepalived *self = sh_malloc(sizeof(*self));
+    struct keepalived *self = shaco_malloc(sizeof(*self));
     memset(self, 0, sizeof(*self));
     return self;
 }
@@ -251,10 +251,10 @@ void
 keepalived_free(struct keepalived *self) {
     int i;
     for (i=0; i<self->sz; ++i) {
-        sh_free(self->p[i].args);
+        shaco_free(self->p[i].args);
     }
-    sh_free(self->p);
-    sh_free(self);
+    shaco_free(self->p);
+    shaco_free(self);
 }
 
 int
@@ -280,7 +280,7 @@ keepalived_init(struct module *s) {
     if (self->disconn_time_max < 1)
         self->disconn_time_max = 1;
     self->disconn_time_max *= 1000;
-    sh_timer_register(MODULE_ID, 100);
+    shaco_timer_register(MODULE_ID, 100);
     return 0;
 }
 

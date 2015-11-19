@@ -1,5 +1,5 @@
 #include "socket_buffer.h"
-#include "sh_malloc.h"
+#include "shaco_malloc.h"
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -23,14 +23,14 @@ sb_fini(struct socket_buffer *sb) {
     while (sb->head) {
         tmp = sb->head;
         sb->head = sb->head->next;
-        sh_free(tmp->p);
-        sh_free(tmp);
+        shaco_free(tmp->p);
+        shaco_free(tmp);
     }
 }
 
 void
 sb_push(struct socket_buffer *sb, void *buf, int sz) {
-    struct buffer_node *node = sh_malloc(sizeof(*node));
+    struct buffer_node *node = shaco_malloc(sizeof(*node));
     node->p = buf;
     node->sz = sz;
     node->next = NULL;
@@ -48,7 +48,7 @@ sb_push(struct socket_buffer *sb, void *buf, int sz) {
 static void *
 pushpack(struct socket_buffer *sb, 
          struct buffer_node *node, int end, int n) {
-    char *pack = sh_malloc(n);
+    char *pack = shaco_malloc(n);
     char *p = pack;
     int offset = sb->offset;
     int diff;
@@ -76,8 +76,8 @@ freebuffer(struct socket_buffer *sb,
                 sb->head = sb->head->next;
                 sb->size -= node->sz;
                 sb->offset = 0;
-                sh_free(node->p);
-                sh_free(node);
+                shaco_free(node->p);
+                shaco_free(node);
             } else {
                 sb->size -= end;
                 sb->offset = end;
@@ -87,8 +87,8 @@ freebuffer(struct socket_buffer *sb,
             tmp = sb->head;
             sb->head = sb->head->next;
             sb->size -= tmp->sz;
-            sh_free(tmp->p);
-            sh_free(tmp);
+            shaco_free(tmp->p);
+            shaco_free(tmp);
         }
     }
 }

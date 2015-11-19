@@ -1,17 +1,17 @@
-#include "sh_malloc.h"
+#include "shaco_malloc.h"
 #include <lua.h>
 #include <lauxlib.h>
 
 static int
 lused(lua_State *L) {
-    size_t used = sh_memory_used();
+    size_t used = shaco_memory_used();
     lua_pushinteger(L, used);
     return 1;
 }
 
 static int
 lstat(lua_State *L) {
-    sh_memory_stat();
+    shaco_memory_stat();
     return 0;
 }
 

@@ -70,8 +70,6 @@ shaco.getloglevel = c.getloglevel
 shaco.setloglevel = c.setloglevel
 
 shaco.getenv = c.getenv
-shaco.getnum = c.getnum
-shaco.getstr = c.getstr
 
 shaco.now = c.now
 shaco.time = c.time

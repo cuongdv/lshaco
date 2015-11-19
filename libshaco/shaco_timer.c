@@ -1,8 +1,5 @@
-#include "sh_timer.h"
-#include "sh_malloc.h"
-#include "sh_init.h"
-#include "sh_module.h"
-#include "sh_node.h"
+#include "shaco_timer.h"
+#include "shaco_malloc.h"
 #include <time.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,7 +31,7 @@ time_push(struct time_heap *h, struct time_node *n) {
             h->cap = 1;
         else
             h->cap *= 2; 
-        h->p = sh_realloc(h->p, sizeof(h->p[0]) * h->cap);
+        h->p = shaco_realloc(h->p, sizeof(h->p[0]) * h->cap);
     }
     int pos = h->sz;
     while (pos>0) {
@@ -115,23 +112,23 @@ _elapsed_time() {
 }
 
 uint64_t
-sh_timer_start_time() {
+shaco_timer_start_time() {
     return T->start_time;
 }
 
 uint64_t 
-sh_timer_now() {
+shaco_timer_now() {
     _elapsed_time();
     return T->machine_start_time + T->machine_elapsed_time;
 }
 
 uint64_t 
-sh_timer_time() {
+shaco_timer_time() {
     return T->machine_start_time + _elapsed();
 }
 
 int
-sh_timer_max_timeout() {
+shaco_timer_max_timeout() {
     T->machine_elapsed_time = _elapsed(); 
     T->dirty = true;
     
@@ -146,7 +143,7 @@ sh_timer_max_timeout() {
 }
 
 void
-sh_timer_dispatch_timeout() {
+shaco_timer_trigger() {
     //T->dirty = true;
     _elapsed_time();
     
@@ -155,7 +152,7 @@ sh_timer_dispatch_timeout() {
         if (h->p[0].expire <= T->machine_elapsed_time) {
             struct time_node n;
             time_pop(h, &n);
-            module_main(n.handle, n.session, 0, MT_TIME, NULL, 0);
+            shaco_send_local_directly(n.handle, 0, n.session, MT_TIME, NULL, 0);
         } else {
             break;
         }
@@ -163,7 +160,7 @@ sh_timer_dispatch_timeout() {
 }
 
 void
-sh_timer_register(int handle, int session, int interval) {
+shaco_timer_register(int handle, int session, int interval) {
     struct time_node n;
     n.handle = handle;
     n.session = session;
@@ -172,9 +169,9 @@ sh_timer_register(int handle, int session, int interval) {
     time_push(&T->h, &n);
 }
 
-static void
-sh_timer_init() {
-    T = sh_malloc(sizeof(*T));
+void
+shaco_timer_init() {
+    T = shaco_malloc(sizeof(*T));
     memset(T, 0, sizeof(*T));
     T->dirty = true;
     T->start_time = _now();
@@ -183,16 +180,14 @@ sh_timer_init() {
     memset(&T->h, 0, sizeof(T->h));
 }
 
-static void 
-sh_timer_fini() {
+void 
+shaco_timer_fini() {
     if (T) {
         if (T->h.p) {
-            sh_free(T->h.p);
+            shaco_free(T->h.p);
             T->h.p = NULL;
         }
-        sh_free(T);
+        shaco_free(T);
         T = NULL;
     }
 }
-
-SH_LIBRARY_INIT_PRIO(sh_timer_init, sh_timer_fini, 9)

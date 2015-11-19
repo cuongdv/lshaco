@@ -1,11 +1,11 @@
-#include "sh_malloc.h"
-#include "sh_log.h"
-#include "jemalloc.h"
-#include "sh.h"
+#include "shaco_malloc.h"
+#include "shaco_log.h"
+#include "shaco.h"
 #include <stdio.h>
 #include <string.h>
 
 #ifdef HAVE_MALLOC
+#include "jemalloc.h"
 #define PREFIX_SIZE 0
 #define malloc  je_malloc
 #define realloc je_realloc
@@ -31,11 +31,11 @@ static size_t _used_memory = 0;
 static inline void
 _oom(size_t size) {
     sh_error("Out of memory trying to malloc %zu bytes", size);
-    sh_panic("Exit due to out of memory");
+    shaco_panic("Exit due to out of memory");
 }
 
 void *
-sh_malloc(size_t size) {
+shaco_malloc(size_t size) {
     void *ptr = malloc(size+PREFIX_SIZE);
     if (ptr == NULL) {
         _oom(size);
@@ -51,9 +51,9 @@ sh_malloc(size_t size) {
 }
 
 void *
-sh_realloc(void *ptr, size_t size) {
+shaco_realloc(void *ptr, size_t size) {
     if (ptr == NULL) {
-        return sh_malloc(size);
+        return shaco_malloc(size);
     }
 #ifndef HAVE_MALLOC
     ptr = (char*)ptr-PREFIX_SIZE;
@@ -74,7 +74,7 @@ sh_realloc(void *ptr, size_t size) {
 }
 
 void *
-sh_calloc(size_t nmemb, size_t size) {
+shaco_calloc(size_t nmemb, size_t size) {
     void *ptr = calloc(nmemb, size+PREFIX_SIZE);
     if (ptr == NULL) {
         _oom(nmemb*size);
@@ -90,7 +90,7 @@ sh_calloc(size_t nmemb, size_t size) {
 }
 
 void  
-sh_free(void *ptr) {
+shaco_free(void *ptr) {
     if (ptr == NULL) return;
 #ifdef HAVE_MALLOC
     _used_memory -= malloc_usable_size(ptr);
@@ -102,27 +102,27 @@ sh_free(void *ptr) {
 }
 
 char *
-sh_strdup(const char *s) {
+shaco_strdup(const char *s) {
     size_t l = strlen(s)+1;
-    char *p = sh_malloc(l);
+    char *p = shaco_malloc(l);
     memcpy(p, s, l);
     return p;
 }
 
 void *
-sh_lalloc(void *ud, void *ptr, size_t osize, size_t nsize) {
+shaco_lalloc(void *ud, void *ptr, size_t osize, size_t nsize) {
     (void)ud; (void) osize;
     if (nsize == 0) {
-        sh_free(ptr);
+        shaco_free(ptr);
         return NULL;
     } else {
-        return sh_realloc(ptr, nsize);
+        return shaco_realloc(ptr, nsize);
     }
 }
 
 //
 size_t
-sh_memory_used() {
+shaco_memory_used() {
     return _used_memory;
 }
 
@@ -133,7 +133,7 @@ write_cb(void *opaque, const char *buf) {
 }
 
 void
-sh_memory_stat() {
+shaco_memory_stat() {
     FILE *f = fopen("./memory.stat", "w");
     if (f == NULL) {
         je_malloc_stats_print(0,0,0);

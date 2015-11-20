@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdio.h>
 
 static bool RUN = false;
 static char STOP_INFO[32];
@@ -43,29 +44,39 @@ rlimit_check() {
         shaco_exit("getrlimit core fail: %s", strerror(errno));
     }
     if (l.rlim_cur !=-1 && 
-        l.rlim_cur < 1024*1024) {
-        shaco_exit("ulimit -c %d, too small", (int)l.rlim_cur);
+        l.rlim_cur < 128*1024*1024) {
+        l.rlim_cur = -1;
+        l.rlim_max = -1;
+        if (setrlimit(RLIMIT_CORE, &l) == -1) {
+            shaco_exit("setrlimit core fail: %s", strerror(errno));
+        }
     }
-    int max = shaco_optint("max_socket", 0) + 1000;
+    int max = shaco_optint("max_socket", 0) + 1024;
     if (getrlimit(RLIMIT_NOFILE, &l) == -1) {
         shaco_exit("getrlimit nofile fail: %s", strerror(errno));
     }
     if (l.rlim_cur < max) {
-        shaco_exit("ulimit -n %d, too small", (int)l.rlim_cur);
+        l.rlim_cur = max;
+        l.rlim_max = max;
+        if (setrlimit(RLIMIT_NOFILE, &l) == -1) {
+            shaco_exit("setrlimit nofile fail: %s", strerror(errno));
+        }
     }
 }
 
 static void
-daemonize() {
+daemonize(int noclose) {
     int fd;
     if (fork() != 0) exit(0); // parent exit
     setsid(); // create a new session
 
-    if ((fd = open("/dev/null", O_RDWR, 0)) != -1) {
-        dup2(fd, STDIN_FILENO);
-        dup2(fd, STDOUT_FILENO);
-        dup2(fd, STDERR_FILENO);
-        if (fd > STDERR_FILENO) close(fd);
+    if (noclose == 0) {
+        if ((fd = open("/dev/null", O_RDWR, 0)) != -1) {
+            dup2(fd, STDIN_FILENO);
+            dup2(fd, STDOUT_FILENO);
+            dup2(fd, STDERR_FILENO);
+            if (fd > STDERR_FILENO) close(fd);
+        }
     }
 }
 
@@ -73,20 +84,18 @@ void
 shaco_init() {
     int daemon = shaco_optint("daemon", 0);
     if (daemon)
-        daemonize();
+        daemonize(1);
+    shaco_timer_init();
     if (daemon)
-        shaco_log_open(shaco_optstr("logfile", ""));
+        shaco_log_open(shaco_optstr("logfile", "./shaco.log"));
     else
         shaco_log_open(NULL);
     shaco_log_setlevel(shaco_optstr("loglevel", ""));
-    shaco_timer_init();
     shaco_module_init();
     shaco_handle_init();
     sig_handler_init();
     rlimit_check();
-    struct shaco_socket_config cfg;
-    cfg.max_socket = shaco_optint("max_socket", 0);
-    shaco_socket_init(&cfg);
+    shaco_socket_init(shaco_optint("max_socket", 0));
     shaco_msg_dispatcher_init();
 }
 
@@ -96,14 +105,14 @@ shaco_fini() {
     shaco_socket_fini();
     shaco_handle_fini();
     shaco_module_fini();
+    shaco_log_close();
     shaco_timer_fini();
     shaco_env_fini();
-    shaco_log_close();
 }
 
 void
 shaco_start() {
-    sh_info("Shaco start");
+    shaco_info("Shaco start");
     int timeout;
     STOP_INFO[0] = '\0';
     RUN = true; 
@@ -115,7 +124,7 @@ shaco_start() {
         shaco_timer_trigger();
         shaco_msg_dispatch();
     }
-    sh_info("Shaco stop(%s)", STOP_INFO);
+    shaco_info("Shaco stop(%s)", STOP_INFO);
 }
 
 void

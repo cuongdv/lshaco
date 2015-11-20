@@ -1,18 +1,9 @@
 #ifndef __shaco_h__
 #define __shaco_h__
 
+#include "shaco_env.h"
 #include "shaco_malloc.h"
-//#include "shaco_env.h"
-//#include "shaco_log.h"
 #include "shaco_context.h"
-
-//#include <stdbool.h>
-//#include <stdlib.h>
-//#include <stdarg.h>
-//#include <string.h>
-//#include <assert.h>
-//#include <stdio.h>
-//#include <limits.h>
 
 void shaco_init();
 void shaco_fini();

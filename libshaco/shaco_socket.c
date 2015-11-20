@@ -46,10 +46,10 @@ shaco_socket_send_nodispatcherror(int id, void *data, int sz) {
 }
 
 void 
-shaco_socket_init(struct shaco_socket_config *cfg);
+shaco_socket_init(int max_socket) {
     signal(SIGHUP, SIG_IGN);
     signal(SIGPIPE, SIG_IGN);
-    int max = cfg->max_socket;
+    int max = max_socket;
     if (max ==0) 
         max = 1;
     N = net_create(max);

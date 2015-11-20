@@ -2,6 +2,8 @@
 #include "shaco_context.h"
 #include "shaco_malloc.h"
 #include "shaco_handle.h"
+#include "shaco_malloc.h"
+#include "shaco_log.h"
 #include "shaco.h"
 #include <string.h>
 
@@ -26,23 +28,29 @@ static struct {
     struct message *q;
 } *Q = NULL;
 
-void 
+static inline void 
 shaco_msg_push(int dest, int source, int session, int type, const void *msg, int sz) {
-    if (Q->sz == Q->cap) {
-        Q->cap = Q->cap*2;
-        Q->q = shaco_realloc(Q->q, sizeof(Q->q[0]) * Q->cap);
-    }
-    if (Q->tail == Q->cap) {
-        Q->tail = 0;
-    }
-    struct message *m = Q->q[Q->tail++];
+    struct message *m = &Q->q[Q->tail];
     m->source = source;
     m->dest = dest;
     m->session = session;
     m->type = type;
     m->msg = msg;
     m->sz = sz;
-    Q->sz ++;
+    Q->tail ++;
+    if (Q->tail == Q->cap) {
+        Q->tail = 0;
+    }
+    if (Q->tail == Q->head) {
+        int cap = Q->cap;
+        Q->cap = Q->cap*2;
+        Q->q = shaco_realloc(Q->q, sizeof(Q->q[0]) * Q->cap);
+        int i;
+        for (i=0; i<Q->tail; ++i) {
+            Q->q[cap+i] = Q->q[i];
+        }
+        Q->tail = cap+Q->tail;
+    }
 }
 
 static inline struct message *
@@ -50,7 +58,7 @@ shaco_msg_pop() {
     if (Q->head == Q->tail) {
         return NULL;
     }
-    struct message *m = Q->q[Q->head];
+    struct message *m = &Q->q[Q->head];
     Q->head ++;
     if (Q->head == Q->cap) {
         Q->head = 0;
@@ -79,7 +87,6 @@ shaco_msg_dispatcher_init() {
     Q = shaco_malloc(sizeof(*Q));
     memset(Q, 0, sizeof(*Q));
     Q->cap = INIT_CAP;
-    Q->sz = 0;
     Q->head = 0;
     Q->tail = 0;
     Q->q = shaco_malloc(sizeof(Q->q[0])*Q->cap);
@@ -88,8 +95,8 @@ shaco_msg_dispatcher_init() {
 void 
 shaco_msg_dispatcher_fini() {
     if (Q) {
-        if (Q->q)
-            shaco_free(Q->q);
+        shaco_free(Q->q);
+        Q->q = NULL;
         shaco_free(Q);
         Q=NULL;
     }
@@ -101,7 +108,8 @@ shaco_send_local_directly(int dest, int source, int session, int type, const voi
     if (ctx) {
         shaco_context_send(ctx, source, session, type, msg, sz);
     } else {
-        // todo log
+        shaco_error("Context no found: %0x->%0x session:%d type:%d sz:%d",
+                source, dest, session, type, sz);
     }
 }
 

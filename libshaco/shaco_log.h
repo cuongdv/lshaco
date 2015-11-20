@@ -21,10 +21,10 @@ __attribute__((format(printf, 2, 3)))
 #endif
 ;
 
-#define sh_error(fmt, args...) shaco_log(LOG_ERROR, fmt, ##args)
-#define sh_warning(fmt, args...) shaco_log(LOG_WARNING, fmt, ##args)
-#define sh_info(fmt, args...) shaco_log(LOG_INFO, fmt, ##args)
-#define sh_trace(fmt, args...) shaco_log(LOG_TRACE, fmt, ##args)
-#define sh_debug(fmt, args...) shaco_log(LOG_DEBUG, fmt, ##args)
+#define shaco_error(fmt, args...) shaco_log(LOG_ERROR, fmt, ##args)
+#define shaco_warning(fmt, args...) shaco_log(LOG_WARNING, fmt, ##args)
+#define shaco_info(fmt, args...) shaco_log(LOG_INFO, fmt, ##args)
+#define shaco_trace(fmt, args...) shaco_log(LOG_TRACE, fmt, ##args)
+#define shaco_debug(fmt, args...) shaco_log(LOG_DEBUG, fmt, ##args)
 
 #endif

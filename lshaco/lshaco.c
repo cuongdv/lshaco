@@ -41,7 +41,7 @@ lsetloglevel(lua_State *L) {
 
 static int 
 lgetenv(lua_State *L) {
-    shaco_pushenv(luaL_checkstring(L,1), L);
+    lua_pushstring((shaco_getenv(luaL_checkstring(L, 1))));
     return 1;
 }
 

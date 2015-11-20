@@ -4,11 +4,7 @@
 #include <stdint.h>
 #include "socket_define.h"
 
-struct shaco_socket_config {
-    int max_socket;
-};
-
-void shaco_socket_init(struct shaco_socket_config *cfg);
+void shaco_socket_init(int max_socket);
 void shaco_socket_fini();
 
 int shaco_socket_listen(const char *addr, int port, int moduleid);

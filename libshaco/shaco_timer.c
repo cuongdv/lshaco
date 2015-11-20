@@ -1,4 +1,4 @@
-#include "shaco_timer.h"
+#include "shaco.h"
 #include "shaco_malloc.h"
 #include <time.h>
 #include <stdlib.h>

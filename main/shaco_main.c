@@ -1,6 +1,4 @@
 #include "shaco.h"
-#include "shaco_env.h"
-#include "shaco_malloc.h"
 #include "lua.h"
 #include "lualib.h"
 #include "lauxlib.h"
@@ -27,11 +25,6 @@ _init_env(lua_State *L) {
         switch (lua_type(L, -1)) {
         case LUA_TBOOLEAN:
         case LUA_TNUMBER:
-            if (lua_isinteger(L,-1))
-                shaco_setinteger(key, lua_tointeger(L,-1));
-            else
-                shaco_setfloat(key, lua_tonumber(L,-1));
-            break;
         case LUA_TSTRING:
             shaco_setenv(key, lua_tostring(L, -1));
             break;

@@ -29,7 +29,7 @@ __attribute__((noreturn))
 ;
 
 typedef int (*shaco_cb)(struct shaco_context *ctx, void *ud, int source, int session, int type, const void *msg, int sz);
-void shaco_callback(struct shaco_context *context, shaco_cb cb, void *ud);
+void shaco_set_callback(struct shaco_context *context, shaco_cb cb, void *ud);
 void shaco_send(int dest, int source, int session, int type, const void *msg, int sz);
 void shaco_send_local_directly(int dest, int source, int session, int type, const void *msg, int sz);
 void shaco_backtrace();

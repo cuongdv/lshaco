@@ -61,7 +61,7 @@ shaco_context_send(struct shaco_context *ctx, int source, int session, int type,
 }
 
 void 
-shaco_callback(struct shaco_context *ctx, shaco_cb cb, void *ud) {
+shaco_set_callback(struct shaco_context *ctx, shaco_cb cb, void *ud) {
     ctx->cb = cb;
     ctx->ud = ud;
 }

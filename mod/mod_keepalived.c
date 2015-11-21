@@ -354,7 +354,7 @@ c_read(struct module* s, struct net_event* nm) {
 errout:
     nm->type = NETE_SOCKERR;
     nm->error = err;
-    module_main(nm->ud, 0, 0, MT_SOCKET, nm, sizeof(*nm));
+    module_main(nm->ud, 0, 0, SHACO_TSOCKET, nm, sizeof(*nm));
 }
 
 void
@@ -492,7 +492,7 @@ command(struct module *s, int source, int connid, const char *msg, int len, stru
 void
 keepalived_main(struct module* s, int session, int source, int type, const void *msg, int sz) {
     switch (type) {
-    case MT_CMD:
+    case SHACO_TCMD:
         cmdctl(s, source, msg, sz, command);
         break;
     }

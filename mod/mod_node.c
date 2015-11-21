@@ -283,7 +283,7 @@ node_disconnect(struct shaco_module *s, int id) {
         if (is_master(self)) {
             char cmd[64];
             int sz = cmd_UNREG(nodeid, cmd, sizeof(cmd));
-            sh_handle_send(MODULE_ID, self->master_handle, MT_TEXT, cmd, sz);
+            sh_handle_send(MODULE_ID, self->master_handle, SHACO_TTEXT, cmd, sz);
         }
     }
 }
@@ -360,7 +360,7 @@ handle_subscribe(struct shaco_module *s, const char *name) {
     }
     char cmd[128];
     int sz = cmd_SUB(name, cmd, sizeof(cmd));
-    return sh_handle_send(MODULE_ID, self->master_handle, MT_TEXT, cmd, sz);
+    return sh_handle_send(MODULE_ID, self->master_handle, SHACO_TTEXT, cmd, sz);
 }
 
 static int
@@ -370,7 +370,7 @@ handle_publish(struct shaco_module *s, const char *name, int handle) {
     handle |= (self->myid << 8) & 0xff00;
     char cmd[128];
     int sz = cmd_PUB(name, handle, cmd, sizeof(cmd));
-    return sh_handle_send(MODULE_ID, self->master_handle, MT_TEXT, cmd, sz);
+    return sh_handle_send(MODULE_ID, self->master_handle, SHACO_TTEXT, cmd, sz);
 }
 
 // cache sub pub
@@ -566,7 +566,7 @@ broadcast_node(struct shaco_module *s, int nodeid) {
         if (ot->id == -1) 
             continue;
         sz = cmd_ADDR(me, nodeid, cmd, sizeof(cmd));
-        handle_send(self, 0, MODULE_ID, ot->node_handle, MT_TEXT, cmd, sz);
+        handle_send(self, 0, MODULE_ID, ot->node_handle, SHACO_TTEXT, cmd, sz);
     }
 
     // get other
@@ -578,7 +578,7 @@ broadcast_node(struct shaco_module *s, int nodeid) {
             me->id == -1)
             continue;
         sz = cmd_ADDR(ot, i, cmd, sizeof(cmd));
-        handle_send(self, 0, MODULE_ID, me->node_handle, MT_TEXT, cmd, sz);
+        handle_send(self, 0, MODULE_ID, me->node_handle, SHACO_TTEXT, cmd, sz);
     }
     return 0;
 }
@@ -683,7 +683,7 @@ node_read(struct shaco_module *s, struct socket_event *event) {
 errout:
     event->type = LS_ESOCKERR;
     event->err = err;
-    module_main(event->udata, 0, 0, MT_SOCKET, event, sizeof(*event));
+    module_main(event->udata, 0, 0, SHACO_TSOCKET, event, sizeof(*event));
 }
 
 void
@@ -787,7 +787,7 @@ _time(struct shaco_module* s) {
         struct node *o = &self->nodes[i];
         if (o->id != -1 && o->node_handle != -1) {
             if (now - o->last_heartbeat >= self->heartbeat_tick) {
-                //handle_send(self, 0, MODULE_ID, o->node_handle, MT_TEXT, "HB", 2);
+                //handle_send(self, 0, MODULE_ID, o->node_handle, SHACO_TTEXT, "HB", 2);
             }
         }
     }
@@ -897,15 +897,15 @@ node_main(struct shaco_module *s, int session, int source, int type, const void 
     //sh_trace("command in");
  
     switch (type) {
-    case MT_SOCKET: {
+    case SHACO_TSOCKET: {
         struct socket_event *event = (struct socket_event *)msg;
         assert(sizeof(*event) == sz);
         _socket(s, event);
         break; }
-    case MT_TIME:
+    case SHACO_TTIME:
         _time(s);
         break;
-    case MT_TEXT: 
+    case SHACO_TTEXT: 
         _handle(s, session, source, type, msg, sz);
         break;
     case MT_REMOTE:

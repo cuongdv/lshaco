@@ -29,13 +29,13 @@ void
 tmp_main(struct shaco_module *s, int session, int source, int type, const void *msg, int sz) {
     //struct tmp *self = MODULE_SELF;
     switch (type) {
-    case MT_UM: {
+    case SHACO_TUM: {
         UM_CAST(UM_BASE, base, msg);
         switch (base->msgid) {
         }
         break;
         }
-    case MT_CMD:
+    case SHACO_TCMD:
         cmdctl(s, source, msg, sz, NULL);
         break;
     }

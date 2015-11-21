@@ -103,7 +103,7 @@ node_reg(struct shaco_module *s, int nodeid) {
     struct master *self = MODULE_SELF;
     char cmd[64];
     int sz = cmd_BROADCAST(nodeid, cmd, sizeof(cmd));
-    sh_handle_send(MODULE_ID, self->node_handle, MT_TEXT, cmd, sz);
+    sh_handle_send(MODULE_ID, self->node_handle, SHACO_TTEXT, cmd, sz);
 }
 
 static void
@@ -132,7 +132,7 @@ handle_sub(struct shaco_module *s, int source, const char *name) {
         int *pub = sh_array_get(a, i);
         if (sh_nodeid_from_handle(*pub) != sh_nodeid_from_handle(source)) {
             int sz = cmd_HANDLE(name, *pub, cmd, sizeof(cmd));
-            sh_handle_send(MODULE_ID, source, MT_TEXT, cmd, sz);
+            sh_handle_send(MODULE_ID, source, SHACO_TTEXT, cmd, sz);
         }
     }
 }
@@ -151,7 +151,7 @@ handle_pub(struct shaco_module *s, int source, const char *name, int handle) {
         int *sub = sh_array_get(a, i);
         if (sh_nodeid_from_handle(*sub) != sh_nodeid_from_handle(source)) {
             int sz = cmd_HANDLE(name, handle, cmd, sizeof(cmd));
-            sh_handle_send(MODULE_ID, *sub, MT_TEXT, cmd, sz);
+            sh_handle_send(MODULE_ID, *sub, SHACO_TTEXT, cmd, sz);
         }
     }
 }
@@ -159,12 +159,12 @@ handle_pub(struct shaco_module *s, int source, const char *name, int handle) {
 static void
 redirect_to_node(struct shaco_module *s, const void *msg, int sz) {
     struct master *self = MODULE_SELF;
-    sh_handle_send(MODULE_ID, self->node_handle, MT_TEXT, msg, sz);
+    sh_handle_send(MODULE_ID, self->node_handle, SHACO_TTEXT, msg, sz);
 }
 
 void
 master_main(struct shaco_module *s, int session, int source, int type, const void *msg, int sz) {
-    if (type != MT_TEXT) return;
+    if (type != SHACO_TTEXT) return;
     
     char cmd[sz+1];
     memcpy(cmd, msg, sz);

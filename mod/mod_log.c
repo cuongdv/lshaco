@@ -81,7 +81,7 @@ log_init(struct shaco_module* s) {
 void
 log_main(struct shaco_module* s, int session, int source, int type, const void *msg, int sz) {
     struct log* self = MODULE_SELF;
-    if (type == MT_LOG) {
+    if (type == SHACO_TLOG) {
         elog_append(self->el, msg, sz);
     } else {
         char tmp[64];

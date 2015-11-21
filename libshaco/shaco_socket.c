@@ -12,10 +12,10 @@ _dispatch_one(struct socket_event* event) {
     int moduleid = event->udata;
     if (event->type == LS_ECONN_THEN_READ) {
         event->type = LS_ECONNECT;
-        shaco_send_local_directly(moduleid, 0, 0, MT_SOCKET, event, sizeof(*event));
+        shaco_send_local_directly(moduleid, 0, 0, SHACO_TSOCKET, event, sizeof(*event));
         event->type = LS_EREAD; 
     }
-    shaco_send_local_directly(moduleid, 0, 0, MT_SOCKET, event, sizeof(*event));
+    shaco_send_local_directly(moduleid, 0, 0, SHACO_TSOCKET, event, sizeof(*event));
 }
 
 int

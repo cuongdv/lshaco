@@ -7,14 +7,14 @@
 
 struct shaco_context;
 
-#define MT_TEXT 1
-#define MT_UM   2
-#define MT_MONITOR 3
-#define MT_LOG 4
-#define MT_CMD 5
-#define MT_RET 6
-#define MT_SOCKET 7
-#define MT_TIME 8
+#define SHACO_TTEXT 1
+#define SHACO_TUM   2
+#define SHACO_TMONITOR 3
+#define SHACO_TLOG 4
+#define SHACO_TCMD 5
+#define SHACO_TRET 6
+#define SHACO_TSOCKET 7
+#define SHACO_TTIME 8
 
 void shaco_init();
 void shaco_fini();

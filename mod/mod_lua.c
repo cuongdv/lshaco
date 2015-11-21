@@ -1,6 +1,7 @@
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
+#include <string.h>
 #include "shaco.h"
 
 static const char *LOADER_SCRIPT =
@@ -39,7 +40,6 @@ static const char *LOADER_SCRIPT =
 
 struct lua {
     lua_State *L;
-    struct shaco_module *context;
 };
 
 struct lua *
@@ -70,9 +70,7 @@ _traceback(lua_State *L) {
 }
 
 int
-lua_init(struct shaco_module *s, const char *args) {
-    struct lua *self = MODULE_SELF;
-    self->context = s;
+lua_init(struct shaco_context *s, struct lua *self, const char *args) {
     lua_State *L = lua_newstate(shaco_lalloc, NULL);
     luaL_openlibs(L);
     lua_pushlightuserdata(L, s);
@@ -80,29 +78,29 @@ lua_init(struct shaco_module *s, const char *args) {
     self->L = L;
     lua_pushcfunction(L, _traceback);
 
-    const char *path = sh_getstr("luapath", ""); 
+    const char *path = shaco_optstr("luapath", ""); 
     lua_pushstring(L, path);
     lua_setglobal(L, "LUA_PATH");
-    const char *cpath = sh_getstr("luacpath", "");
+    const char *cpath = shaco_optstr("luacpath", "");
     lua_pushstring(L, cpath);
     lua_setglobal(L, "LUA_CPATH");
-    const char *modpath = sh_getstr("luamodpath", "");
+    const char *modpath = shaco_optstr("luamodpath", "");
     lua_pushstring(L, modpath);
     lua_setglobal(L, "LUA_MODPATH");
-    const char *packpath = sh_getstr("luapackpath", "");
+    const char *packpath = shaco_optstr("luapackpath", "");
     lua_pushstring(L, packpath);
     lua_setglobal(L, "LUA_PACKPATH");
 
     int r = luaL_loadstring(L, LOADER_SCRIPT);
     if (r != LUA_OK) {
-        sh_error("%s", lua_tostring(L, -1));
+        shaco_error("%s", lua_tostring(L, -1));
         lua_pop(L, 2);
         return 1;
     }
     lua_pushstring(L, args);
     r = lua_pcall(L, 1, 0, 1);
     if (r != LUA_OK) {
-        sh_error("%s", lua_tostring(L, -1));
+        shaco_error("%s", lua_tostring(L, -1));
         lua_pop(L, 2);
         return 1;
     } else {

@@ -6,7 +6,7 @@
 #include <string.h>
 
 struct namehandle {
-    const char *name;
+    char *name;
     uint32_t handle;
 };
 
@@ -37,7 +37,8 @@ shaco_handle_register(struct shaco_context *ctx) {
     }
     H->contexts[H->context_count++] = ctx;
     uint32_t handle = H->context_count;
-    shaco_handle_bindname(handle, ctx->module->name);
+    // todo
+    //shaco_handle_bindname(handle, ctx->module->name);
     return handle;
 }
 
@@ -78,10 +79,20 @@ shaco_handle_fini() {
     if (H == NULL)
         return;
     if (H->contexts) {
+        //int i;
+        //for (i=0; i<H->context_count; ++i) {
+        //    struct shaco_context *ctx = H->contexts[i];
+        //    shaco_free(ctx->name);
+        //    shaco_free(ctx);
+        //}
         shaco_free(H->contexts);
         H->contexts = NULL;
     }
     if (H->handles) {
+        int i; 
+        for (i=0; i<H->handle_count; ++i) {
+            shaco_free(H->handles[i].name);
+        }
         shaco_free(H->handles);
         H->handles = NULL;
     }

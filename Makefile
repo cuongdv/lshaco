@@ -22,27 +22,22 @@ LIBSHACO_SRC=\
 	libshaco/shaco_malloc.c \
 	3rd/lsocket/src/socket.c
 
-#mod_so=\
-#	$(BIN_DIR)/mod_master.so
-
 all_t=\
 	$(BIN_DIR)/shaco \
 	$(BIN_DIR)/shaco-cli \
 	$(BIN_DIR)/test \
 	tool/srcpack \
-	$(BIN_DIR)/mod_node.so \
-	$(BIN_DIR)/mod_log.so \
-	$(BIN_DIR)/mod_lua.so \
-	$(BIN_DIR)/shaco.so \
-	$(BIN_DIR)/socket.so \
-	$(BIN_DIR)/socketbuffer.so \
-	$(BIN_DIR)/memory.so \
-	$(BIN_DIR)/serialize.so \
-	$(BIN_DIR)/util.so \
-	$(BIN_DIR)/crypt.so \
-	$(BIN_DIR)/mysqlaux.so \
-	$(BIN_DIR)/md5.so \
-	$(mod_so)
+	$(BIN_DIR)/mod_lua.so #\
+#	$(BIN_DIR)/shaco.so \
+#	$(BIN_DIR)/socket.so \
+#	$(BIN_DIR)/socketbuffer.so \
+#	$(BIN_DIR)/memory.so \
+#	$(BIN_DIR)/serialize.so \
+#	$(BIN_DIR)/util.so \
+#	$(BIN_DIR)/crypt.so \
+#	$(BIN_DIR)/mysqlaux.so \
+#	$(BIN_DIR)/md5.so \
+#	$(mod_so)
 
 PLATS=linux macosx
 UNAME=$(shell uname)

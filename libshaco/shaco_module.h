@@ -8,7 +8,7 @@ struct shaco_context;
 
 typedef void *(*shaco_dl_create)();
 typedef void  (*shaco_dl_free)(void *instance);
-typedef void  (*shaco_dl_init)(struct shaco_context *context, const char *args);
+typedef void  (*shaco_dl_init)(struct shaco_context *context, void *instance, const char *args);
 
 struct shaco_module {
     char *name;

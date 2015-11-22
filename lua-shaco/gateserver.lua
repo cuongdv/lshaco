@@ -115,7 +115,7 @@ SOCKET[4] = function(id, err)
 end
 
 shaco.register_protocol {
-    id = shaco.PTYPE_SOCKET,
+    id = shaco.TSOCKET,
     name = "socket",
     unpack = socket.unpack,
     dispatch = function(_,_,type, ...)

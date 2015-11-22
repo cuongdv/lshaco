@@ -2,9 +2,8 @@
 *.o
 *.dSYM
 *.swp
+.*
 3rdlib
-tags
-cscope.*
 tool/srcpack
 tool/*.sl
 bin/shaco

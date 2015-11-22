@@ -84,7 +84,7 @@ event[4] = function(id, err)
 end
 
 shaco.register_protocol {
-    id = shaco.PTYPE_SOCKET,
+    id = shaco.TSOCKET,
     name = "socket",
     unpack = c.unpack,
     dispatch = function(_,_,type, ...)

@@ -7,7 +7,7 @@
 
 struct shaco_context {
     struct shaco_module *module;
-    const char *name;
+    char *name;
     uint32_t handle;
     void *instance;
     shaco_cb cb;
@@ -17,7 +17,8 @@ struct shaco_context {
 struct shaco_context *
 shaco_context_create(const char *name) {
     const char *dlname;
-    if (name[0] == '.') {
+    bool islua = name[0] == '.';
+    if (islua) {
         dlname = "lua";
     } else {
         dlname = name;
@@ -35,19 +36,28 @@ shaco_context_create(const char *name) {
     ctx->instance = shaco_module_instance_create(dl);
     ctx->handle = shaco_handle_register(ctx);
     if (ctx->module->init) {
-        ctx->module->init(ctx, ctx->instance, NULL); // todo NULL -> args
+        ctx->module->init(ctx, ctx->instance, islua ? &name[1]:NULL); 
     }
     return ctx;
 }
 
 void 
 shaco_context_free(struct shaco_context *ctx) {
-    //if (ctx) {
-    //    shaco_free(ctx->name);
-    //    shaco_module_instance_free(ctx, ctx->instance);
-    //    ctx->name = NULL;
-    //    shaco_free(ctx);
-    //}
+    if (ctx) {
+        shaco_module_instance_free(ctx->module, ctx->instance);
+        ctx->module = NULL;
+        ctx->instance = NULL;
+        shaco_free(ctx->name);
+        ctx->name = NULL;
+        ctx->handle = 0;
+        shaco_handle_unregister(ctx);
+        shaco_free(ctx);
+    }
+}
+
+uint32_t 
+shaco_context_handle(struct shaco_context *ctx) {
+    return ctx->handle;
 }
 
 void 
@@ -55,13 +65,18 @@ shaco_context_send(struct shaco_context *ctx, int source, int session, int type,
     int result = ctx->cb(ctx, ctx->ud, source, session, type, msg, sz);
     if (result !=0 ) {
         shaco_error(
-        "Context callback fail:%d : %0x->%s:%0x session:%d type:%d sz:%d", 
-        result, source, ctx->module->name, ctx->handle, session, type, sz);
+        "Context `%s` cb fail:%d : %0x->%0x session:%d type:%d sz:%d", 
+        ctx->name, result, source, ctx->handle, session, type, sz);
     }
 }
 
 void 
-shaco_set_callback(struct shaco_context *ctx, shaco_cb cb, void *ud) {
+shaco_context_log(struct shaco_context *ctx, int level, const char *log) {
+    shaco_log(level, "[%s] %s", ctx->name, log);
+}
+
+void 
+shaco_callback(struct shaco_context *ctx, shaco_cb cb, void *ud) {
     ctx->cb = cb;
     ctx->ud = ud;
 }

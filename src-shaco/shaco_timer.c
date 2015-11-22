@@ -12,7 +12,7 @@
 #endif
 
 struct time_node {
-    int handle;
+    uint32_t handle;
     int session;
     int interval;
     uint64_t expire;
@@ -160,7 +160,7 @@ shaco_timer_trigger() {
 }
 
 void
-shaco_timer_register(int handle, int session, int interval) {
+shaco_timer_register(uint32_t handle, int session, int interval) {
     struct time_node n;
     n.handle = handle;
     n.session = session;

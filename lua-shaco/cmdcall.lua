@@ -17,7 +17,7 @@ local function cmdcall(CMD, source, id, s)
             if #args > 1 then
                 local handle = shaco.queryid(string.sub(args[1], 2))
                 if handle then
-                    shaco.sendraw(0, source, handle, shaco.PTYPE_CMD, 
+                    shaco.sendraw(0, source, handle, shaco.TCMD, 
                         shaco.pack(id, table.concat(args, ' ', 2)))
                 else
                     _R(source, id, "no found handle")

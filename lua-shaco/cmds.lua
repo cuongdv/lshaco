@@ -37,7 +37,7 @@ OP.REQ = function(source, id, info)
             shaco.send(cmdctl_me, shaco.pack(id, info))
             c.sendcnt = 1
         else
-            c.sendcnt = shaco.broadcast(cmdctl_handle, shaco.PTYPE_UM, shaco.pack(id, info))
+            c.sendcnt = shaco.broadcast(cmdctl_handle, shaco.TUM, shaco.pack(id, info))
         end
         check_total_response(c)
     end

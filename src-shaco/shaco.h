@@ -4,6 +4,8 @@
 #include "shaco_malloc.h"
 #include "shaco_env.h"
 #include "shaco_log.h"
+#include "shaco_context.h"
+#include "shaco_timer.h"
 
 struct shaco_context;
 
@@ -29,9 +31,10 @@ __attribute__((noreturn))
 ;
 
 typedef int (*shaco_cb)(struct shaco_context *ctx, void *ud, int source, int session, int type, const void *msg, int sz);
-void shaco_set_callback(struct shaco_context *context, shaco_cb cb, void *ud);
+void shaco_callback(struct shaco_context *context, shaco_cb cb, void *ud);
 void shaco_send(int dest, int source, int session, int type, const void *msg, int sz);
 void shaco_send_local_directly(int dest, int source, int session, int type, const void *msg, int sz);
+const char *shaco_command(struct shaco_context *ctx, const char *name, const char *param);
 void shaco_backtrace();
 void shaco_panic(const char* fmt, ...)
 #ifdef __GNUC__

@@ -26,7 +26,7 @@ shaco_handle_query(const char *name) {
         if (strcmp(name, H->handles[i].name) == 0)
             return H->handles[i].handle;
     }
-    return -1;
+    return 0;
 }
 
 uint32_t 
@@ -42,14 +42,25 @@ shaco_handle_register(struct shaco_context *ctx) {
     return handle;
 }
 
+void 
+shaco_handle_unregister(struct shaco_context *ctx) {
+    uint32_t handle = shaco_context_handle(ctx);
+    if (handle > 0 && handle <= H->context_count) {
+        H->contexts[handle-1] = NULL;
+    }
+}
+
 struct shaco_context *
 shaco_handle_context(uint32_t handle) {
-    if (handle > 0 && handle <= H->context_count) {
-        return H->contexts[handle-1];
-    } else {
+    struct shaco_context *ctx;
+    if (handle > 0 && handle <= H->context_count)
+        ctx = H->contexts[handle-1];
+    else
+        ctx = NULL;
+    if (ctx == NULL) {
         shaco_error("Handle not found %x", handle);
-        return NULL;
     }
+    return ctx;
 }
 
 void
@@ -79,12 +90,10 @@ shaco_handle_fini() {
     if (H == NULL)
         return;
     if (H->contexts) {
-        //int i;
-        //for (i=0; i<H->context_count; ++i) {
-        //    struct shaco_context *ctx = H->contexts[i];
-        //    shaco_free(ctx->name);
-        //    shaco_free(ctx);
-        //}
+        int i;
+        for (i=0; i<H->context_count; ++i) {
+            shaco_context_free(H->contexts[i]);
+        }
         shaco_free(H->contexts);
         H->contexts = NULL;
     }

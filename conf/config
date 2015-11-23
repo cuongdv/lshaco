@@ -1,0 +1,2 @@
+maxsocket=10
+luamodpath="./lua-mod/?.lua;./test/?.lua"

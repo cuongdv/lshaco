@@ -8,6 +8,7 @@
 #include <stdio.h>
 
 static struct {
+    const char *path;
     int cap;
     int sz;
     struct shaco_module *p;
@@ -27,9 +28,10 @@ _dlclose(struct shaco_module* dl) {
 static int
 _dlopen(struct shaco_module* dl, const char *name) {
     assert(dl->handle == NULL);
+    int lenpath = strlen(M->path);
     int len = strlen(name);
-    char path[len+9+1];
-    snprintf(path, sizeof(path), "./mod_%s.so", name);
+    char path[lenpath+len+8+1];
+    snprintf(path, sizeof(path), "%s/mod_%s.so", M->path, name);
     void* handle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
     if (handle == NULL) {
         shaco_error("DL `%s` open error: %s", path, dlerror());
@@ -69,6 +71,7 @@ shaco_module_create(const char *name) {
         M->p = shaco_realloc(M->p, sizeof(M->p[0]) * M->cap);
     }
     struct shaco_module *dl = &M->p[M->sz];
+    memset(dl, 0, sizeof(*dl));
     if (_dlopen(dl, name)) {
         return NULL;
     }
@@ -81,7 +84,7 @@ shaco_module_create(const char *name) {
 static void 
 shaco_module_free(struct shaco_module *dl) {
     _dlclose(dl);
-    shaco_free(dl->name);
+    shaco_free((void*)dl->name);
     dl->name = NULL;
 }
 
@@ -113,8 +116,9 @@ shaco_module_instance_free(struct shaco_module *dl, void *instance) {
 }
 
 void
-shaco_module_init() {
+shaco_module_init(const char *path) {
     M = shaco_malloc(sizeof(*M));
+    M->path = shaco_strdup(path);
     M->cap = 1;
     M->sz = 0;
     M->p = shaco_malloc(sizeof(M->p[0]) * M->cap);
@@ -129,6 +133,8 @@ shaco_module_fini() {
         }
         shaco_free(M->p);
         M->p = NULL;
+        shaco_free((void*)M->path);
+        M->path = NULL;
         shaco_free(M);
         M = NULL;
     }

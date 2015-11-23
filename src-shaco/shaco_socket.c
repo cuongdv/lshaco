@@ -66,9 +66,20 @@ shaco_socket_fini() {
     N = NULL;
 }
 
-int shaco_socket_listen(const char *addr, int port, int moduleid) { return socket_listen(N, addr, port, moduleid); }
-int shaco_socket_connect(const char* addr, int port, int moduleid) { return socket_connect(N, addr, port, 0, moduleid); }
-int shaco_socket_blockconnect(const char *addr, int port, int moduleid) { return socket_connect(N, addr, port, 1, moduleid); }
+int 
+shaco_socket_listen(struct shaco_context *ctx, const char *addr, int port) { 
+    return socket_listen(N, addr, port, shaco_context_handle(ctx)); 
+}
+int 
+shaco_socket_connect(struct shaco_context *ctx, const char* addr, int port) { 
+    return socket_connect(N, addr, port, 0, shaco_context_handle(ctx));
+}
+
+int 
+shaco_socket_blockconnect(struct shaco_context *ctx, const char *addr, int port) { 
+    return socket_connect(N, addr, port, 1, shaco_context_handle(ctx)); 
+}
+
 int shaco_socket_close(int id, int force) { return socket_close(N, id, force); }
 int shaco_socket_enableread(int id, int read) { return socket_enableread(N, id, read); }
 int shaco_socket_read(int id, void **data) { return socket_read(N, id, data); }

@@ -60,6 +60,7 @@ shaco_optstr(const char *key, const char *def) {
     const char *s = shaco_getenv(key);
     if (s==NULL) {
         shaco_setenv(key, def);
-    }
-    return def;
+        return def;
+    } else
+        return s;
 }

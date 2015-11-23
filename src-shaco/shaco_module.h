@@ -11,14 +11,14 @@ typedef void  (*shaco_dl_free)(void *instance);
 typedef void  (*shaco_dl_init)(struct shaco_context *context, void *instance, const char *args);
 
 struct shaco_module {
-    char *name;
+    const char *name;
     void *handle;
     shaco_dl_create create;
     shaco_dl_free free;
     shaco_dl_init init;
 };
 
-void shaco_module_init();
+void shaco_module_init(const char *path);
 void shaco_module_fini();
 
 struct shaco_module *shaco_module_query(const char *name);

@@ -51,7 +51,7 @@ rlimit_check() {
             shaco_exit("setrlimit core fail: %s", strerror(errno));
         }
     }
-    int max = shaco_optint("max_socket", 0) + 1024;
+    int max = shaco_optint("maxsocket", 0) + 1024;
     if (getrlimit(RLIMIT_NOFILE, &l) == -1) {
         shaco_exit("getrlimit nofile fail: %s", strerror(errno));
     }
@@ -91,12 +91,27 @@ shaco_init() {
     else
         shaco_log_open(NULL);
     shaco_log_setlevel(shaco_optstr("loglevel", ""));
-    shaco_module_init();
+    shaco_module_init(shaco_optstr("cmodpath", "./lib-cmod"));
     shaco_handle_init();
     sig_handler_init();
     rlimit_check();
-    shaco_socket_init(shaco_optint("max_socket", 0));
+    shaco_socket_init(shaco_optint("maxsocket", 0));
     shaco_msg_dispatcher_init();
+
+    const char *boot = shaco_optstr("bootstrap", "lua bootstrap");
+    char tmp[strlen(boot)+1];
+    strcpy(tmp, boot);
+    const char *args;
+    char *p = strchr(tmp, ' ');
+    if (p) {
+        *p= '\0';
+        args = p+1;
+    } else {
+        args = NULL;
+    }
+    if (shaco_context_create(tmp, args) == 0) {
+        shaco_exit("bootstrap fail");
+    }
 }
 
 void

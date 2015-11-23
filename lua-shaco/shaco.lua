@@ -1,7 +1,7 @@
 local c = require "shaco.c"
 local socket = require "socket.c"
-local memory = require "memory.c"
-local serialize = require "serialize.c"
+--local memory = require "memory.c"
+--local serialize = require "serialize.c"
 local ipairs = ipairs
 local tostring = tostring
 local sfmt = string.format
@@ -51,6 +51,7 @@ shaco.trace   = function(...) shaco.log(LOG_TRACE, ...) end
 shaco.debug   = function(...) shaco.log(LOG_DEBUG, ...) end
 
 shaco.now = c.now
+shaco.command = c.command
 
 function shaco.pack(...)
     return serialize.serialize(serialize.pack(...))
@@ -100,10 +101,10 @@ end
 --end
 
 function shaco.register_protocol(class)
-    if not proto[class.id] then
+    if proto[class.id] then
         error("repeat protocol id "..tostring(class.id))
     end
-    if not proto[class.name] then
+    if proto[class.name] then
         error("repeat protocol name "..tostring(class.name))
     end
     proto[class.id] = class
@@ -167,8 +168,9 @@ local function dispatchcb(source, session, type, msg, sz)
 end
 
 function shaco.fork(func, ...)
+    local args = {...}
     local co = coroutine.create(function()
-        assert(xpcall(func, debug.traceback, ...))
+        assert(xpcall(func, debug.traceback, table.unpack(args)))
     end)
     table.insert(_fork_queue, co)
 end
@@ -188,7 +190,7 @@ end
 function shaco.sleep(interval)
     local co = coroutine.running()
     local session = gen_session()
-    assert(_suspend_co_map(session)==nil)
+    assert(_suspend_co_map[session]==nil)
     _suspend_co_map[session] = co
     c.timer(session, interval)
     session = coroutine.yield()
@@ -323,5 +325,9 @@ shaco.register_protocol {
 --        assert(coroutine.resume(co, session, msg, sz))
 --    end
 --}
+
+function shaco.luaservice(name)
+    return tonumber(shaco.command('LAUNCH', 'lua '..name))
+end
 
 return shaco

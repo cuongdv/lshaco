@@ -24,9 +24,9 @@ all_t=\
 	shaco \
 	tool/srcpack \
 	lib-cmod/mod_lua.so \
-	lib-l/shaco.so #\
-#	lib-l/socket.so \
-#	lib-l/socketbuffer.so \
+	lib-l/shaco.so \
+	lib-l/socket.so \
+	lib-l/socketbuffer.so #\
 #	lib-l/memory.so \
 #	lib-l/serialize.so \
 #	lib-l/util.so \

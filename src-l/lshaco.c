@@ -87,8 +87,8 @@ _cb(struct shaco_context *ctx, void *ud, int source, int session, int type, cons
         lua_pop(L,1);
         return 0;
     }
-    const char *name = shaco_command(ctx, "QNAME", NULL);
-    shaco_error("[%s] cb error: %s", name, lua_tostring(L, -1));
+    uint32_t handle = shaco_context_handle(ctx);
+    shaco_error("[%08x] cb error: %s", handle, lua_tostring(L, -1));
     lua_pop(L, 2);
     return 1;
 }
@@ -117,6 +117,7 @@ luaopen_shaco_c(lua_State *L) {
         { "send",           lsend },
         { "timer",          ltimer },
         { "callback",       lcallback },
+        { NULL, NULL},
 	}; 
 	luaL_newlibtable(L, l);
 	lua_getfield(L, LUA_REGISTRYINDEX, "shaco_context");

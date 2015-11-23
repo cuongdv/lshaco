@@ -4,40 +4,6 @@
 #include <string.h>
 #include "shaco.h"
 
-static const char *LOADER_SCRIPT =
-"local mod, _ = ...\n"
-"assert(mod, \"lua mod is nil\")\n"
-"package.path = package.path .. ';' .. LUA_PATH\n"
-"package.cpath = package.cpath .. ';' .. LUA_CPATH\n"
-"package.packpath = LUA_PACKPATH\n"
-"local main\n"
-"local msg = {}\n"
-"for pat in string.gmatch(LUA_MODPATH, '([^;]+);*') do\n"
-"    local filename = string.gsub(pat, '?', mod)\n"
-"    local f, err = loadfile(filename)\n"
-"    if not f then\n"
-"        table.insert(msg, err)\n"
-"    else\n"
-"        main = f\n"
-"        break\n"
-"    end\n"
-"end\n"
-"if not main then\n"
-"    if #msg > 0 then error(table.concat(msg, [[\n]]))\n"
-"    else error(\"no found lua file\")\n"
-"    end\n"
-"end\n"
-"setmetatable(_ENV, {\n"
-"__index = function(_, k)\n" 
-"    error('attempt to read undeclared var `'..k..'`', 2)\n"
-"end,"
-"__newindex = function(_, k)\n"
-"    error('attempt to write undeclared var `'..k..'`', 2)\n"
-"end,"
-"})"
-"main()\n"
-;
-
 struct lua {
     lua_State *L;
 };
@@ -78,20 +44,21 @@ lua_init(struct shaco_context *s, struct lua *self, const char *args) {
     self->L = L;
     lua_pushcfunction(L, _traceback);
 
-    const char *path = shaco_optstr("luapath", ""); 
+    const char *path = shaco_optstr("luapath", "./lua-shaco/?.lua"); 
     lua_pushstring(L, path);
     lua_setglobal(L, "LUA_PATH");
-    const char *cpath = shaco_optstr("luacpath", "");
+    const char *cpath = shaco_optstr("luacpath", "./lib-l/?.so");
     lua_pushstring(L, cpath);
     lua_setglobal(L, "LUA_CPATH");
-    const char *modpath = shaco_optstr("luamodpath", "");
+    const char *modpath = shaco_optstr("luamodpath", "./lua-mod/?.lua");
     lua_pushstring(L, modpath);
     lua_setglobal(L, "LUA_MODPATH");
-    const char *packpath = shaco_optstr("luapackpath", "");
+    const char *packpath = shaco_optstr("luapackpath", "./lib-lua/?.lso");
     lua_pushstring(L, packpath);
     lua_setglobal(L, "LUA_PACKPATH");
 
-    int r = luaL_loadstring(L, LOADER_SCRIPT);
+    const char *loader = shaco_optstr("lualoader", "./lua-shaco/loader.lua");
+    int r = luaL_loadfile(L, loader);
     if (r != LUA_OK) {
         shaco_error("%s", lua_tostring(L, -1));
         lua_pop(L, 2);

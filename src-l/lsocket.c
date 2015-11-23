@@ -1,4 +1,5 @@
 #include "shaco.h"
+#include "shaco_socket.h"
 #include <lua.h>
 #include <lauxlib.h>
 #include <stdlib.h>
@@ -7,12 +8,23 @@
 
 // socket
 
+static inline void
+_to_littleendian16(uint16_t n, uint8_t *buffer) {
+    buffer[0] = (n) & 0xff;
+    buffer[1] = (n >> 8) & 0xff;
+}
+
+static inline uint16_t
+_from_littleendian16(const uint8_t *buffer) {
+    return buffer[0] | buffer[1] << 8;
+}
+
 static int
 llisten(lua_State *L) {
-    struct shaco_module *mod = lua_touserdata(L, lua_upvalueindex(1));
+    struct shaco_context *ctx = lua_touserdata(L, lua_upvalueindex(1));
     const char *ip = luaL_checkstring(L, 1);
     int port = luaL_checkinteger(L, 2);
-    int id = sh_socket_listen(ip, port, mod->moduleid);
+    int id = shaco_socket_listen(ctx, ip, port);
     if (id >= 0) { 
         lua_pushinteger(L, id); 
         return 1;
@@ -25,10 +37,10 @@ llisten(lua_State *L) {
 
 static int
 lconnect(lua_State *L) {
-    struct shaco_module *mod = lua_touserdata(L, lua_upvalueindex(1));
+    struct shaco_context *ctx = lua_touserdata(L, lua_upvalueindex(1));
     const char *ip = luaL_checkstring(L, 1);
     int port = luaL_checkinteger(L, 2);
-    int id = shaco_socket_connect(ip, port, mod->moduleid);
+    int id = shaco_socket_connect(ctx, ip, port);
     if (id >= 0) {
         if (shaco_socket_lasterrno() == LS_CONNECTING) {
             lua_pushinteger(L, id);
@@ -196,7 +208,7 @@ lsendpack(lua_State *L) {
     if (!p || sz<=0)
         return 0;
     uint8_t *msg = shaco_malloc(sz+2);
-    sh_to_littleendian16(sz, msg);
+    _to_littleendian16(sz, msg);
     memcpy(msg+2, p, sz);
     int ok = shaco_socket_send(id,msg,sz+2) == 0;
     lua_pushboolean(L,ok);
@@ -222,8 +234,8 @@ lsendpack_um(lua_State *L) {
         return luaL_argerror(L, 2, "invalid type");
     }
     uint8_t *msg = shaco_malloc(sz+4);
-    sh_to_littleendian16(sz+2, msg);
-    sh_to_littleendian16(msgid, msg+2);
+    _to_littleendian16(sz+2, msg);
+    _to_littleendian16(msgid, msg+2);
     if (p && sz > 0)
         memcpy(msg+4, p, sz);
     int ok = shaco_socket_send(id,msg,sz+4) == 0;
@@ -237,7 +249,7 @@ lunpack_msgid(lua_State *L) {
     uint8_t *p = lua_touserdata(L, 1);
     int sz = luaL_checkinteger(L, 2);
     if (sz >= 2) {
-        lua_pushinteger(L, sh_from_littleendian16(p));
+        lua_pushinteger(L, _from_littleendian16(p));
         lua_pushlightuserdata(L, p+2);
         lua_pushinteger(L, sz-2);
         return 3;
@@ -274,8 +286,8 @@ luaopen_socket_c(lua_State *L) {
     };
     luaL_newlibtable(L, l);
 	lua_getfield(L, LUA_REGISTRYINDEX, "shaco_context");
-	struct shaco_module *mod = lua_touserdata(L,-1);
-	if (mod == NULL)
+	struct shaco_context *ctx = lua_touserdata(L,-1);
+	if (ctx == NULL)
 		return luaL_error(L, "init shaco context first");
 	luaL_setfuncs(L,l,1);
     luaL_setfuncs(L,l2,0);

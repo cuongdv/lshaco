@@ -67,6 +67,10 @@ shaco_socket_fini() {
 }
 
 int 
+shaco_socket_bind(struct shaco_context *ctx, int fd) {
+    return socket_bind(N, fd, shaco_context_handle(ctx));
+}
+int 
 shaco_socket_listen(struct shaco_context *ctx, const char *addr, int port) { 
     return socket_listen(N, addr, port, shaco_context_handle(ctx)); 
 }

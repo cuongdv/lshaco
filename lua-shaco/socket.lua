@@ -112,20 +112,33 @@ function socket.connect(ip, port)
 end
 
 function socket.start(id, callback)
-    assert(socket_pool[id] == nil)
-    socket_pool[id] = { 
-        id = id,
-        co = coroutine.running(),
-        buffer = nil,
-        mode = "*l",
-        callback = callback,
-    }
+    local s = socket_pool[id]
+    if s then
+        s.co = coroutine.running()
+    else
+        socket_pool[id] = { 
+            id = id,
+            co = coroutine.running(),
+            buffer = nil,
+            mode = "*l",
+            callback = callback,
+        }
+    end
 end
 
-function socket.bind(id, co)
-    local s = socket_pool[id]
-    assert(s)
-    s.co = co
+function socket.stdin()
+    local id, err = socket.bind(0)
+    if id then
+        socket.start(id)
+        socket.readenable(id, true)
+        return id
+    else
+        return nil, err
+    end
+end
+
+function socket.bind(fd)
+    return c.bind(fd)
 end
 
 function socket.block(id)

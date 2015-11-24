@@ -20,6 +20,21 @@ _from_littleendian16(const uint8_t *buffer) {
 }
 
 static int
+lbind(lua_State *L) {
+    struct shaco_context *ctx = lua_touserdata(L, lua_upvalueindex(1));
+    int fd = luaL_checkinteger(L,1);  
+    int id = shaco_socket_bind(ctx, fd);
+    if (id >=0 ) {
+        lua_pushinteger(L, id);
+        return 1;
+    } else {
+        lua_pushnil(L);
+        lua_pushstring(L, SHACO_SOCKETERR);
+        return 2;
+    }
+}
+
+static int
 llisten(lua_State *L) {
     struct shaco_context *ctx = lua_touserdata(L, lua_upvalueindex(1));
     const char *ip = luaL_checkstring(L, 1);
@@ -263,6 +278,7 @@ int
 luaopen_socket_c(lua_State *L) {
 	luaL_checkversion(L);
     luaL_Reg l[] = {
+        {"bind", lbind },
         {"listen", llisten},
         {"connect", lconnect},
         {NULL, NULL},

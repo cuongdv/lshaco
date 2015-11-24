@@ -9,6 +9,7 @@ struct shaco_context;
 void shaco_socket_init(int max_socket);
 void shaco_socket_fini();
 
+int shaco_socket_bind(struct shaco_context *ctx, int fd);
 int shaco_socket_listen(struct shaco_context *ctx, const char *addr, int port);
 int shaco_socket_connect(struct shaco_context *ctx, const char *addr, int port);
 int shaco_socket_blockconnect(struct shaco_context *ctx, const char *addr, int port);

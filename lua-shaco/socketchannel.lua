@@ -32,7 +32,7 @@ local function pop_response(self)
 end
 
 local function dispatch(self)
-    socket.bind(self.__id, coroutine.running())
+    socket.start(self.__id)
     while self.__id do
         local func, co = pop_response(self)
         if func then

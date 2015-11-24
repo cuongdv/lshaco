@@ -25,7 +25,7 @@ shaco.start(function()
         socket.readenable(id, true)
         for i=1,10 do
             assert(socket.send(id, tostring(i)..'\n'))
-            print('send:'..assert(socket.read(id, '\n')))-- == tostring(i))
+            print('send:'..assert(socket.read(id, '\n')))
         end
     end)
 end)

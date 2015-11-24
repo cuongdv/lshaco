@@ -330,4 +330,8 @@ function shaco.luaservice(name)
     return tonumber(shaco.command('LAUNCH', 'lua '..name))
 end
 
+function shaco.getenv(key)
+    return shaco.command('GETENV', key)
+end
+
 return shaco

@@ -1,6 +1,7 @@
 local shaco = require "shaco"
 
 shaco.start(function()
-    local handle = assert(shaco.luaservice('test_socket'))
-    print (handle)
+    if shaco.getenv('console') == '1' then
+        assert(shaco.luaservice('console'))
+    end
 end)

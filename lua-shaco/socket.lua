@@ -19,9 +19,9 @@ local function disconnect(id, force, err)
     local s = socket_pool[id]
     if s then
         assert(s.id == id)
-        c.close(id, force)
         socket_pool[id] = nil
     end
+    c.close(id, force)
 end
 
 local event = {}

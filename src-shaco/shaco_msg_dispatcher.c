@@ -70,6 +70,7 @@ shaco_msg_pop() {
 void
 shaco_msg_dispatch() {
     int i;
+    // todo: just process current piece
     for (i=0; i<SHACO_MSG_BATCH; ++i) {
         struct message *m = shaco_msg_pop();
         if (m) {

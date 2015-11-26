@@ -163,10 +163,10 @@ local function dispatch_task()
     end
 end
 
-local function dispatchcb(source, session, typename, msg, sz)
-    local p = proto[typename]
-    if typename == 8 or -- shaco.TTIME or
-       typename == 6 then -- shaco.TRET then
+local function dispatchcb(source, session, typeid, msg, sz)
+    local p = proto[typeid]
+    if typeid == 8 or -- shaco.TTIME or
+       typeid == 6 then -- shaco.TRET then
         p.dispatch(source, session, p.unpack(msg, sz))
     else
         local co = co_create(p.dispatch)
@@ -195,6 +195,7 @@ function shaco.wait()
 end
 
 function shaco.dispatch(protoname, fun)
+    assert(fun)
     local p = proto[protoname]
     p.dispatch = fun
 end

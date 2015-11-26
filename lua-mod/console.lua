@@ -3,11 +3,11 @@ local socket = require "socket"
 
 local CMD = {}
 
-function CMD.launch(args)
+function CMD.start(args)
     assert(shaco.luaservice(args[1]))
 end
 
-function CMD.kill(args)
+function CMD.stop(args)
 end
 
 shaco.start(function()

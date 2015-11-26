@@ -20,7 +20,9 @@ static int
 lcommand(lua_State *L) {
     struct shaco_context *ctx = lua_touserdata(L, lua_upvalueindex(1));
     const char *name = luaL_checkstring(L, 1);
-    const char *param = luaL_checkstring(L, 2);
+    const char *param = lua_tostring(L, 2);
+    if (param == NULL) 
+        param = "";
     const char *result = shaco_command(ctx, name, param);
     lua_pushstring(L, result);
     return 1; 
@@ -50,13 +52,17 @@ lsend(lua_State *L) {
     } else {
         source = luaL_checkinteger(L, 1);
     }
-    int dest = luaL_checkinteger(L, 2);
+    int dest = lua_tointeger(L,2);
+    if (dest == 0) {
+        const char *name = luaL_checkstring(L,2);
+        dest = shaco_handle_query(name);
+    }
     int session = luaL_checkinteger(L, 3);
     int type = luaL_checkinteger(L, 4);
     luaL_checktype(L, 5, LUA_TLIGHTUSERDATA);
     void *msg = lua_touserdata(L, 5);
     int sz = luaL_checkinteger(L, 6);
-    shaco_send(dest, source, session, type, msg, sz);
+    shaco_send(dest, source, session, type|SHACO_DONT_COPY, msg, sz);
     return 0;
 }
 
@@ -107,6 +113,13 @@ lcallback(lua_State *L) {
     return 0;
 }
 
+static int
+lhandle(lua_State *L) {
+    struct shaco_context *ctx = lua_touserdata(L, lua_upvalueindex(1));
+    lua_pushinteger(L, shaco_context_handle(ctx));
+    return 1;
+}
+
 int
 luaopen_shaco_c(lua_State *L) {
 	luaL_checkversion(L);
@@ -117,6 +130,7 @@ luaopen_shaco_c(lua_State *L) {
         { "send",           lsend },
         { "timer",          ltimer },
         { "callback",       lcallback },
+        { "handle",         lhandle },
         { NULL, NULL},
 	}; 
 	luaL_newlibtable(L, l);

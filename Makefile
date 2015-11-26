@@ -26,9 +26,9 @@ all_t=\
 	lib-cmod/mod_lua.so \
 	lib-l/shaco.so \
 	lib-l/socket.so \
-	lib-l/socketbuffer.so #\
-#	lib-l/memory.so \
-#	lib-l/serialize.so \
+	lib-l/socketbuffer.so \
+	lib-l/serialize.so #\
+	lib-l/memory.so \
 #	lib-l/util.so \
 #	lib-l/crypt.so \
 #	lib-l/mysqlaux.so \

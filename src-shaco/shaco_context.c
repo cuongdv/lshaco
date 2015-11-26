@@ -34,6 +34,7 @@ shaco_context_create(const char *name, const char *args) {
     if (ctx->module->init) {
         ctx->module->init(ctx, ctx->instance, args); 
     }
+    shaco_info("LAUNCH [%08x] %s %s", ctx->handle, name, args);
     return ctx->handle;
 }
 
@@ -99,7 +100,7 @@ cmd_launch(struct shaco_context *ctx, const char *param) {
     if (handle == 0) {
         return NULL;
     } else {
-        sprintf(ctx->result, "%0x", handle);
+        sprintf(ctx->result, "0x%0x", handle);
         return ctx->result;
     }
 }

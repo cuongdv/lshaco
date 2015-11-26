@@ -6,6 +6,7 @@
 #include "shaco_log.h"
 #include "shaco.h"
 #include <string.h>
+#include <stdio.h>
 
 #define SHACO_MSG_BATCH 10
 
@@ -73,6 +74,7 @@ shaco_msg_dispatch() {
         struct message *m = shaco_msg_pop();
         if (m) {
             shaco_send_local_directly(m->dest, m->source, m->session, m->type, m->msg, m->sz);
+            shaco_free((void*)m->msg);
         } else break;
     }
 }
@@ -116,8 +118,16 @@ shaco_send_local_directly(int dest, int source, int session, int type, const voi
 void
 shaco_send(int dest, int source, int session, int type, const void *msg, int sz) {
     if (shaco_clusternode_isremote(dest)) {
+        // todo malloc msg ?
         shaco_clusternode_send(dest, source, session, type, msg, sz);
     } else {
+        if ((type & SHACO_DONT_COPY) ==0) {
+            void *tmp = shaco_malloc(sz);
+            memcpy(tmp, msg, sz);
+            msg = tmp;
+        } else {
+            type &= ~SHACO_DONT_COPY;
+        }
         shaco_msg_push(dest, source, session, type, msg, sz);
     }
 }

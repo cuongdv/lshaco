@@ -1,7 +1,7 @@
 local c = require "shaco.c"
 local socket = require "socket.c"
 --local memory = require "memory.c"
---local serialize = require "serialize.c"
+local serialize = require "serialize.c"
 local ipairs = ipairs
 local tostring = tostring
 local sfmt = string.format
@@ -19,7 +19,7 @@ local _wakeuping
 local proto = {}
 local shaco = {
     TTEXT = 1,
-    TUM   = 2,
+    TLUA   = 2,
     TMONITOR = 3,
     TLOG = 4,
     TCMD = 5,
@@ -52,6 +52,7 @@ shaco.debug   = function(...) shaco.log(LOG_DEBUG, ...) end
 
 shaco.now = c.now
 shaco.command = c.command
+shaco.handle = c.handle
 
 function shaco.pack(...)
     return serialize.serialize(serialize.pack(...))
@@ -113,7 +114,7 @@ end
 
 
 function shaco.send(dest, msg, sz)
-    return c.send(nil, dest, 0, shaco.TUM, msg, sz)
+    return c.send(nil, dest, 0, shaco.TLUA, msg, sz)
 end
 function shaco.ret(session, dest, msg, sz)
     return c.send(nil, dest, session, shaco.TRET, msg, sz)
@@ -127,14 +128,15 @@ local function gen_session()
     return _session_id
 end
 
-function shaco.call(dest, name, v)
+function shaco.call(dest, typename, ...)
+    local p = proto[typename]
     local co, ismain = coroutine.running()
     assert(ismain==false, "shaco.call should not in main coroutine")
     local session, msg, sz
     session = gen_session()
     assert(_suspend_co_map[session] ==nil)
     _suspend_co_map[session] = co
-    c.send(nil, dest, session, shaco.TUM, shaco.pack(name, v))
+    c.send(nil, dest, session, p.id, shaco.pack(...))
     session, msg, sz = coroutine.yield()
     _suspend_co_map[session] = nil
     return shaco.unpack(msg, sz)
@@ -161,9 +163,15 @@ local function dispatch_task()
     end
 end
 
-local function dispatchcb(source, session, type, msg, sz)
-    local p = proto[type]
-    p.dispatch(source, session, p.unpack(msg, sz))
+local function dispatchcb(source, session, typename, msg, sz)
+    local p = proto[typename]
+    if typename == 8 or -- shaco.TTIME or
+       typename == 6 then -- shaco.TRET then
+        p.dispatch(source, session, p.unpack(msg, sz))
+    else
+        local co = co_create(p.dispatch)
+        assert(coroutine.resume(co, source, session, p.unpack(msg, sz)))
+    end
     dispatch_task()
 end
 
@@ -180,6 +188,10 @@ function shaco.wakeup(co)
         _wakeup_map[co] = true
         table.insert(_wakeup_queue, co)
     end
+end
+
+function shaco.wait()
+    return coroutine.yield()
 end
 
 function shaco.dispatch(protoname, fun)
@@ -309,29 +321,37 @@ shaco.register_protocol {
 --}
 --
 
---shaco.register_protocol {
---    id = shaco.TUM,
---    name = "um",
---    unpack = shaco.unpack,
---    dispatch = nil
---}
+shaco.register_protocol {
+    id = shaco.TLUA,
+    name = "lua",
+    unpack = shaco.unpack,
+    dispatch = nil
+}
 
---shaco.register_protocol {
---    id = shaco.TRET,
---    name = "ret",
---    unpack = function(...) return ... end,
---    dispatch = function(_,session,msg,sz) 
---        local co = _suspend_co_map[session]
---        assert(coroutine.resume(co, session, msg, sz))
---    end
---}
+shaco.register_protocol {
+    id = shaco.TRET,
+    name = "ret",
+    unpack = function(...) return ... end,
+    dispatch = function(_,session,msg,sz) 
+        local co = _suspend_co_map[session]
+        assert(coroutine.resume(co, session, msg, sz))
+    end
+}
+
+function shaco.getenv(key)
+    return shaco.command('GETENV', key)
+end
 
 function shaco.luaservice(name)
     return tonumber(shaco.command('LAUNCH', 'lua '..name))
 end
 
-function shaco.getenv(key)
-    return shaco.command('GETENV', key)
+function shaco.queryservice(name)
+    return shaco.call('.service', 'lua', 'QUERY', name)
+end
+
+function shaco.register(name)
+    shaco.call('.service', 'lua', 'REG', name..' '..shaco.handle())
 end
 
 return shaco

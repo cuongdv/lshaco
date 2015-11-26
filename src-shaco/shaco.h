@@ -6,6 +6,7 @@
 #include "shaco_log.h"
 #include "shaco_context.h"
 #include "shaco_timer.h"
+#include "shaco_handle.h"
 
 struct shaco_context;
 
@@ -17,6 +18,7 @@ struct shaco_context;
 #define SHACO_TRET 6
 #define SHACO_TSOCKET 7
 #define SHACO_TTIME 8
+#define SHACO_DONT_COPY 0x80000000
 
 void shaco_init();
 void shaco_fini();

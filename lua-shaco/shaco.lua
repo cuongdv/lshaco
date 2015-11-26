@@ -65,10 +65,6 @@ end
 --shaco.unpack_msgid = socket.unpack_msgid
 --shaco.sendpack_um = socket.sendpack_um
 
---shaco.subscribe = c.subscribe
---shaco.publish = c.publish
---shaco.queryid = c.queryid
-
 --local monitor_map = {}
 --function shaco.uniquemodule(name, active, eventcb)
 --    local co = coroutine.running()
@@ -88,6 +84,7 @@ end
 --shaco.sendraw = c.sendraw
 
 local function co_create(func)
+    -- todo: conroutine cache pool
     return coroutine.create(func)
 end
 

@@ -53,6 +53,8 @@ shaco.debug   = function(...) shaco.log(LOG_DEBUG, ...) end
 shaco.now = c.now
 shaco.command = c.command
 shaco.handle = c.handle
+shaco.tostring = c.tostring
+shaco.topointstring = c.topointstring
 
 function shaco.pack(...)
     return serialize.serialize(serialize.pack(...))
@@ -60,6 +62,10 @@ end
 
 function shaco.unpack(p,sz)
     return serialize.deserialize(p)
+end
+
+function shaco.packtostring(...)
+    return shaco.tostring(shaco.pack(...))
 end
 
 --shaco.unpack_msgid = socket.unpack_msgid
@@ -109,10 +115,11 @@ function shaco.register_protocol(class)
     proto[class.name] = class
 end
 
-
-function shaco.send(dest, msg, sz)
-    return c.send(nil, dest, 0, shaco.TLUA, msg, sz)
+function shaco.send(dest, typename, msg, sz)
+    local p = proto[typename]
+    return c.send(nil, dest, 0, p.id, msg, sz)
 end
+
 function shaco.ret(session, dest, msg, sz)
     return c.send(nil, dest, session, shaco.TRET, msg, sz)
 end
@@ -340,8 +347,12 @@ function shaco.getenv(key)
     return shaco.command('GETENV', key)
 end
 
+function shaco.launch(name)
+    return tonumber(shaco.command('LAUNCH', name))
+end
+
 function shaco.luaservice(name)
-    return tonumber(shaco.command('LAUNCH', 'lua '..name))
+    return shaco.luanch('lua '..name)
 end
 
 function shaco.queryservice(name)

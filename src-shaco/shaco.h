@@ -11,13 +11,14 @@
 struct shaco_context;
 
 #define SHACO_TTEXT 1
-#define SHACO_TUM   2
+#define SHACO_TLUA  2
 #define SHACO_TMONITOR 3
 #define SHACO_TLOG 4
 #define SHACO_TCMD 5
 #define SHACO_TRET 6
 #define SHACO_TSOCKET 7
 #define SHACO_TTIME 8
+#define SHACO_TREMOTE 9
 #define SHACO_DONT_COPY 0x80000000
 
 void shaco_init();

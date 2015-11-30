@@ -96,10 +96,18 @@ shaco.register_protocol {
 local socket = {}
 
 function socket.listen(ip, port)
+    if port == nil then
+        ip, port = string.match(addr, '([^:]+):(%d+)$')
+        port = tonumber(port)
+    end
     return c.listen(ip, port)
 end
 
 function socket.connect(ip, port)
+    if port == nil then
+        ip, port = string.match(addr, '([^:]+):(%d+)$')
+        port = tonumber(port)
+    end
     local id, err, conning = c.connect(ip, port)
     if id then
         socket.start(id)
@@ -123,6 +131,21 @@ function socket.start(id, callback)
             mode = "*l",
             callback = callback,
         }
+    end
+end
+
+function socket.detachbuffer(id)
+    local s = socket_pool[id]
+    if s and s.buffer then
+        return s.buffer.detach()
+    end
+end
+
+function socket.abandon(id)
+    local s = socket_pool[id]
+    if s then
+        assert(s.id == id)
+        socket_pool[id] = nil
     end
 end
 

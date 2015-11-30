@@ -137,7 +137,7 @@ readn(struct socket_buffer *sb, int n) {
 int
 sb_pop(struct socket_buffer *sb, struct socket_pack *sp) {
     if (sb->header == -1) {
-        sb->header = readhead(sb, 2);
+        sb->header = readhead(sb, 4);
         if (sb->header == -1)
             return 1;
     }

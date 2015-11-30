@@ -1,4 +1,4 @@
-#include "shaco_clusternode.h"
+#include "shaco_harbor.h"
 #include "shaco_context.h"
 #include "shaco_malloc.h"
 #include "shaco_handle.h"
@@ -118,9 +118,9 @@ shaco_send_local_directly(int dest, int source, int session, int type, const voi
 
 void
 shaco_send(int dest, int source, int session, int type, const void *msg, int sz) {
-    if (shaco_clusternode_isremote(dest)) {
+    if (shaco_harbor_isremote(dest)) {
         // todo malloc msg ?
-        shaco_clusternode_send(dest, source, session, type, msg, sz);
+        shaco_harbor_send(dest, source, session, type, msg, sz);
     } else {
         if ((type & SHACO_DONT_COPY) ==0) {
             void *tmp = shaco_malloc(sz);

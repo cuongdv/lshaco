@@ -14,7 +14,7 @@ LIBSHACO_SRC=\
  	src-shaco/shaco_timer.c \
 	src-shaco/shaco_context.c \
 	src-shaco/shaco_handle.c \
-	src-shaco/shaco_clusternode.c \
+	src-shaco/shaco_harbor.c \
 	src-shaco/shaco_msg_dispatcher.c \
  	src-shaco/shaco_log.c \
 	src-shaco/shaco_malloc.c \
@@ -24,6 +24,7 @@ all_t=\
 	shaco \
 	tool/srcpack \
 	lib-cmod/mod_lua.so \
+	lib-cmod/mod_harbor.so \
 	lib-l/shaco.so \
 	lib-l/socket.so \
 	lib-l/socketbuffer.so \
@@ -92,11 +93,11 @@ lib-cmod:
 lib-l:
 	mkdir $@
 
-lib-cmod/mod_node.so: src-mod/mod_node.c src-mod/socket_buffer.c 
-	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO)
-
 lib-cmod/mod_lua.so: src-mod/mod_lua.c | lib-cmod
 	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO) $(ILUA) 
+
+lib-cmod/mod_harbor.so: src-mod/mod_harbor.c src-mod/socket_buffer.c 
+	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO)
 
 lib-l/shaco.so: src-l/lshaco.c | lib-l
 	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO) $(ILUA) 

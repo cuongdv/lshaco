@@ -59,6 +59,7 @@ lsend(lua_State *L) {
     }
     int session = luaL_checkinteger(L, 3);
     int type = luaL_checkinteger(L, 4);
+    // todo : string
     luaL_checktype(L, 5, LUA_TLIGHTUSERDATA);
     void *msg = lua_touserdata(L, 5);
     int sz = luaL_checkinteger(L, 6);
@@ -120,6 +121,26 @@ lhandle(lua_State *L) {
     return 1;
 }
 
+static int
+ltostring(lua_State *L) {
+    luaL_checktype(L,1, LUA_TLIGHTUSERDATA);
+    void *p = lua_touserdata(L,1);
+    size_t sz = luaL_checkinteger(L,2);
+    lua_pushlstring(L, p, sz);
+    shaco_free(p);
+    return 1;
+}
+
+static int
+ltopointstring(lua_State *L) {
+    luaL_checktype(L,1, LUA_TLIGHTUSERDATA);
+    void *p = lua_touserdata(L,1);
+    char tmp[24];
+    snprintf(tmp, sizeof(tmp), "%p", p);
+    lua_pushstring(L, tmp);
+    return 1;
+}
+
 int
 luaopen_shaco_c(lua_State *L) {
 	luaL_checkversion(L);
@@ -131,6 +152,8 @@ luaopen_shaco_c(lua_State *L) {
         { "timer",          ltimer },
         { "callback",       lcallback },
         { "handle",         lhandle },
+        { "tostring",       ltostring },
+        { "topointstring",  ltopointstring },
         { NULL, NULL},
 	}; 
 	luaL_newlibtable(L, l);

@@ -139,14 +139,14 @@ cmd_qname(struct shaco_context *ctx, const char *param) {
 static const char *
 cmd_time(struct shaco_context *ctx, const char *param) {
     uint64_t time = shaco_timer_time();
-    sprintf(ctx->result, "%llu", time);
+    sprintf(ctx->result, "%llu", (long long unsigned int)time);
     return ctx->result;
 }
 
 static const char *
 cmd_starttime(struct shaco_context *ctx, const char *param) {
     uint64_t time = shaco_timer_start_time();
-    sprintf(ctx->result, "%llu", time);
+    sprintf(ctx->result, "%llu", (long long unsigned int)time);
     return ctx->result;
 }
 

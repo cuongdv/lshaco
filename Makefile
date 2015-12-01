@@ -48,7 +48,7 @@ undefined:
 	@echo "Please do 'make PLATFORM' where PLATFORM is one of this:"
 	@echo "    $(PLATS)"
 
-CFLAGS=-g -Wall -Werror -DUSE_SHACO_MALLOC -DHAVE_MALLOC $(CFLAG)
+CFLAGS=-g -Wall -Werror -DHAVE_MALLOC -DUSE_SHACO_MALLOC $(CFLAG)
 
 linux: SHARED:=-fPIC -shared
 linux: EXPORT:=-Wl,-E

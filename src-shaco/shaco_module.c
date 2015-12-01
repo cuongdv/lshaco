@@ -11,7 +11,7 @@ static struct {
     const char *path;
     int cap;
     int sz;
-    struct shaco_module *p;
+    struct shaco_module **p;
 } *M = NULL;
 
 // dl
@@ -66,17 +66,18 @@ _dlopen(struct shaco_module* dl, const char *name) {
 
 static struct shaco_module *
 shaco_module_create(const char *name) {
+    struct shaco_module *dl = shaco_malloc(sizeof(*dl));
+    memset(dl, 0, sizeof(*dl));
+    if (_dlopen(dl, name)) {
+        shaco_free(dl);
+        return NULL;
+    }
+    dl->name = shaco_strdup(name);
     if (M->sz == M->cap) {
         M->cap *= 2;
         M->p = shaco_realloc(M->p, sizeof(M->p[0]) * M->cap);
     }
-    struct shaco_module *dl = &M->p[M->sz];
-    memset(dl, 0, sizeof(*dl));
-    if (_dlopen(dl, name)) {
-        return NULL;
-    }
-    dl->name = shaco_strdup(name);
-    M->sz++;
+    M->p[M->sz++] = dl;
     return dl;
 
 }
@@ -92,7 +93,7 @@ struct shaco_module *
 shaco_module_query(const char *name) {
     int i;
     for (i=0; i<M->sz; ++i) {
-        struct shaco_module* dl = &M->p[i];
+        struct shaco_module* dl = M->p[i];
         if (!strcmp(dl->name, name))
             return dl;
     }
@@ -129,7 +130,9 @@ shaco_module_fini() {
     if (M) {
         int i;
         for (i=0; i<M->sz; ++i) {
-            shaco_module_free(&M->p[i]);
+            struct shaco_module *dl = M->p[i];
+            shaco_module_free(dl);
+            shaco_free(dl);
         }
         shaco_free(M->p);
         M->p = NULL;

@@ -55,17 +55,13 @@ shaco.command = c.command
 shaco.handle = c.handle
 shaco.tostring = c.tostring
 shaco.topointstring = c.topointstring
-
+shaco.packstring = serialize.serialize_string
+shaco.unpackstring = serialize.deserialize_string
 function shaco.pack(...)
     return serialize.serialize(serialize.pack(...))
 end
-
 function shaco.unpack(p,sz)
     return serialize.deserialize(p)
-end
-
-function shaco.packtostring(...)
-    return shaco.tostring(shaco.pack(...))
 end
 
 --shaco.unpack_msgid = socket.unpack_msgid
@@ -352,7 +348,7 @@ function shaco.launch(name)
 end
 
 function shaco.luaservice(name)
-    return shaco.luanch('lua '..name)
+    return shaco.launch('lua '..name)
 end
 
 function shaco.queryservice(name)

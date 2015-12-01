@@ -34,7 +34,7 @@ shaco_context_create(const char *name, const char *args) {
     if (ctx->module->init) {
         ctx->module->init(ctx, ctx->instance, args); 
     }
-    shaco_info("LAUNCH [%08x] %s %s", ctx->handle, name, args);
+    shaco_info("LAUNCH [%02x] %s %s", ctx->handle, name, args?args:" ");
     return ctx->handle;
 }
 
@@ -69,7 +69,7 @@ shaco_context_send(struct shaco_context *ctx, int source, int session, int type,
 
 void 
 shaco_context_log(struct shaco_context *ctx, int level, const char *log) {
-    shaco_log(level, "[%s] %s", ctx->name, log);
+    shaco_log(level, "[%02x] %s", ctx->handle, log);
 }
 
 void 

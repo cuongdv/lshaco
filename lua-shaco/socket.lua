@@ -97,7 +97,7 @@ local socket = {}
 
 function socket.listen(ip, port)
     if port == nil then
-        ip, port = string.match(addr, '([^:]+):(%d+)$')
+        ip, port = string.match(ip, '([^:]+):(%d+)$')
         port = tonumber(port)
     end
     return c.listen(ip, port)
@@ -105,7 +105,7 @@ end
 
 function socket.connect(ip, port)
     if port == nil then
-        ip, port = string.match(addr, '([^:]+):(%d+)$')
+        ip, port = string.match(ip, '([^:]+):(%d+)$')
         port = tonumber(port)
     end
     local id, err, conning = c.connect(ip, port)

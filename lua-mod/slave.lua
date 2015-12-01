@@ -8,14 +8,14 @@ local _slaves
 local _connect_queue = {}
 
 local function pack(...)
-    local msg = shaco.packtostring(...)
-    return string.pack('>Hz', #msg, msg)
+    local msg = shaco.packstring(...)
+    return string.char(#msg)..msg
 end
 
 local function read_pack(id)
-    local sz = assert(socket.read(id, '*2'))
+    local sz = assert(socket.read(id, '*1'))
     local msg = assert(socket.read(id, sz))
-    return shaco.unpack(msg)
+    return shaco.unpackstring(msg)
 end
 
 local function accept_slave(sock)
@@ -27,7 +27,7 @@ local function accept_slave(sock)
         type(slaveid)=='number' and 
         type(addr)=='string', 'Handshake fail')
     if _slaves[slaveid] then
-        error(string.format('Slave %d already exist'))
+        error(string.format('Slave %0x already exist',slaveid))
     end
     socket.send(sock, pack('.'))
 
@@ -38,7 +38,7 @@ local function accept_slave(sock)
         string.format('S %d %d %s %s %d', sock, slaveid, addr, p, sz or 0))
 
     _slaves[slaveid] = { id=slaveid, sock=sock, addr=addr }
-    shaco.info(string.format('Slave %d#%s accpet', slaveid, addr))
+    shaco.info(string.format('Slave %0x#%s accpet', slaveid, addr))
 end
 
 local function connect_slave(slaveid, addr)
@@ -55,10 +55,11 @@ local function connect_slave(slaveid, addr)
         string.format('S %d %d %s %s %d', sock, slaveid, addr, p, sz or 0))
 
     _slaves[slaveid] = {id=slaveid, sock=sock, addr=addr }
-    shaco.info(string.format('Slave %d#%s connect', slaveid, addr))
+    shaco.info(string.format('Slave %0x#%s connect', slaveid, addr))
 end
 
 local function monitor_master(master_sock)
+    socket.start(master_sock)
     while true do
         local ok, t, id_name, addr = pcall(read_pack, master_sock)
         if ok then
@@ -77,6 +78,9 @@ local function monitor_master(master_sock)
             else
                 shaco.error('Invalid master message type '..t)
             end
+        else
+            shaco.info(t)
+            -- todo master disconnect
         end
     end
 end
@@ -98,12 +102,13 @@ shaco.start(function()
     local slave_sock = assert(socket.listen(_addr))
     --shaco.dispatch('lua', function(source, session, cmd, ...)
     --end)
-    shaco.info(string.format('Slave %d connect to master %s', _slaveid, master_addr))
+    shaco.info(string.format('Slave %0x connect to master %s', _slaveid, master_addr))
     local master_sock = assert(socket.connect(master_addr))
+    socket.readenable(master_sock, true)
     assert(socket.send(master_sock, pack('H', _slaveid, _addr)))
     local t, n = read_pack(master_sock)
     assert(t=='W' and type(n)=="number", 'Handshake fail')
-    shaco.info('Waiting for %d slaves')
+    shaco.info(string.format('Waiting for %d slaves', n))
     shaco.fork(monitor_master, master_sock)
     if n > 0 then
         local co = coroutine.running()
@@ -129,4 +134,4 @@ shaco.start(function()
     socket.close(slave_sock)
     shaco.info('Handshake ok')
     shaco.fork(ready)
-end
+end)

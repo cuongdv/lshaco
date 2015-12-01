@@ -95,7 +95,7 @@ _cb(struct shaco_context *ctx, void *ud, int source, int session, int type, cons
         return 0;
     }
     uint32_t handle = shaco_context_handle(ctx);
-    shaco_error("[%08x] cb error: %s", handle, lua_tostring(L, -1));
+    shaco_error("[%04x] cb error: %s", handle, lua_tostring(L, -1));
     lua_pop(L, 2);
     return 1;
 }

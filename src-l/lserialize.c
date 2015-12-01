@@ -811,7 +811,7 @@ luaopen_serialize_c(lua_State *L) {
 		{ "serialize", lserialize },
 		{ "deserialize", ldeserialize },
 		{ "serialize_string", seristring },
-		{ "deseristring_string", deseristring },
+		{ "deserialize_string", deseristring },
 		{ "dump", _dump },
 		{ NULL, NULL },
 	};

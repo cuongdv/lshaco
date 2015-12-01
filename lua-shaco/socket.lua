@@ -137,7 +137,7 @@ end
 function socket.detachbuffer(id)
     local s = socket_pool[id]
     if s and s.buffer then
-        return s.buffer.detach()
+        return s.buffer:detach()
     end
 end
 

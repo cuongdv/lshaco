@@ -102,7 +102,7 @@ readhead(struct socket_buffer *sb, int n) {
     int i=0, o;
     while (current) {
         for (o=offset; o<current->sz; ++o) {
-            head |= ((uint8_t*)current->p)[o]<<(i++*8);
+            head |= ((uint8_t*)current->p)[o]<<((n-(++i))*8);
             if (i>=n) {
                 freebuffer(sb, current, o+1);
                 return head;

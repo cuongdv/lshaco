@@ -41,25 +41,25 @@ static void
 rlimit_check() {
     struct rlimit l;
     if (getrlimit(RLIMIT_CORE, &l) == -1) {
-        shaco_exit("getrlimit core fail: %s", strerror(errno));
+        shaco_exit(NULL, "getrlimit core fail: %s", strerror(errno));
     }
     if (l.rlim_cur !=-1 && 
         l.rlim_cur < 128*1024*1024) {
         l.rlim_cur = -1;
         l.rlim_max = -1;
         if (setrlimit(RLIMIT_CORE, &l) == -1) {
-            shaco_exit("setrlimit core fail: %s", strerror(errno));
+            shaco_exit(NULL, "setrlimit core fail: %s", strerror(errno));
         }
     }
     int max = shaco_optint("maxsocket", 0) + 1024;
     if (getrlimit(RLIMIT_NOFILE, &l) == -1) {
-        shaco_exit("getrlimit nofile fail: %s", strerror(errno));
+        shaco_exit(NULL, "getrlimit nofile fail: %s", strerror(errno));
     }
     if (l.rlim_cur < max) {
         l.rlim_cur = max;
         l.rlim_max = max;
         if (setrlimit(RLIMIT_NOFILE, &l) == -1) {
-            shaco_exit("setrlimit nofile fail: %s", strerror(errno));
+            shaco_exit(NULL, "setrlimit nofile fail: %s", strerror(errno));
         }
     }
 }
@@ -99,18 +99,8 @@ shaco_init() {
     shaco_msg_dispatcher_init();
 
     const char *boot = shaco_optstr("bootstrap", "lua bootstrap");
-    char tmp[strlen(boot)+1];
-    strcpy(tmp, boot);
-    const char *args;
-    char *p = strchr(tmp, ' ');
-    if (p) {
-        *p= '\0';
-        args = p+1;
-    } else {
-        args = NULL;
-    }
-    if (shaco_context_create(tmp, args) == 0) {
-        shaco_exit("bootstrap fail");
+    if (shaco_launch(NULL, boot) == 0) {
+        shaco_exit(NULL, "bootstrap fail");
     }
 }
 
@@ -127,7 +117,7 @@ shaco_fini() {
 
 void
 shaco_start() {
-    shaco_info("Shaco start");
+    shaco_info(NULL, "Shaco start");
     int timeout;
     STOP_INFO[0] = '\0';
     RUN = true; 
@@ -139,7 +129,7 @@ shaco_start() {
         shaco_timer_trigger();
         shaco_msg_dispatch();
     }
-    shaco_info("Shaco stop(%s)", STOP_INFO);
+    shaco_info(NULL, "Shaco stop(%s)", STOP_INFO);
 }
 
 void

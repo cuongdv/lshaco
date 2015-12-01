@@ -21,27 +21,36 @@ struct shaco_context;
 #define SHACO_TREMOTE 9
 #define SHACO_DONT_COPY 0x80000000
 
+typedef int (*shaco_cb)(
+        struct shaco_context *ctx, 
+        void *ud, 
+        int source, 
+        int session, 
+        int type, 
+        const void *msg, 
+        int sz);
+
 void shaco_init();
 void shaco_fini();
 void shaco_start();
 void shaco_stop(const char* info);
 
-void shaco_exit(const char* fmt, ...) 
-#ifdef __GNUC__
-__attribute__((format(printf, 1, 2)))
-__attribute__((noreturn))
-#endif
-;
-
-typedef int (*shaco_cb)(struct shaco_context *ctx, void *ud, int source, int session, int type, const void *msg, int sz);
+uint32_t shaco_launch(struct shaco_context *ctx, const char *name);
 void shaco_callback(struct shaco_context *context, shaco_cb cb, void *ud);
 void shaco_send(int dest, int source, int session, int type, const void *msg, int sz);
 void shaco_send_local_directly(int dest, int source, int session, int type, const void *msg, int sz);
 const char *shaco_command(struct shaco_context *ctx, const char *name, const char *param);
-void shaco_backtrace();
-void shaco_panic(const char* fmt, ...)
+
+void shaco_backtrace(struct shaco_context *ctx);
+void shaco_panic(struct shaco_context *ctx, const char* fmt, ...)
 #ifdef __GNUC__
-__attribute__((format(printf, 1, 2)))
+__attribute__((format(printf, 2, 3)))
+__attribute__((noreturn))
+#endif
+;
+void shaco_exit(struct shaco_context *ctx, const char* fmt, ...) 
+#ifdef __GNUC__
+__attribute__((format(printf, 2, 3)))
 __attribute__((noreturn))
 #endif
 ;

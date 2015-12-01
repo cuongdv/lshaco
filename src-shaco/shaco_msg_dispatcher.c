@@ -7,6 +7,7 @@
 #include "shaco.h"
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #define SHACO_MSG_BATCH 10
 
@@ -111,7 +112,7 @@ shaco_send_local_directly(int dest, int source, int session, int type, const voi
     if (ctx) {
         shaco_context_send(ctx, source, session, type, msg, sz);
     } else {
-        shaco_error("Context no found: %0x->%0x session:%d type:%d sz:%d",
+        shaco_error(NULL,"Context no found: %0x->%0x session:%d type:%d sz:%d",
                 source, dest, session, type, sz);
     }
 }
@@ -119,15 +120,23 @@ shaco_send_local_directly(int dest, int source, int session, int type, const voi
 void
 shaco_send(int dest, int source, int session, int type, const void *msg, int sz) {
     if (shaco_harbor_isremote(dest)) {
-        // todo malloc msg ?
+        bool free;
+        if (type & SHACO_DONT_COPY) {
+            type &= ~SHACO_DONT_COPY;
+            free = true;
+        } else
+            free = false;
         shaco_harbor_send(dest, source, session, type, msg, sz);
+        if (free) {
+            shaco_free((void*)msg);
+        }
     } else {
-        if ((type & SHACO_DONT_COPY) ==0) {
+        if (type & SHACO_DONT_COPY) {
+            type &= ~SHACO_DONT_COPY;
+        } else {
             void *tmp = shaco_malloc(sz);
             memcpy(tmp, msg, sz);
             msg = tmp;
-        } else {
-            type &= ~SHACO_DONT_COPY;
         }
         shaco_msg_push(dest, source, session, type, msg, sz);
     }

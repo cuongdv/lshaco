@@ -21,7 +21,7 @@ uint32_t
 shaco_context_create(const char *name, const char *args) {
     struct shaco_module *dl = shaco_module_query(name);
     if (dl == NULL) {
-        shaco_error("Context `%s %s` create fail: no module `%s`", name, args, name);
+        shaco_error(NULL, "Context `%s %s` create fail: no module `%s`", name, args, name);
         return 0;
     }
     struct shaco_context *ctx = shaco_malloc(sizeof(*ctx));
@@ -34,7 +34,6 @@ shaco_context_create(const char *name, const char *args) {
     if (ctx->module->init) {
         ctx->module->init(ctx, ctx->instance, args); 
     }
-    shaco_info("LAUNCH [%02x] %s %s", ctx->handle, name, args?args:" ");
     return ctx->handle;
 }
 
@@ -61,21 +60,36 @@ void
 shaco_context_send(struct shaco_context *ctx, int source, int session, int type, const void *msg, int sz) {
     int result = ctx->cb(ctx, ctx->ud, source, session, type, msg, sz);
     if (result !=0 ) {
-        shaco_error(
+        shaco_error(NULL,
         "Context `%s` cb fail:%d : %0x->%0x session:%d type:%d sz:%d", 
         ctx->name, result, source, ctx->handle, session, type, sz);
     }
 }
 
 void 
-shaco_context_log(struct shaco_context *ctx, int level, const char *log) {
-    shaco_log(level, "[%02x] %s", ctx->handle, log);
-}
-
-void 
 shaco_callback(struct shaco_context *ctx, shaco_cb cb, void *ud) {
     ctx->cb = cb;
     ctx->ud = ud;
+}
+
+uint32_t
+shaco_launch(struct shaco_context *ctx, const char *name) {
+    int len = strlen(name);
+    char tmp[len+1];
+    const char *args;
+    strcpy(tmp, name);
+    char *p = strchr(tmp, ' ');
+    if (p) {
+        *p = '\0';
+        args = p+1;
+    } else {
+        args = NULL;
+    }
+    uint32_t handle = shaco_context_create(tmp, args);
+    if (handle > 0) {
+        shaco_info(ctx, "Launch [%02x] %s", handle, name);
+    }
+    return handle;
 }
 
 struct command {
@@ -85,18 +99,7 @@ struct command {
 
 static const char*
 cmd_launch(struct shaco_context *ctx, const char *param) {
-    int len = strlen(param);
-    char name[len+1];
-    const char *args;
-    strcpy(name, param);
-    char *p = strchr(name, ' ');
-    if (p) {
-        *p = '\0';
-        args = p+1;
-    } else {
-        args = NULL;
-    }
-    uint32_t handle = shaco_context_create(name, args);
+    uint32_t handle = shaco_launch(ctx, param);
     if (handle == 0) {
         return NULL;
     } else {

@@ -34,7 +34,7 @@ _dlopen(struct shaco_module* dl, const char *name) {
     snprintf(path, sizeof(path), "%s/mod_%s.so", M->path, name);
     void* handle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
     if (handle == NULL) {
-        shaco_error("DL `%s` open error: %s", path, dlerror());
+        shaco_error(NULL,"DL `%s` open error: %s", path, dlerror());
         return 1;
     }
     char sym[len+7+1];
@@ -51,13 +51,13 @@ _dlopen(struct shaco_module* dl, const char *name) {
     if (dl->create == NULL &&
         dl->free == NULL &&
         dl->init == NULL) {
-        shaco_error("DL `%s` no interface", path);
+        shaco_error(NULL,"DL `%s` no interface", path);
         _dlclose(dl);
         return 1;
     }
     if (dl->create && 
         dl->free == NULL) {
-        shaco_error("DL `%s` has `create` with no `free`, probably memory leak", name);
+        shaco_error(NULL,"DL `%s` has `create` with no `free`, probably memory leak", name);
         _dlclose(dl);
         return 1;
     }

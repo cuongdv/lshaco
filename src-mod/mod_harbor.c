@@ -95,32 +95,37 @@ _index_slave(struct harbor *self, int slaveid) {
 }
 
 static int
-_sock_error(struct harbor *self, int sock, int err) {
-    shaco_info("Socket %d error: %s", sock, shaco_socket_error(err));
+_sock_error(struct shaco_context *ctx, struct harbor *self, int sock, int err) {
     struct slave *s = _find_slave_bysock(self, sock);
-    if (s == NULL)
+    if (s) {
+        shaco_info(ctx, "Slave %02x exit: %s", s->id, shaco_socket_error(err));
+        s->id = 0;
+        s->sock = 0;
+        sb_fini(&s->sb);
+        return 0; 
+    } else {
+        shaco_info(ctx, "Unknown slave socket=%d error: %s", 
+                sock, shaco_socket_error(err));
         return 1;
-    
-    shaco_info("Slave %02x disconnect", s->id);
-    s->id = 0;
-    s->sock = 0;
-    sb_fini(&s->sb);
-   return 0; 
+    }
 }
 
 static int
-_handle_package(struct harbor *self, struct slave *s) {
+_handle_package(struct shaco_context *ctx, struct harbor *self, struct slave *s) {
     for (;;) {
         struct socket_pack package;
+        fprintf(stderr, "sb_pop ...\n");
         if (sb_pop(&s->sb, &package)) 
             break;
+        fprintf(stderr, "sb_pop ok: %d\n", (int)package.sz);
         if (package.sz <= HEADSZ) {
             shaco_free(package.p);
-            _sock_error(self, s->sock, LS_ERR_MSG);
+            _sock_error(ctx, self, s->sock, LS_ERR_MSG);
             break;
         }
         struct package_header header;
         void *p = _readheader(package.p, &header);
+        fprintf(stderr, "reader header: source %d dest %d type %d sesion %d\n", header.source, header.dest, header.type, header.session);
         shaco_send_local_directly(header.dest, header.source, 
                 header.session, header.type, p, package.sz-HEADSZ);
         shaco_free(package.p);
@@ -129,7 +134,7 @@ _handle_package(struct harbor *self, struct slave *s) {
 }
 
 static int
-_sock_read(struct harbor *self, int sock) {
+_sock_read(struct shaco_context *ctx, struct harbor *self, int sock) {
     struct slave *s = _find_slave_bysock(self, sock);
     if (s == NULL)
         return 1;
@@ -139,33 +144,33 @@ _sock_read(struct harbor *self, int sock) {
     if (data_size==0) 
         return 0;
     else if (data_size<0) {
-        _sock_error(self, sock, shaco_socket_lasterrno());
+        _sock_error(ctx, self, sock, shaco_socket_lasterrno());
         return 0;
     } 
     sb_push(&s->sb, data, data_size);
-    _handle_package(self, s);
+    _handle_package(ctx, self, s);
     return 0;
 }
 
 static int
-_dosock(struct harbor *self, struct socket_event *event){
+_dosock(struct shaco_context *ctx, struct harbor *self, struct socket_event *event){
     switch (event->type) {
     case LS_EREAD:
-        return _sock_read(self, event->id);
+        return _sock_read(ctx, self, event->id);
     case LS_ESOCKERR:
-        return _sock_error(self, event->id, event->err);
+        return _sock_error(ctx, self, event->id, event->err);
     default:
-        shaco_error("Invalid socket message type %d", event->type);
+        shaco_error(ctx, "Invalid socket message type %d", event->type);
         return 1;
     }
 }
 
 static int
-_toremote(struct harbor *self, int session, int source, int dest, int type, const void *msg, int sz) {
+_toremote(struct shaco_context *ctx, struct harbor *self, int session, int source, int dest, int type, const void *msg, int sz) {
     int slaveid = (dest>>8)&0xff;
     struct slave *s= _index_slave(self, slaveid);
     if (s == NULL) {
-        shaco_error("Slave %0x no found", slaveid);
+        shaco_error(ctx, "Slave %0x no found", slaveid);
         return 1;
     }
     int len = sz+HEADSZ+4;
@@ -182,7 +187,7 @@ _toremote(struct harbor *self, int session, int source, int dest, int type, cons
 }
 
 static int
-_command(struct harbor *self, int source, int session, const void *msg, int sz) {
+_command(struct shaco_context *ctx, struct harbor *self, int source, int session, const void *msg, int sz) {
     if (sz <= 0)
         return 1;
 
@@ -198,23 +203,25 @@ _command(struct harbor *self, int source, int session, const void *msg, int sz) 
         sscanf(tmp+1, " %d %d %s %s %d", &sock, &slaveid, addr, bufp, &bufsz);
         struct slave *s = _index_slave(self, slaveid);
         if (s == NULL) {
-            shaco_error("Invalid slave id %d", slaveid);
+            shaco_error(ctx, "Invalid slave id %d", slaveid);
             return 1;
         }
         if (s->id != 0) {
             sb_fini(&s->sb);
         }
+        shaco_socket_start(ctx, sock);
         s->id = slaveid;
         s->sock = sock;
         sb_init(&s->sb);
         uint64_t p = strtoll(bufp, NULL, 16);
         if (p && bufsz) {
             sb_push(&s->sb, (void*)p, bufsz);
-            _handle_package(self, s);
+            fprintf(stderr, "sb_push: %p, %d\n", (void*)p, (int)bufsz);
+            _handle_package(ctx, self, s);
         }
         break;}
     default:
-        shaco_error("Invalid harbor command %s", tmp);
+        shaco_error(ctx, "Invalid harbor command %s", tmp);
         return 1;
     }
     return 0;
@@ -227,16 +234,16 @@ cb(struct shaco_context *ctx, void *ud, int source, int session, int type, const
     case SHACO_TSOCKET: {
         struct socket_event *event = (struct socket_event *)msg;
         assert(sizeof(*event)==sz);
-        return _dosock(self, event);
+        return _dosock(ctx, self, event);
         }
     case SHACO_TREMOTE: {
         struct shaco_remote_message *rmsg = (struct shaco_remote_message *)msg;
         assert(sizeof(*rmsg)==sz);
-        return _toremote(self, session, source, 
+        return _toremote(ctx, self, session, source, 
                 rmsg->dest, rmsg->type, rmsg->msg, rmsg->sz);
                         }
     case SHACO_TTEXT:
-        return _command(self, source, session, msg, sz);
+        return _command(ctx, self, source, session, msg, sz);
     default:
         return 1;
     }
@@ -247,7 +254,7 @@ int
 harbor_init(struct shaco_context *ctx, struct harbor *self, const char *args) {
     self->slaveid = shaco_optint("slaveid", 0);
     if (self->slaveid == 0){
-        shaco_exit("slaveid = 0");
+        shaco_exit(ctx, "slaveid = 0");
     }
     shaco_callback(ctx, cb, self);
     shaco_harbor_start(ctx);

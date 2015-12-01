@@ -58,7 +58,7 @@ shaco_handle_context(uint32_t handle) {
     else
         ctx = NULL;
     if (ctx == NULL) {
-        shaco_error("Handle not found %x", handle);
+        shaco_error(NULL,"Handle not found %x", handle);
     }
     return ctx;
 }

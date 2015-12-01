@@ -13,6 +13,7 @@ int shaco_socket_bind(struct shaco_context *ctx, int fd);
 int shaco_socket_listen(struct shaco_context *ctx, const char *addr, int port);
 int shaco_socket_connect(struct shaco_context *ctx, const char *addr, int port);
 int shaco_socket_blockconnect(struct shaco_context *ctx, const char *addr, int port);
+int shaco_socket_start(struct shaco_context *ctx, int id);
 int shaco_socket_close(int id, int force);
 int shaco_socket_enableread(int id, int read);
 int shaco_socket_poll(int timeout);

@@ -1,0 +1,6 @@
+maxsocket=10
+luamodpath="./lua-mod/?.lua;./examples/?.lua"
+console=1
+slaveid=3
+master="127.0.0.1:9000"
+address="127.0.0.1:9003"

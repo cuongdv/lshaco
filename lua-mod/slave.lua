@@ -4,7 +4,7 @@ local socket = require "socket"
 local _harbor_handle
 local _slaveid
 local _addr
-local _slaves
+local _slaves = {}
 local _connect_queue = {}
 
 local function pack(...)
@@ -27,10 +27,16 @@ local function accept_slave(sock)
         type(slaveid)=='number' and 
         type(addr)=='string', 'Handshake fail')
     if _slaves[slaveid] then
-        error(string.format('Slave %0x already exist',slaveid))
+        error(string.format('Slave %02x already exist',slaveid))
     end
+    
+    --local tt = pack('.')
+    --local tt2 = string.pack('>I4I2I1I1I4c6',13,3,5,1,0,"T 1234")
+    --socket.send(sock, tt..tt2)
     socket.send(sock, pack('.'))
 
+    --readbuffer must be empty, due to the other side wait '.'
+    --so the under line is unness
     local p, sz = socket.detachbuffer(sock)
     p = shaco.topointstring(p)
     socket.abandon(sock)
@@ -38,24 +44,24 @@ local function accept_slave(sock)
         string.format('S %d %d %s %s %d', sock, slaveid, addr, p, sz or 0))
 
     _slaves[slaveid] = { id=slaveid, sock=sock, addr=addr }
-    shaco.info(string.format('Slave %0x#%s accpet', slaveid, addr))
+    shaco.info(string.format('Slave %02x#%s accpet', slaveid, addr))
 end
 
 local function connect_slave(slaveid, addr)
     local sock = assert(socket.connect(addr))
-    socket.readenable(sock)
+    socket.readenable(sock, true)
     socket.send(sock, pack('H', _slaveid, _addr))
     local t = read_pack(sock)
     assert(t=='.', 'handshake fail')
 
     local p, sz = socket.detachbuffer(sock) 
     p = shaco.topointstring(p)
-    shaco.abandon(sock)
+    socket.abandon(sock)
     shaco.send(_harbor_handle, 'text', 
         string.format('S %d %d %s %s %d', sock, slaveid, addr, p, sz or 0))
 
     _slaves[slaveid] = {id=slaveid, sock=sock, addr=addr }
-    shaco.info(string.format('Slave %0x#%s connect', slaveid, addr))
+    shaco.info(string.format('Slave %02x#%s connect', slaveid, addr))
 end
 
 local function monitor_master(master_sock)
@@ -81,6 +87,8 @@ local function monitor_master(master_sock)
         else
             shaco.info(t)
             -- todo master disconnect
+            socket.close(master_sock)
+            break
         end
     end
 end
@@ -102,7 +110,7 @@ shaco.start(function()
     local slave_sock = assert(socket.listen(_addr))
     --shaco.dispatch('lua', function(source, session, cmd, ...)
     --end)
-    shaco.info(string.format('Slave %0x connect to master %s', _slaveid, master_addr))
+    shaco.info(string.format('Slave %02x connect to master %s', _slaveid, master_addr))
     local master_sock = assert(socket.connect(master_addr))
     socket.readenable(master_sock, true)
     assert(socket.send(master_sock, pack('H', _slaveid, _addr)))

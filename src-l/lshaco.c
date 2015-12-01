@@ -33,7 +33,7 @@ llog(lua_State *L) {
     struct shaco_context *ctx = lua_touserdata(L, lua_upvalueindex(1));
     int level = luaL_checkinteger(L, 1);
     const char *log = luaL_checkstring(L, 2);
-    shaco_context_log(ctx, level, log);
+    shaco_log(ctx, level, log);
 	return 0;
 }
 
@@ -59,11 +59,17 @@ lsend(lua_State *L) {
     }
     int session = luaL_checkinteger(L, 3);
     int type = luaL_checkinteger(L, 4);
-    // todo : string
-    luaL_checktype(L, 5, LUA_TLIGHTUSERDATA);
-    void *msg = lua_touserdata(L, 5);
-    int sz = luaL_checkinteger(L, 6);
-    shaco_send(dest, source, session, type|SHACO_DONT_COPY, msg, sz);
+    void *msg;
+    size_t sz;
+    if (lua_type(L,5)==LUA_TLIGHTUSERDATA) {
+        luaL_checktype(L, 5, LUA_TLIGHTUSERDATA);
+        msg = lua_touserdata(L, 5);
+        sz = luaL_checkinteger(L, 6);
+        type |= SHACO_DONT_COPY;
+    } else {
+        msg = (void*)luaL_checklstring(L, 5, &sz);
+    }
+    shaco_send(dest, source, session, type, msg, sz);
     return 0;
 }
 
@@ -94,8 +100,7 @@ _cb(struct shaco_context *ctx, void *ud, int source, int session, int type, cons
         lua_pop(L,1);
         return 0;
     }
-    uint32_t handle = shaco_context_handle(ctx);
-    shaco_error("[%04x] cb error: %s", handle, lua_tostring(L, -1));
+    shaco_error(ctx, "cb error: %s", lua_tostring(L, -1));
     lua_pop(L, 2);
     return 1;
 }
@@ -133,11 +138,15 @@ ltostring(lua_State *L) {
 
 static int
 ltopointstring(lua_State *L) {
-    luaL_checktype(L,1, LUA_TLIGHTUSERDATA);
-    void *p = lua_touserdata(L,1);
-    char tmp[24];
-    snprintf(tmp, sizeof(tmp), "%p", p);
-    lua_pushstring(L, tmp);
+    if (lua_type(L,1) == LUA_TNIL) {
+        lua_pushliteral(L, "0");
+    } else {
+        luaL_checktype(L,1, LUA_TLIGHTUSERDATA);
+        void *p = lua_touserdata(L,1);
+        char tmp[24];
+        snprintf(tmp, sizeof(tmp), "%p", p);
+        lua_pushstring(L, tmp);
+    }
     return 1;
 }
 

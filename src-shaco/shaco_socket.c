@@ -54,7 +54,7 @@ shaco_socket_init(int max_socket) {
         max = 1;
     N = net_create(max);
     if (N == NULL) {
-        shaco_exit("net_create fail, max=%d", max);
+        shaco_exit(NULL, "net_create fail, max=%d", max);
     }
 }
 
@@ -82,6 +82,11 @@ shaco_socket_connect(struct shaco_context *ctx, const char* addr, int port) {
 int 
 shaco_socket_blockconnect(struct shaco_context *ctx, const char *addr, int port) { 
     return socket_connect(N, addr, port, 1, shaco_context_handle(ctx)); 
+}
+
+int
+shaco_socket_start(struct shaco_context *ctx, int id) {
+    return socket_udata(N, id, shaco_context_handle(ctx));
 }
 
 int shaco_socket_close(int id, int force) { return socket_close(N, id, force); }

@@ -178,7 +178,8 @@ end
 function shaco.fork(func, ...)
     local args = {...}
     local co = coroutine.create(function()
-        assert(xpcall(func, debug.traceback, table.unpack(args)))
+        func(table.unpack(args))
+        --assert(xpcall(func, debug.traceback, table.unpack(args)))
     end)
     table.insert(_fork_queue, co)
 end
@@ -321,6 +322,13 @@ shaco.register_protocol {
 --    end
 --}
 --
+
+shaco.register_protocol {
+    id = shaco.TTEXT,
+    name = "text",
+    unpack = nil,
+    dispatch = nil
+}
 
 shaco.register_protocol {
     id = shaco.TLUA,

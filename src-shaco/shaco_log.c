@@ -1,5 +1,6 @@
 #include "shaco_log.h"
 #include "shaco.h"
+#include "shaco_context.h"
 #include "shaco_timer.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,42 +52,42 @@ shaco_log_setlevel(const char* level) {
 }
 
 static inline void
-_prefix(int level) {
+_prefix(struct shaco_context *ctx, int level) {
     char tmp[64];
     uint64_t now = shaco_timer_now();
     time_t sec = now / 1000;
     uint32_t msec = now % 1000;
     strftime(tmp, sizeof(tmp), "%y%m%d-%H:%M:%S.", localtime(&sec));
-    fprintf(F, "%d %s%03d %s: ", (int)getpid(), tmp, msec, _levelstr(level));
+    fprintf(F, "%d %s%03d %s: [%02x] ", (int)getpid(), tmp, msec, _levelstr(level), ctx ? shaco_context_handle(ctx):0 );
 }
 
 static inline void
-_log(int level, const char *log) {
-    _prefix(level);
+_log(struct shaco_context *ctx, int level, const char *log) {
+    _prefix(ctx, level);
     fprintf(F, "%s\n", log);
     fflush(F);
 }
 
 static inline void
-_logv(int level, const char *fmt, va_list ap) {
-    _prefix(level);
+_logv(struct shaco_context *ctx, int level, const char *fmt, va_list ap) {
+    _prefix(ctx, level);
     vfprintf(F, fmt, ap);
     fprintf(F, "%s", "\n");
     fflush(F);
 }
 
 void
-shaco_log(int level, const char *fmt, ...) {
+shaco_log(struct shaco_context *ctx, int level, const char *fmt, ...) {
     if (level < LEVEL)
         return;
     va_list ap;
     va_start(ap, fmt);
-    _logv(level, fmt, ap);
+    _logv(ctx, level, fmt, ap);
     va_end(ap);
 }
 
 void
-shaco_backtrace() {
+shaco_backtrace(struct shaco_context *ctx) {
     void* addrs[24];
     int i, n;
     char** symbols;
@@ -94,30 +95,30 @@ shaco_backtrace() {
     symbols = backtrace_symbols(addrs, n);
     if (symbols) {
         for (i=0; i<n; ++i) {
-            _log(LOG_PANIC, symbols[i]);
+            _log(ctx, LOG_PANIC, symbols[i]);
         }
         free(symbols);
     }
 }
 
 void
-shaco_exit(const char *fmt, ...) {
+shaco_exit(struct shaco_context *ctx, const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    _logv(LOG_PANIC, fmt, ap);
+    _logv(ctx, LOG_PANIC, fmt, ap);
     va_end(ap);
     exit(1);
 }
 
 void 
-shaco_panic(const char* fmt, ...) {
+shaco_panic(struct shaco_context *ctx, const char* fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    _logv(LOG_PANIC, fmt, ap);
+    _logv(ctx, LOG_PANIC, fmt, ap);
     va_end(ap);
 
-    _log(LOG_PANIC, "Panic detected at:");
-    shaco_backtrace();
+    _log(ctx, LOG_PANIC, "Panic detected at:");
+    shaco_backtrace(ctx);
     abort();
 }
 

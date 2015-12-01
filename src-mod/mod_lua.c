@@ -36,10 +36,10 @@ _traceback(lua_State *L) {
 }
 
 int
-lua_init(struct shaco_context *s, struct lua *self, const char *args) {
+lua_init(struct shaco_context *ctx, struct lua *self, const char *args) {
     lua_State *L = lua_newstate(shaco_lalloc, NULL);
     luaL_openlibs(L);
-    lua_pushlightuserdata(L, s);
+    lua_pushlightuserdata(L, ctx);
     lua_setfield(L, LUA_REGISTRYINDEX, "shaco_context");
     self->L = L;
     lua_pushcfunction(L, _traceback);
@@ -60,14 +60,14 @@ lua_init(struct shaco_context *s, struct lua *self, const char *args) {
     const char *loader = shaco_optstr("lualoader", "./lua-shaco/loader.lua");
     int r = luaL_loadfile(L, loader);
     if (r != LUA_OK) {
-        shaco_error("%s", lua_tostring(L, -1));
+        shaco_error(ctx, "%s", lua_tostring(L, -1));
         lua_pop(L, 2);
         return 1;
     }
     lua_pushstring(L, args);
     r = lua_pcall(L, 1, 0, 1);
     if (r != LUA_OK) {
-        shaco_error("%s", lua_tostring(L, -1));
+        shaco_error(ctx, "%s", lua_tostring(L, -1));
         lua_pop(L, 2);
         return 1;
     } else {

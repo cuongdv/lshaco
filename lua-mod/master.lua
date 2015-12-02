@@ -17,14 +17,14 @@ local function pack(...)
     return string.char(#msg)..msg
 end
 
-local function read_pack(id)
+local function read_package(id)
     local sz  = assert(socket.read(id, '*1'))
     local msg = assert(socket.read(id, sz))
     return shaco.unpackstring(msg)
 end
 
 local function dispatch_slave(sock)
-    local t, name, handle = read_pack(sock)
+    local t, name, handle = read_package(sock)
     if t=='R' then
         if not _global_names[name] then
             _global_names[name] = handle
@@ -68,7 +68,7 @@ end
 local function accept_slave(sock)
     socket.start(sock)
     socket.readenable(sock, true)
-    local t, slaveid, addr = read_pack(sock)
+    local t, slaveid, addr = read_package(sock)
     assert(t=='H' and
         type(slaveid)=='number' and
         type(addr)=='string', 'Handshake fail')
@@ -85,7 +85,7 @@ local function accept_slave(sock)
 
     _slaves[slaveid] = {id=slaveid, sock=sock, addr = addr}
     shaco.info(string.format('Slave %02x#%s register', slaveid, addr))
-    return 'ok', slaveid
+    return slaveid
 end
 
 shaco.start(function()
@@ -94,8 +94,9 @@ shaco.start(function()
     local sock = assert(socket.listen(addr))
     socket.start(sock, function(id)
         shaco.fork(function()
-            local ok, info, slaveid = pcall(accept_slave, id)
+            local ok, info = pcall(accept_slave, id)
             if ok then
+                local slaveid = info
                 monitor_slave(slaveid)
             else
                 shaco.error(info)

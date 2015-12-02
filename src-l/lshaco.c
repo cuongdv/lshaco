@@ -33,7 +33,7 @@ llog(lua_State *L) {
     struct shaco_context *ctx = lua_touserdata(L, lua_upvalueindex(1));
     int level = luaL_checkinteger(L, 1);
     const char *log = luaL_checkstring(L, 2);
-    shaco_log(ctx, level, log);
+    shaco_log(ctx, level, "%s", log);
 	return 0;
 }
 

@@ -152,7 +152,7 @@ shaco_timer_trigger() {
         if (h->p[0].expire <= T->machine_elapsed_time) {
             struct time_node n;
             time_pop(h, &n);
-            shaco_send_local_directly(n.handle, 0, n.session, SHACO_TTIME, NULL, 0);
+            shaco_handle_send(n.handle, 0, n.session, SHACO_TTIME, NULL, 0);
         } else {
             break;
         }

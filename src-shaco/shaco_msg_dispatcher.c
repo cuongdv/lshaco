@@ -1,8 +1,6 @@
 #include "shaco_harbor.h"
 #include "shaco_context.h"
 #include "shaco_malloc.h"
-#include "shaco_handle.h"
-#include "shaco_malloc.h"
 #include "shaco_log.h"
 #include "shaco.h"
 #include <string.h>
@@ -75,7 +73,7 @@ shaco_msg_dispatch() {
     for (i=0; i<SHACO_MSG_BATCH; ++i) {
         struct message *m = shaco_msg_pop();
         if (m) {
-            shaco_send_local_directly(m->dest, m->source, m->session, m->type, m->msg, m->sz);
+            shaco_handle_send(m->dest, m->source, m->session, m->type, m->msg, m->sz);
             shaco_free((void*)m->msg);
         } else break;
     }
@@ -107,18 +105,8 @@ shaco_msg_dispatcher_fini() {
 }
 
 void
-shaco_send_local_directly(int dest, int source, int session, int type, const void *msg, int sz) {
-    struct shaco_context *ctx = shaco_handle_context(dest);
-    if (ctx) {
-        shaco_context_send(ctx, source, session, type, msg, sz);
-    } else {
-        shaco_error(NULL,"Context no found: %0x->%0x session:%d type:%d sz:%d",
-                source, dest, session, type, sz);
-    }
-}
-
-void
-shaco_send(int dest, int source, int session, int type, const void *msg, int sz) {
+shaco_send(struct shaco_context *ctx, int dest, int session, int type, const void *msg, int sz) {
+    uint32_t source = shaco_context_handle(ctx);
     if (shaco_harbor_isremote(dest)) {
         bool free;
         if (type & SHACO_DONT_COPY) {

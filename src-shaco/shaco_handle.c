@@ -37,8 +37,6 @@ shaco_handle_register(struct shaco_context *ctx) {
     }
     H->contexts[H->context_count++] = ctx;
     uint32_t handle = H->context_count;
-    // todo
-    //shaco_handle_bindname(handle, ctx->module->name);
     return handle;
 }
 
@@ -72,6 +70,17 @@ shaco_handle_bindname(uint32_t handle, const char *name) {
     struct namehandle *h = &H->handles[H->handle_count++];
     h->name = shaco_strdup(name);
     h->handle = handle;
+}
+
+void
+shaco_handle_send(int dest, int source, int session, int type, const void *msg, int sz) {
+    struct shaco_context *ctx = shaco_handle_context(dest);
+    if (ctx) {
+        shaco_context_send(ctx, source, session, type, msg, sz);
+    } else {
+        shaco_error(NULL,"Context no found: %0x->%0x session:%d type:%d sz:%d",
+                source, dest, session, type, sz);
+    }
 }
 
 void

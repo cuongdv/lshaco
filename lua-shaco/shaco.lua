@@ -106,11 +106,11 @@ end
 
 function shaco.send(dest, typename, msg, sz)
     local p = proto[typename]
-    return c.send(nil, dest, 0, p.id, msg, sz)
+    return c.send(dest, 0, p.id, msg, sz)
 end
 
 function shaco.ret(session, dest, msg, sz)
-    return c.send(nil, dest, session, shaco.TRET, msg, sz)
+    return c.send(dest, session, shaco.TRET, msg, sz)
 end
 
 local function gen_session()
@@ -129,7 +129,7 @@ function shaco.call(dest, typename, ...)
     session = gen_session()
     assert(_suspend_co_map[session] ==nil)
     _suspend_co_map[session] = co
-    c.send(nil, dest, session, p.id, shaco.pack(...))
+    c.send(dest, session, p.id, shaco.pack(...))
     session, msg, sz = coroutine.yield()
     _suspend_co_map[session] = nil
     return shaco.unpack(msg, sz)

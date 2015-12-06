@@ -45,31 +45,25 @@ lnow(lua_State *L) {
 
 static int
 lsend(lua_State *L) {
-    int source;
-    if (lua_type(L, 1) == LUA_TNIL) {
-        struct shaco_context *ctx = lua_touserdata(L, lua_upvalueindex(1));
-        source = shaco_context_handle(ctx);
-    } else {
-        source = luaL_checkinteger(L, 1);
-    }
-    int dest = lua_tointeger(L,2);
+    struct shaco_context *ctx = lua_touserdata(L, lua_upvalueindex(1));
+    int dest = lua_tointeger(L,1);
     if (dest == 0) {
-        const char *name = luaL_checkstring(L,2);
+        const char *name = luaL_checkstring(L,1);
         dest = shaco_handle_query(name);
     }
-    int session = luaL_checkinteger(L, 3);
-    int type = luaL_checkinteger(L, 4);
+    int session = luaL_checkinteger(L, 2);
+    int type = luaL_checkinteger(L, 3);
     void *msg;
     size_t sz;
-    if (lua_type(L,5)==LUA_TLIGHTUSERDATA) {
-        luaL_checktype(L, 5, LUA_TLIGHTUSERDATA);
-        msg = lua_touserdata(L, 5);
-        sz = luaL_checkinteger(L, 6);
+    if (lua_type(L,4)==LUA_TLIGHTUSERDATA) {
+        luaL_checktype(L, 4, LUA_TLIGHTUSERDATA);
+        msg = lua_touserdata(L, 4);
+        sz = luaL_checkinteger(L, 5);
         type |= SHACO_DONT_COPY;
     } else {
-        msg = (void*)luaL_checklstring(L, 5, &sz);
+        msg = (void*)luaL_checklstring(L, 4, &sz);
     }
-    shaco_send(dest, source, session, type, msg, sz);
+    shaco_send(ctx, dest, session, type, msg, sz);
     return 0;
 }
 

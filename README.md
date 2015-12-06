@@ -1,7 +1,13 @@
 Todo
-====
-2. shaco_msg_dispatch
-3. remote service query
+===
+1. remote service query
+
+Bug
+===
+valgrind --leak-check=yes ./shaco conf/config
+start service1
+start service2
+coredump
 
 ###monitor###
 1. one-time monitor

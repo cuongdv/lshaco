@@ -327,18 +327,16 @@ shaco.register_protocol {
 --}
 --
 
---shaco.register_protocol {
---    id = shaco.TTEXT,
---    name = "text",
---    unpack = nil,
---    dispatch = nil
---}
+shaco.register_protocol {
+    id = shaco.TTEXT,
+    name = "text",
+    unpack = shaco.tostring,
+}
 
 shaco.register_protocol {
     id = shaco.TLUA,
     name = "lua",
     unpack = shaco.unpack,
-    dispatch = nil
 }
 
 shaco.register_protocol {

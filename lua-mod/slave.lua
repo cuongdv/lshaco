@@ -9,12 +9,6 @@ local _master_sock
 local _wait
 local _connect_queue
 
-shaco.register_protocol {
-    id = shaco.TTEXT,
-    name = "text",
-    unpack = shaco.tostring,
-}
-
 local function pack(...)
     local msg = shaco.packstring(...)
     return string.char(#msg)..msg
@@ -165,25 +159,18 @@ local function connect_master()
         sock = assert(socket.connect(addr))
         socket.readon(sock)
         assert(socket.send(sock, pack('H', _slaveid, _addr)))
+        _wait = {}
         local t, n = read_package(sock)
-        while true do
-            _wait = {}
-            assert(t=='W' and type(n)=='number', 'Handshake fail')
-            if n > 0 then
-                for i=1,n do
-                    local t, slaveid, addr = read_package(sock)
-                    assert(t=='S' and 
-                        type(slaveid)=='number' and 
-                        type(addr)=='string', 'Handshake fail')
-                    if _slaves[slaveid] == nil then
-                        _wait[slaveid] = addr
-                    end
+        assert(t=='W' and type(n)=='number', 'Handshake fail')
+        if n > 0 then
+            for i=1,n do
+                local t, slaveid, addr = read_package(sock)
+                assert(t=='S' and 
+                    type(slaveid)=='number' and 
+                    type(addr)=='string', 'Handshake fail')
+                if _slaves[slaveid] == nil then
+                    _wait[slaveid] = addr
                 end
-            end
-            assert(socket.send(sock, pack('.')))
-            t, n = read_package(sock)
-            if t=='.' then
-                break
             end
         end
     end)
@@ -194,7 +181,29 @@ local function connect_master()
     end
 end
 
-local function waiting_slaves(co_main)
+local function listen()
+    local sock
+    local ok, info = pcall(function()
+        shaco.info(string.format('Slave %02x listen on %s',
+            _slaveid, _addr))
+        sock = assert(
+        socket.listen(_addr, function(id)
+            local ok, info = pcall(accept_slave, id)
+            if not ok then
+                shaco.error(info)
+                socket.close(id)
+            else
+                _wait[info] = nil
+            end
+        end))
+    end)
+    if not ok then
+        shaco.error(info)
+    else return sock
+    end
+end
+
+local function waiting_slaves(sock, co_main)
     local n = 0
     for k, v in pairs(_wait) do
         n = n + 1
@@ -202,18 +211,6 @@ local function waiting_slaves(co_main)
     if n == 0 then
         return
     end
-    shaco.info(string.format('Slave %02x listen on %s wait for %d slaves',
-        _slaveid, _addr, n))
-    local sock = assert(
-    socket.listen(_addr, function(id)
-        local ok, info = pcall(accept_slave, id)
-        if not ok then
-            shaco.error(info)
-            socket.close(id)
-        else
-            _wait[info] = nil
-        end
-    end))
     shaco.fork(function(co_main)
         while _wait do
             local n = 0
@@ -225,7 +222,6 @@ local function waiting_slaves(co_main)
             end
             shaco.sleep(10)
         end
-        socket.close(sock)
         if _master_sock then
             shaco.wakeup(co_main)
         -- or co_main is wakeup by handle_master
@@ -244,17 +240,23 @@ shaco.start(function()
     while true do
         _wait = nil
         _connect_queue = {}
-        _master_sock = connect_master()
-        if _master_sock then
-            local co_main = coroutine.running()
-            shaco.fork(handle_master, co_main)
-            waiting_slaves(co_main)
+        local slave_sock = listen()
+        if slave_sock then
+            _master_sock = connect_master()
             if _master_sock then
-                shaco.info('Handshake ok')
-                shaco.fork(ready)
-                shaco.wait()
+                local co_main = coroutine.running()
+                shaco.fork(handle_master, co_main)
+                waiting_slaves(slave_sock, co_main)
+                socket.close(slave_sock)
+                if _master_sock then
+                    shaco.info('Handshake ok')
+                    shaco.fork(ready)
+                    shaco.wait()
+                else
+                    shaco.error('Handshake break by master exit')
+                end
             else
-                shaco.error('Handshake break by master exit')
+                socket.close(slave_sock)
             end
         end
         shaco.sleep(3000)

@@ -1,13 +1,8 @@
 local shaco = require "shaco"
 local socket = require "socket"
 
-local _slave_version = 0
 local _slaves = {}
 local _global_names = {}
-
-local function update_slave_version()
-    _slave_version = _slave_version + 1
-end
 
 local function pack(...)
     local msg = shaco.packstring(...)
@@ -54,7 +49,6 @@ local function monitor_slave(slaveid)
     end
     socket.close(sock)
     _slaves[slaveid] = nil
-    update_slave_version()
     for k, v in pairs(_slaves) do
         socket.send(v.sock, pack('D', slaveid))
     end
@@ -72,25 +66,20 @@ local function accept_slave(sock)
     if _slaves[slaveid] then
         error(string.format('Slave %02x already register on %s', slaveid, addr))
     end
-    repeat
-        local version = _slave_version
-        local n = 0
-        for k, v in pairs(_slaves) do
-            n = n + 1
-        end
-        assert(socket.send(sock, pack('W', n)))
-        for k, v in pairs(_slaves) do
-            assert(socket.send(sock, pack('S', v.id, v.addr)))
-        end
-        assert(read_package(sock) == '.')
-    until version == _slave_version
-    assert(socket.send(sock, pack('.')))
+    
+    local n = 0
+    for k, v in pairs(_slaves) do
+        n = n + 1
+    end
+    assert(socket.send(sock, pack('W', n)))
+    for k, v in pairs(_slaves) do
+        assert(socket.send(sock, pack('S', v.id, v.addr)))
+    end
 
     for k, v in pairs(_slaves) do
         socket.send(v.sock, pack('C', slaveid, addr))
     end
     _slaves[slaveid] = {id=slaveid, sock=sock, addr = addr}
-    update_slave_version()
     shaco.info(string.format('Slave %02x#%s register', slaveid, addr))
     return slaveid
 end

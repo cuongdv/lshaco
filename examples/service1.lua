@@ -1,16 +1,15 @@
 local shaco = require "shaco"
 
-shaco.register_protocol {
-    id = shaco.TTEXT,
-    name = "text",
-    unpack = shaco.tostring,
-}
-
 shaco.start(function()
     local S2
+    local i = 0
     shaco.dispatch('text', function(source, session, value)
         print ('service2 read:'..value)
+        i=i+1
+        if i<1000 then
         shaco.send(S2, 'text', 'ping')
+        print ('service2 send: ping')
+    end
     end)
     
     shaco.register('.service1')

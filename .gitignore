@@ -1,16 +1,9 @@
 *.so
 *.o
 *.dSYM
-*.swp
 .*
-3rdlib
 tool/srcpack
 tool/*.sl
-bin/shaco
-bin/shaco-cli
-bin/test
-bin/*.history
-bin/*.lso
 3rd/lua/src/liblua.a
 3rd/lua/src/lua
 3rd/lua/src/luac

@@ -7,3 +7,4 @@ tool/*.sl
 3rd/lua/src/liblua.a
 3rd/lua/src/lua
 3rd/lua/src/luac
+3rd/pbc/build

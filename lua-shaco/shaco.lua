@@ -211,9 +211,7 @@ function shaco.sleep(interval)
     assert(_suspend_co_map[session]==nil)
     _suspend_co_map[session] = co
     c.timer(session, interval)
-    --print ('---- sleep session:', tostring(session), interval, co)
     session = coroutine.yield()
-    --print ('---- sleep session yield return:', tostring(session), co)
     _suspend_co_map[session] = nil
 end
 

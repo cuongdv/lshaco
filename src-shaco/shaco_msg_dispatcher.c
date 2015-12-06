@@ -7,8 +7,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#define SHACO_MSG_BATCH 10
-
 #define INIT_CAP 8
 
 struct message {
@@ -68,13 +66,14 @@ shaco_msg_pop() {
 
 void
 shaco_msg_dispatch() {
-    int i;
-    // todo: just process current piece
-    for (i=0; i<SHACO_MSG_BATCH; ++i) {
+    int tail = Q->tail;
+    while (true) {
         struct message *m = shaco_msg_pop();
         if (m) {
             shaco_handle_send(m->dest, m->source, m->session, m->type, m->msg, m->sz);
             shaco_free((void*)m->msg);
+            if (Q->head == tail)
+                break;
         } else break;
     }
 }

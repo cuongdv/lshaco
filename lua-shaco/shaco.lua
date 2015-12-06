@@ -19,7 +19,7 @@ local _wakeuping
 local proto = {}
 local shaco = {
     TTEXT = 1,
-    TLUA   = 2,
+    TLUA = 2,
     TMONITOR = 3,
     TLOG = 4,
     TCMD = 5,
@@ -87,18 +87,11 @@ end
 
 local function co_create(func)
     -- todo: conroutine cache pool
-    return coroutine.create(func)
+    return coroutine.create(function(...)
+        assert(xpcall(func, debug.traceback, ...))
+    end)
+    --return coroutine.create(func)
 end
-
---local function fix_um_dispatch(f)
---    return function(session, source, ...)
---        local co = coroutine.create(
---            function(session, source, ...)
---                assert(xpcall(f, debug.traceback, session, source, ...))
---            end)
---        assert(coroutine.resume(co, session, source, ...))
---    end
---end
 
 function shaco.register_protocol(class)
     if proto[class.id] then
@@ -169,6 +162,17 @@ local function dispatchcb(source, session, typeid, msg, sz)
        typeid == 6 then -- shaco.TRET then
         p.dispatch(source, session, p.unpack(msg, sz))
     else
+--    return function(session, source, ...)
+--        local co = coroutine.create(
+--            function(session, source, ...)
+--                assert(xpcall(f, debug.traceback, session, source, ...))
+--            end)
+--        assert(coroutine.resume(co, session, source, ...))
+--    end
+        --local co = coroutine.create(
+        --    function(...)
+        --        assert(xpcall(p.dispatch, debug.traceback, ...))
+        --    end)
         local co = co_create(p.dispatch)
         assert(coroutine.resume(co, source, session, p.unpack(msg, sz)))
     end
@@ -178,8 +182,8 @@ end
 function shaco.fork(func, ...)
     local args = {...}
     local co = coroutine.create(function()
-        func(table.unpack(args))
-        --assert(xpcall(func, debug.traceback, table.unpack(args)))
+        --func(table.unpack(args))
+        assert(xpcall(func, debug.traceback, table.unpack(args)))
     end)
     table.insert(_fork_queue, co)
 end
@@ -207,7 +211,9 @@ function shaco.sleep(interval)
     assert(_suspend_co_map[session]==nil)
     _suspend_co_map[session] = co
     c.timer(session, interval)
+    --print ('---- sleep session:', tostring(session), interval, co)
     session = coroutine.yield()
+    --print ('---- sleep session yield return:', tostring(session), co)
     _suspend_co_map[session] = nil
 end
 
@@ -323,12 +329,12 @@ shaco.register_protocol {
 --}
 --
 
-shaco.register_protocol {
-    id = shaco.TTEXT,
-    name = "text",
-    unpack = nil,
-    dispatch = nil
-}
+--shaco.register_protocol {
+--    id = shaco.TTEXT,
+--    name = "text",
+--    unpack = nil,
+--    dispatch = nil
+--}
 
 shaco.register_protocol {
     id = shaco.TLUA,

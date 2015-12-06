@@ -1,27 +1,36 @@
 local shaco = require "shaco"
 local c = require "socket.c"
 local socketbuffer = require "socketbuffer.c"
-local coroutine = coroutine
+local co_running = coroutine.running
+local string = string
+local assert = assert
+local type = type
+local tonumber = tonumber
 
 local socket_pool = {}
 
 local function suspend(s)
-    assert(s.co == coroutine.running())
-    coroutine.yield() 
-    local data = s.__data
-    local err = s.__error
-    s.__data = nil
-    s.__error = nil
-    return data, err
+    assert(not s.co)
+    s.co = co_running()
+    shaco.wait()
 end
 
-local function disconnect(id, force, err)
-    local s = socket_pool[id]
-    if s then
-        assert(s.id == id)
-        socket_pool[id] = nil
+local function wakeup(s)
+    local co = s.co
+    if co then
+        s.co = nil
+        shaco.wakeup(co)
     end
-    c.close(id, force)
+end
+
+local function close(s, force)
+    if s then
+        local id = s.id
+        socket_pool[id] = nil
+        if s.connected then
+            c.close(id, force)
+        end
+    end
 end
 
 local event = {}
@@ -29,25 +38,30 @@ local event = {}
 -- LS_EREAD
 event[0] = function(id)
     local s = socket_pool[id] 
-    if s == nil then return end
-    local data, n = c.read(id)
-    if data then
-        s.buffer:push(data, n)
-        if s.mode then
-            local data = s.buffer:pop(s.mode)
-            if data then
-                s.__data = data
-                shaco.wakeup(s.co)
+    if s then
+        local data, n = c.read(id)
+        if data then
+            n = s.buffer:push(data, n)
+            local format = s.read_format
+            local rt = type(format)
+            -- read by number, or socket.block
+            if rt == 'number' then 
+                if n >= format then 
+                    wakeup(s)
+                end
+            -- read by separator
+            elseif rt == 'string' then
+                if s.buffer:findsep(format) then
+                    wakeup(s)
+                end
+            else -- read all
+                wakeup(s)
             end
-        else -- see socket.block
-            s.__data = true
-            shaco.wakeup(s.co)
+        elseif n then -- no data, n may is error
+            s.connected = false
+            s.error = n 
+            wakeup(s)
         end
-    elseif n then
-        local co = s.co
-        disconnect(id, true, n)
-        s.__error = c.error(n)
-        shaco.wakeup(co)
     end
 end
 
@@ -60,27 +74,33 @@ end
 -- LS_ECONNECT
 event[2] = function(id)
     local s = socket_pool[id]
-    assert(s.id == id)
-    s.__data = s.id
-    shaco.wakeup(s.co, s.id)
+    if not s then
+        return
+    end
+    s.connected = true
+    wakeup(s)
 end
 
 -- LS_ECONNERR
 event[3] = function(id, err)
     local s = socket_pool[id]
-    assert(s.id == id)
-    disconnect(id, true, err)
-    s.__error = c.error(err)
-    shaco.wakeup(s.co) 
+    if not s then
+        return
+    end
+    s.connected = false
+    s.error = err
+    wakeup(s) 
 end
 
 -- LS_ESOCKERR
 event[4] = function(id, err)
     local s = socket_pool[id]
-    assert(s.id == id)
-    disconnect(c, true, err)
-    self.__error = c.error(err)
-    shaco.wakeup(s.co)
+    if not s then
+        return
+    end
+    s.connected = false
+    s.error = err
+    wakeup(s)
 end
 
 shaco.register_protocol {
@@ -95,45 +115,35 @@ shaco.register_protocol {
 
 local socket = {}
 
-function socket.listen(ip, port)
-    if port == nil then
-        ip, port = string.match(ip, '([^:]+):(%d+)$')
-        port = tonumber(port)
-    end
-    return c.listen(ip, port)
+local function alloc(id, callback)
+    local s = socket_pool[id]
+    assert(not s)
+    s = { 
+        id = id,
+        connected = false,
+        co = false,
+        buffer = false,
+        read_format = false,
+        callback = callback,
+        error = "none",
+    }
+    socket_pool[id] = s
+    return s
 end
 
-function socket.connect(ip, port)
-    if port == nil then
-        ip, port = string.match(ip, '([^:]+):(%d+)$')
-        port = tonumber(port)
-    end
-    local id, err, conning = c.connect(ip, port)
-    if id then
-        socket.start(id)
-        if conning then
-            local s = socket_pool[id]
-            return suspend(s)
-        else return id end
-    else return nil, c.error(err)
-    end
+function socket.start(id)
+    local s = alloc(id)
+    s.connected = true
 end
 
-function socket.start(id, callback)
+function socket.abandon(id)
     local s = socket_pool[id]
     if s then
-        s.co = coroutine.running()
-    else
-        socket_pool[id] = { 
-            id = id,
-            co = coroutine.running(),
-            buffer = nil,
-            mode = "*l",
-            callback = callback,
-        }
+        socket_pool[id] = nil
     end
 end
 
+-- return the remain buffer data (p, sz)
 function socket.detachbuffer(id)
     local s = socket_pool[id]
     if s and s.buffer then
@@ -141,74 +151,141 @@ function socket.detachbuffer(id)
     end
 end
 
-function socket.abandon(id)
-    local s = socket_pool[id]
-    if s then
-        assert(s.id == id)
-        socket_pool[id] = nil
+function socket.listen(ip, port, callback)
+    if type(port) == 'function' then
+        callback = port
+        ip, port = string.match(ip, '([^:]+):(%d+)$')
+        port = tonumber(port)
+    else
+        assert(type(callback)=='function')
+    end
+    local id, err = c.listen(ip, port)
+    if id then
+        local s = alloc(id, callback)
+        s.connected = true
+        return id
+    else 
+        return id, err
+    end
+end
+
+function socket.connect(ip, port)
+    if port == nil then
+        ip, port = string.match(ip, '([^:]+):(%d+)$')
+        port = tonumber(port)
+    end
+    local id, conning = c.connect(ip, port)
+    if id then
+        local s = alloc(id)
+        if conning then 
+            suspend(s)
+            if s.connected then
+                return s.id
+            else
+                socket_pool[id] = nil
+                return nil, s.error
+            end
+        else return id end
+    else 
+        return nil, conning -- error
+    end
+end
+
+-- wrap a exist fd to socket
+function socket.bind(fd)
+    local id, err = c.bind(fd)
+    if id then
+        local s = alloc(id)
+        s.connected = true
+        return id
+    else 
+        return nil, err
     end
 end
 
 function socket.stdin()
     local id, err = socket.bind(0)
     if id then
-        socket.start(id)
-        socket.readenable(id, true)
+        socket.readon(id)
         return id
     else
         return nil, err
     end
 end
 
-function socket.bind(fd)
-    return c.bind(fd)
+function socket.shutdown(id)
+    local s = socket_pool[id]
+    if s then
+        close(s, false)
+    end
+end
+
+function socket.close(id)
+    local s = socket_pool[id]
+    if s then
+        close(s, true)
+    end
+end
+
+function socket.readon(id)
+    local s = socket_pool[id]
+    assert(s) 
+    c.readon(id)
+    if not s.buffer then 
+        s.buffer = socketbuffer.new()
+    end
+end
+
+function socket.readoff(id)
+    local s = socket_pool[id]
+    assert(s) 
+    c.readoff(id)
 end
 
 function socket.block(id)
     local s = socket_pool[id]
     assert(s)
-    s.co = coroutine.running()
-    s.mode = nil
-    return suspend(s)
+    s.read_format = 0
+    suspend(s)
+    return s.connected, s.error
 end
 
-function socket.shutdown(id)
-    disconnect(id, false, 0)
-end
-
-function socket.close(id)
-    disconnect(id, true, 0)
-end
-
-function socket.readenable(id, enable)
-    local s = socket_pool[id]
-    assert(s) 
-    c.readenable(id, enable)
-    if enable and not s.buffer then     
-        s.buffer = socketbuffer.new()
-    end
-end
-
-function socket.read(id, mode)
-    assert(mode)
+function socket.read(id, format)
     local s = socket_pool[id]
     assert(s)
-    assert(s.id == id)
-    s.mode = mode
-    local data = s.buffer:pop(mode)
+    format = format or false
+    s.read_format = format
+    local data = s.buffer:pop(format)
     if data then
         return data
-    else
-        return suspend(s)
+    else -- check connected first 
+        if s.connected then 
+            suspend(s)
+            if s.connected then
+                return s.buffer:pop(format)
+            end
+        end
+        socket_pool[id] = nil
+        return nil, s.error
     end
 end
 
 function socket.send(id, data, i, j)
-    local err = c.send(id, data, i, j)
-    if err then
-        disconnect(id, true, err)
-        return nil, c.error(err)
-    else return true end
+    local s = socket_pool[id]
+    assert(s)
+    if s.connected then
+        local err = c.send(id, data, i, j)
+        if err then
+            socket_pool[id] = nil
+            return nil, err
+        else return true 
+        end
+    else
+        -- do not clear socket when connected is false,
+        -- do this only when reading
+        -- socket_pool[id] = nil
+        return nil, s.error
+    end
 end
 
 return socket

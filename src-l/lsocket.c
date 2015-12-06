@@ -59,16 +59,15 @@ lconnect(lua_State *L) {
     if (id >= 0) {
         if (shaco_socket_lasterrno() == LS_CONNECTING) {
             lua_pushinteger(L, id);
-            lua_pushnil(L);
             lua_pushboolean(L, 1);
-            return 3;
+            return 2;
         } else {
             lua_pushinteger(L, id);
             return 1;
         }
     } else {
         lua_pushnil(L);
-        lua_pushinteger(L, shaco_socket_lasterrno());
+        lua_pushstring(L, SHACO_SOCKETERR);
         return 2;
     }
 }
@@ -87,7 +86,7 @@ lread(lua_State *L) {
         return 1;
     } else {
         lua_pushnil(L);
-        lua_pushinteger(L, shaco_socket_lasterrno());
+        lua_pushstring(L, SHACO_SOCKETERR);
         return 2;
     }
 }
@@ -122,7 +121,8 @@ lsend(lua_State *L) {
         return luaL_argerror(L, 2, "invalid type");
     }
     int err = shaco_socket_send_nodispatcherror(id,msg,sz);
-    if (err != 0) lua_pushinteger(L,err);
+    if (err != 0) 
+        lua_pushstring(L, shaco_socket_error(err));
     else lua_pushnil(L);
     return 1;
 }
@@ -137,10 +137,16 @@ lclose(lua_State *L) {
 }
 
 static int
-lreadenable(lua_State *L) {
+lreadon(lua_State *L) {
     int id = luaL_checkinteger(L, 1);
-    int enable = lua_toboolean(L, 2);
-    shaco_socket_enableread(id, enable);
+    shaco_socket_enableread(id, 1);
+    return 0;
+}
+
+static int
+lreadoff(lua_State *L) {
+    int id = luaL_checkinteger(L, 1);
+    shaco_socket_enableread(id, 0);
     return 0;
 }
 
@@ -167,17 +173,6 @@ llimit(lua_State *L) {
     return 0;
 }
 
-static int
-lerror(lua_State *L) {
-    if (lua_gettop(L) == 0)
-        lua_pushstring(L, SHACO_SOCKETERR);
-    else {
-        int err = luaL_checkinteger(L, 1);
-        lua_pushstring(L, shaco_socket_error(err));
-    }
-    return 1;
-}
-
 // extra
 static int
 lunpack(lua_State *L) {
@@ -197,7 +192,7 @@ lunpack(lua_State *L) {
         return 3;
     case LS_ECONNERR:
     case LS_ESOCKERR:
-        lua_pushinteger(L, event->err);
+        lua_pushstring(L, shaco_socket_error(event->err));
         return 3;
     default:
         return 2;
@@ -287,10 +282,10 @@ luaopen_socket_c(lua_State *L) {
         {"close", lclose},
         {"read", lread},
         {"send", lsend},
-        {"readenable", lreadenable},
+        {"readon", lreadon},
+        {"readoff", lreadoff},
         {"address", laddress},
         {"limit", llimit}, 
-        {"error", lerror},
         {NULL, NULL},
     };
     luaL_Reg l3[] = {

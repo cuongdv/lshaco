@@ -27,6 +27,7 @@ struct slave {
 };
 
 struct harbor {
+    uint32_t slave_handle;
     int slaveid;
     struct slave slaves[NODE_MAX];
 };
@@ -98,10 +99,15 @@ static int
 _sock_error(struct shaco_context *ctx, struct harbor *self, int sock, int err) {
     struct slave *s = _find_slave_bysock(self, sock);
     if (s) {
-        shaco_info(ctx, "Slave %02x exit: %s", s->id, shaco_socket_error(err));
+        int slaveid = s->id;
+        shaco_info(ctx, "Slave %02x exit: %s", slaveid, shaco_socket_error(err));
         s->id = 0;
         s->sock = 0;
         sb_fini(&s->sb);
+        char tmp[64];
+        int n = sprintf(tmp, "D %d", slaveid);
+        shaco_send(self->slave_handle, shaco_context_handle(ctx), 
+                0, SHACO_TTEXT, tmp, n);
         return 0; 
     } else {
         shaco_info(ctx, "Unknown slave socket=%d error: %s", 
@@ -114,10 +120,8 @@ static int
 _handle_package(struct shaco_context *ctx, struct harbor *self, struct slave *s) {
     for (;;) {
         struct socket_pack package;
-        fprintf(stderr, "sb_pop ...\n");
         if (sb_pop(&s->sb, &package)) 
             break;
-        fprintf(stderr, "sb_pop ok: %d\n", (int)package.sz);
         if (package.sz <= HEADSZ) {
             shaco_free(package.p);
             _sock_error(ctx, self, s->sock, LS_ERR_MSG);
@@ -125,7 +129,6 @@ _handle_package(struct shaco_context *ctx, struct harbor *self, struct slave *s)
         }
         struct package_header header;
         void *p = _readheader(package.p, &header);
-        fprintf(stderr, "reader header: source %d dest %d type %d sesion %d\n", header.source, header.dest, header.type, header.session);
         shaco_send_local_directly(header.dest, header.source, 
                 header.session, header.type, p, package.sz-HEADSZ);
         shaco_free(package.p);
@@ -207,7 +210,9 @@ _command(struct shaco_context *ctx, struct harbor *self, int source, int session
             return 1;
         }
         if (s->id != 0) {
-            sb_fini(&s->sb);
+            shaco_error(ctx, "Slave %02x already exist", slaveid);
+            shaco_socket_close(sock, 1);
+            return 0;
         }
         shaco_socket_start(ctx, sock);
         s->id = slaveid;
@@ -216,7 +221,6 @@ _command(struct shaco_context *ctx, struct harbor *self, int source, int session
         uint64_t p = strtoll(bufp, NULL, 16);
         if (p && bufsz) {
             sb_push(&s->sb, (void*)p, bufsz);
-            fprintf(stderr, "sb_push: %p, %d\n", (void*)p, (int)bufsz);
             _handle_package(ctx, self, s);
         }
         break;}
@@ -252,9 +256,14 @@ cb(struct shaco_context *ctx, void *ud, int source, int session, int type, const
 
 int
 harbor_init(struct shaco_context *ctx, struct harbor *self, const char *args) {
+    if (args)
+        self->slave_handle = strtol(args, NULL, 16);
+    if (self->slave_handle == 0) {
+        shaco_exit(ctx, "Slave handle is none");
+    }
     self->slaveid = shaco_optint("slaveid", 0);
     if (self->slaveid == 0){
-        shaco_exit(ctx, "slaveid = 0");
+        shaco_exit(ctx, "Slaveid = 0");
     }
     shaco_callback(ctx, cb, self);
     shaco_harbor_start(ctx);

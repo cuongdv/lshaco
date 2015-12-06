@@ -1,16 +1,13 @@
---[[
-    slave -> master:
-    'H': Handshake, report slave handle, slave id, slave address
-
-    master -> slave:
-    'W': Wait n slave
-]]
-
 local shaco = require "shaco"
 local socket = require "socket"
 
+local _slave_version = 0
 local _slaves = {}
 local _global_names = {}
+
+local function update_slave_version()
+    _slave_version = _slave_version + 1
+end
 
 local function pack(...)
     local msg = shaco.packstring(...)
@@ -18,7 +15,7 @@ local function pack(...)
 end
 
 local function read_package(id)
-    local sz  = assert(socket.read(id, '*1'))
+    local sz  = string.byte(assert(socket.read(id, 1)))
     local msg = assert(socket.read(id, sz))
     return shaco.unpackstring(msg)
 end
@@ -49,7 +46,6 @@ local function monitor_slave(slaveid)
     local ok, err
     local slave = _slaves[slaveid]
     local sock  = slave.sock
-    socket.start(sock)
     while true do
         ok, err = pcall(dispatch_slave, sock)
         if not ok then
@@ -58,6 +54,7 @@ local function monitor_slave(slaveid)
     end
     socket.close(sock)
     _slaves[slaveid] = nil
+    update_slave_version()
     for k, v in pairs(_slaves) do
         socket.send(v.sock, pack('D', slaveid))
     end
@@ -67,7 +64,7 @@ end
 
 local function accept_slave(sock)
     socket.start(sock)
-    socket.readenable(sock, true)
+    socket.readon(sock)
     local t, slaveid, addr = read_package(sock)
     assert(t=='H' and
         type(slaveid)=='number' and
@@ -75,15 +72,25 @@ local function accept_slave(sock)
     if _slaves[slaveid] then
         error(string.format('Slave %02x already register on %s', slaveid, addr))
     end
+    repeat
+        local version = _slave_version
+        local n = 0
+        for k, v in pairs(_slaves) do
+            n = n + 1
+        end
+        assert(socket.send(sock, pack('W', n)))
+        for k, v in pairs(_slaves) do
+            assert(socket.send(sock, pack('S', v.id, v.addr)))
+        end
+        assert(read_package(sock) == '.')
+    until version == _slave_version
+    assert(socket.send(sock, pack('.')))
 
-    local n = 0
     for k, v in pairs(_slaves) do
         socket.send(v.sock, pack('C', slaveid, addr))
-        n = n + 1
     end
-    assert(socket.send(sock, pack('W', n)))
-
     _slaves[slaveid] = {id=slaveid, sock=sock, addr = addr}
+    update_slave_version()
     shaco.info(string.format('Slave %02x#%s register', slaveid, addr))
     return slaveid
 end
@@ -91,17 +98,15 @@ end
 shaco.start(function()
     local addr = assert(shaco.getenv('standalone'))
     shaco.info('Master listen on '..addr)
-    local sock = assert(socket.listen(addr))
-    socket.start(sock, function(id)
-        shaco.fork(function()
-            local ok, info = pcall(accept_slave, id)
-            if ok then
-                local slaveid = info
-                monitor_slave(slaveid)
-            else
-                shaco.error(info)
-                socket.close(id)
-            end
-        end)
-    end)
+    local sock = assert(
+    socket.listen(addr, function(id)
+        local ok, info = pcall(accept_slave, id)
+        if ok then
+            local slaveid = info
+            monitor_slave(slaveid)
+        else
+            shaco.error(info)
+            socket.close(id)
+        end
+    end))
 end)

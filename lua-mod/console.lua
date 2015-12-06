@@ -1,30 +1,32 @@
 local shaco = require "shaco"
 local socket = require "socket"
 
-local CMD = {}
+local console = {}
 
-function CMD.start(args)
-    assert(shaco.luaservice(args[1]))
+function console.help()
+    for k,v in pairs(console) do
+        print('* '..k)
+    end
 end
 
-function CMD.stop(args)
+function console.start(name)
+    assert(shaco.luaservice(name))
 end
 
 shaco.start(function()
     local id = assert(socket.stdin())
     while true do 
-        local cmdline = assert(socket.read(id, "*a"))
+        local cmdline = assert(socket.read(id))
         local args = {}
         for w in string.gmatch(cmdline, '[%w_]+') do
             table.insert(args, w)
         end
         if #args > 0 then
-            local func = CMD[args[1]]
+            local func = console[args[1]]
             if func then
-                table.remove(args, 1)
-                func(args)
+                func(select(2, table.unpack(args)))
             else
-                print("unknown cmd: "..args[1])
+                print("Unknown command "..args[1])
             end
         end
     end

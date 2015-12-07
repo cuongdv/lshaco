@@ -98,6 +98,9 @@ shaco_init() {
     shaco_socket_init(shaco_optint("maxsocket", 0));
     shaco_msg_dispatcher_init();
 
+    RUN = true; 
+    STOP_INFO[0] = '\0';
+
     const char *boot = shaco_optstr("bootstrap", "lua bootstrap");
     if (shaco_launch(NULL, boot) == 0) {
         shaco_exit(NULL, "bootstrap fail");
@@ -119,8 +122,6 @@ void
 shaco_start() {
     shaco_info(NULL, "Shaco start");
     int timeout;
-    STOP_INFO[0] = '\0';
-    RUN = true; 
     while (RUN) {
         timeout = shaco_timer_max_timeout();
         if (!shaco_msg_empty()) 
@@ -129,7 +130,7 @@ shaco_start() {
         shaco_timer_trigger();
         shaco_msg_dispatch();
     }
-    shaco_info(NULL, "Shaco stop(%s)", STOP_INFO);
+    shaco_info(NULL, "Shaco stop (%s)", STOP_INFO);
 }
 
 void

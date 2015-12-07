@@ -15,23 +15,41 @@ local function read_package(id)
     return shaco.unpackstring(msg)
 end
 
-local function dispatch_slave(sock)
-    local t, name, handle = read_package(sock)
-    if t=='R' then
-        if not _global_names[name] then
-            _global_names[name] = handle
+local slave = {}
+
+function slave.R(slave, name, handle)
+    local slaveid = slave.id
+    local sock = slave.sock
+    if handle <= 0 or handle >= 256 then
+        assert(string.format('Invalid handle %02x register by slave %02x', 
+        handle, slaveid))
+    end
+    handle = handle|(slaveid<<8)
+    if not _global_names[name] then
+        _global_names[name] = handle
+    end
+    local msg = pack('N', name, handle)
+    for k, v in pairs(_slaves) do
+        if v.sock ~= sock then
+            socket.send(v.sock, msg)
         end
-        local msg = pack('N', name, handle)
-        for k, v in pairs(_slaves) do
-            if v.sock ~= sock then
-                socket.send(v.sock, msg)
-            end
-        end
-    elseif t=='Q' then
-        local handle = _global_names[name]
-        if handle then
-            assert(socket.send(sock, pack('N', name, handle)))
-        end
+    end
+end
+
+function slave.Q(slave, name)
+    local sock = slave.sock
+    local handle = _global_names[name]
+    if handle then
+        assert(socket.send(sock, pack('N', name, handle)))
+    end
+end
+
+local function dispatch_slave(slave)
+    local sock = slave.sock
+    local t, p1, p2 = read_package(sock)
+    local func = slave[t]
+    if func then
+        func(slave, p1, p2)
     else
         shaco.error('Invalid slave message type '..t)
     end
@@ -42,7 +60,7 @@ local function monitor_slave(slaveid)
     local slave = _slaves[slaveid]
     local sock  = slave.sock
     while true do
-        ok, err = pcall(dispatch_slave, sock)
+        ok, err = pcall(dispatch_slave, slave)
         if not ok then
             break
         end
@@ -63,6 +81,7 @@ local function accept_slave(sock)
     assert(t=='H' and
         type(slaveid)=='number' and
         type(addr)=='string', 'Handshake fail')
+    assert(slaveid > 0 and slaveid < 256, 'Invalid slaveid')
     if _slaves[slaveid] then
         error(string.format('Slave %02x already register on %s', slaveid, addr))
     end

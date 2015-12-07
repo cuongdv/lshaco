@@ -32,7 +32,10 @@ shaco_context_create(const char *name, const char *args) {
     ctx->instance = shaco_module_instance_create(dl);
     ctx->handle = shaco_handle_register(ctx);
     if (ctx->module->init) {
-        ctx->module->init(ctx, ctx->instance, args); 
+        if (ctx->module->init(ctx, ctx->instance, args)) {
+            shaco_context_free(ctx);
+            return 0;
+        }
     }
     return ctx->handle;
 }
@@ -40,13 +43,13 @@ shaco_context_create(const char *name, const char *args) {
 void 
 shaco_context_free(struct shaco_context *ctx) {
     if (ctx) {
+        shaco_handle_unregister(ctx);
+        ctx->handle = 0;
         shaco_module_instance_free(ctx->module, ctx->instance);
         ctx->module = NULL;
         ctx->instance = NULL;
         shaco_free((void*)ctx->name);
         ctx->name = NULL;
-        ctx->handle = 0;
-        shaco_handle_unregister(ctx);
         shaco_free(ctx);
     }
 }
@@ -185,6 +188,12 @@ cmd_setloglevel(struct shaco_context *ctx, const char *param) {
     return NULL;
 }
 
+static const char *
+cmd_exit(struct shaco_context *ctx, const char *param) {
+    shaco_stop(param);
+    return NULL;
+}
+
 struct command C[] = {
     { "LAUNCH", cmd_launch },
     { "QUERY", cmd_query },
@@ -196,6 +205,7 @@ struct command C[] = {
     { "SETENV", cmd_setenv },
     { "GETLOGLEVEL", cmd_getloglevel },
     { "SETLOGLEVEL", cmd_setloglevel },
+    { "EXIT", cmd_exit },
     { NULL, NULL },
 };
 

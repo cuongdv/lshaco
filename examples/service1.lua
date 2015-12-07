@@ -11,7 +11,8 @@ shaco.start(function()
         print ('service2 send: ping')
     end
     end)
-    
+   
+    print ('register service1 ...')
     shaco.register('.service1')
     print ('query service2 ...')
     S2 = shaco.queryservice('.service2')

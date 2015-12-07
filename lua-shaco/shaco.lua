@@ -2,11 +2,24 @@ local c = require "shaco.c"
 local socket = require "socket.c"
 --local memory = require "memory.c"
 local serialize = require "serialize.c"
+local error = error
+local pairs = pairs
 local ipairs = ipairs
 local tostring = tostring
-local sfmt = string.format
+local tonumber = tonumber
+local assert = assert
+local xpcall = xpcall
+local pcall = pcall
+local sformat = string.format
+local tunpack = table.unpack
+local tremove = table.remove
 local tinsert = table.insert
 local tconcat = table.concat
+local cocreate = coroutine.create
+local coresume = coroutine.resume
+local coyield = coroutine.yield
+local corunning = coroutine.running
+local traceback = debug.traceback
 
 local _suspend_co_map = {}
 local _session_id = 0
@@ -69,7 +82,7 @@ end
 
 --local monitor_map = {}
 --function shaco.uniquemodule(name, active, eventcb)
---    local co = coroutine.running()
+--    local co = corunning()
 --    local vhandle, published = c.uniquemodule(name, active)
 --    if published then
 --        if eventcb then
@@ -77,7 +90,7 @@ end
 --        end
 --    else
 --        monitor_map[name] = { co=co, eventcb=eventcb }
---        coroutine.yield()
+--        coyield()
 --    end
 --    return vhandle
 --end
@@ -87,10 +100,10 @@ end
 
 local function co_create(func)
     -- todo: conroutine cache pool
-    return coroutine.create(function(...)
-        assert(xpcall(func, debug.traceback, ...))
+    return cocreate(function(...)
+        assert(xpcall(func, traceback, ...))
     end)
-    --return coroutine.create(func)
+    --return cocreate(func)
 end
 
 function shaco.register_protocol(class)
@@ -104,13 +117,14 @@ function shaco.register_protocol(class)
     proto[class.name] = class
 end
 
-function shaco.send(dest, typename, msg, sz)
+function shaco.send(dest, typename, ...)
     local p = proto[typename]
-    return c.send(dest, 0, p.id, msg, sz)
+    return c.send(dest, 0, p.id, p.pack(...))
 end
 
 function shaco.ret(session, dest, msg, sz)
-    return c.send(dest, session, shaco.TRET, msg, sz)
+    local p = proto['ret']
+    return c.send(dest, session, p.id, msg, sz)
 end
 
 local function gen_session()
@@ -123,25 +137,25 @@ end
 
 function shaco.call(dest, typename, ...)
     local p = proto[typename]
-    local co, ismain = coroutine.running()
+    local co, ismain = corunning()
     assert(ismain==false, "shaco.call should not in main coroutine")
     local session, msg, sz
     session = gen_session()
     assert(_suspend_co_map[session] ==nil)
     _suspend_co_map[session] = co
-    c.send(dest, session, p.id, shaco.pack(...))
-    session, msg, sz = coroutine.yield()
+    c.send(dest, session, p.id, p.pack(...))
+    session, msg, sz = coyield()
     _suspend_co_map[session] = nil
-    return shaco.unpack(msg, sz)
+    return p.unpack(msg, sz)
 end
 
 local function dispatch_wakeup()
     if not _wakeuping then
         while #_wakeup_queue > 0 do
-            local co = table.remove(_wakeup_queue, 1)
+            local co = tremove(_wakeup_queue, 1)
             _wakeup_map[co] = nil
             _wakeuping = co
-            assert(coroutine.resume(co))
+            assert(coresume(co))
             _wakeuping = nil
         end
     end
@@ -150,8 +164,8 @@ end
 local function dispatch_task()
     dispatch_wakeup()
     while #_fork_queue > 0 do
-        local co = table.remove(_fork_queue, 1)
-        assert(coroutine.resume(co))
+        local co = tremove(_fork_queue, 1)
+        assert(coresume(co))
         dispatch_wakeup()
     end
 end
@@ -160,43 +174,43 @@ local function dispatchcb(source, session, typeid, msg, sz)
     local p = proto[typeid]
     if typeid == 8 or -- shaco.TTIME or
        typeid == 6 then -- shaco.TRET then
-        p.dispatch(source, session, p.unpack(msg, sz))
+        p.dispatch(source, session, msg, sz)
     else
 --    return function(session, source, ...)
---        local co = coroutine.create(
+--        local co = cocreate(
 --            function(session, source, ...)
---                assert(xpcall(f, debug.traceback, session, source, ...))
+--                assert(xpcall(f, traceback, session, source, ...))
 --            end)
---        assert(coroutine.resume(co, session, source, ...))
+--        assert(coresume(co, session, source, ...))
 --    end
-        --local co = coroutine.create(
+        --local co = cocreate(
         --    function(...)
-        --        assert(xpcall(p.dispatch, debug.traceback, ...))
+        --        assert(xpcall(p.dispatch, traceback, ...))
         --    end)
         local co = co_create(p.dispatch)
-        assert(coroutine.resume(co, source, session, p.unpack(msg, sz)))
+        assert(coresume(co, source, session, p.unpack(msg, sz)))
     end
     dispatch_task()
 end
 
 function shaco.fork(func, ...)
     local args = {...}
-    local co = coroutine.create(function()
-        --func(table.unpack(args))
-        assert(xpcall(func, debug.traceback, table.unpack(args)))
+    local co = cocreate(function()
+        --func(tunpack(args))
+        assert(xpcall(func, traceback, tunpack(args)))
     end)
-    table.insert(_fork_queue, co)
+    tinsert(_fork_queue, co)
 end
 
 function shaco.wakeup(co)
     if _wakeup_map[co] == nil then
         _wakeup_map[co] = true
-        table.insert(_wakeup_queue, co)
+        tinsert(_wakeup_queue, co)
     end
 end
 
 function shaco.wait()
-    return coroutine.yield()
+    return coyield()
 end
 
 function shaco.dispatch(protoname, fun)
@@ -206,12 +220,12 @@ function shaco.dispatch(protoname, fun)
 end
 
 function shaco.sleep(interval)
-    local co = coroutine.running()
+    local co = corunning()
     local session = gen_session()
     assert(_suspend_co_map[session]==nil)
     _suspend_co_map[session] = co
     c.timer(session, interval)
-    session = coroutine.yield()
+    session = coyield()
     _suspend_co_map[session] = nil
 end
 
@@ -235,22 +249,22 @@ end
 --    local t = {""}
 --    for k, v in pairs(__CMD) do
 --        if type(v) == "function" then
---            table.insert(t, k)
+--            tinsert(t, k)
 --        end
 --    end
---    return table.concat(t, "\n____ ")
+--    return tconcat(t, "\n____ ")
 --end
 --
 --__CMD.gc = function()
 --    local m1 = collectgarbage("count")
 --    collectgarbage("collect")
 --    local m2 = collectgarbage("count")
---    return string.format("%f <- %f", m2, m1)
+--    return sformat("%f <- %f", m2, m1)
 --end
 --
 --__CMD.mem = function()
 --    memory.stat()
---    return string.format("used(%fK) lua(%fK)", memory.used()/1024, collectgarbage("count"))
+--    return sformat("used(%fK) lua(%fK)", memory.used()/1024, collectgarbage("count"))
 --end
 --
 --local function __cmdr(source, id, result, pure)
@@ -260,14 +274,14 @@ end
 --local function __cmdcall(source, id, s)
 --    local args = {}
 --    for w in string.gmatch(s, "%g+") do
---        table.insert(args, w)
+--        tinsert(args, w)
 --    end
 --    if #args == 0 then
 --        __cmdr(source, id, "no input")
 --    else
 --        local f = __CMD[args[1]]
 --        if f then
---            __cmdr(source, id, select(2, pcall(f, select(2, table.unpack(args)))))
+--            __cmdr(source, id, select(2, pcall(f, select(2, tunpack(args)))))
 --        else
 --            __cmdr(source, id, "no found command")
 --        end
@@ -286,7 +300,7 @@ shaco.register_protocol {
     unpack = function() end,
     dispatch = function(_,session)
         local co = _suspend_co_map[session]
-        assert(coroutine.resume(co, session))
+        assert(coresume(co, session))
     end
 }
 
@@ -330,22 +344,23 @@ shaco.register_protocol {
 shaco.register_protocol {
     id = shaco.TTEXT,
     name = "text",
-    unpack = shaco.tostring,
+    pack = function(...) return ... end,
+    unpack = shaco.tostring
 }
 
 shaco.register_protocol {
     id = shaco.TLUA,
     name = "lua",
-    unpack = shaco.unpack,
+    pack = shaco.pack,
+    unpack = shaco.unpack
 }
 
 shaco.register_protocol {
     id = shaco.TRET,
     name = "ret",
-    unpack = function(...) return ... end,
     dispatch = function(_,session,msg,sz) 
         local co = _suspend_co_map[session]
-        assert(coroutine.resume(co, session, msg, sz))
+        assert(coresume(co, session, msg, sz))
     end
 }
 
@@ -362,11 +377,15 @@ function shaco.luaservice(name)
 end
 
 function shaco.queryservice(name)
-    return shaco.call('.service', 'lua', 'QUERY', name)
+    return assert(shaco.call('.service', 'lua', 'QUERY', name))
 end
 
 function shaco.register(name)
     shaco.call('.service', 'lua', 'REG', name..' '..shaco.handle())
+end
+
+function shaco.exit(info)
+    shaco.command('EXIT', info or 'in lua')
 end
 
 return shaco

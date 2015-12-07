@@ -49,7 +49,12 @@ lsend(lua_State *L) {
     int dest = lua_tointeger(L,1);
     if (dest == 0) {
         const char *name = luaL_checkstring(L,1);
+        if (name[0]=='.') name++;
+        // todo: remote query
         dest = shaco_handle_query(name);
+        if (dest == 0) {
+            return luaL_error(L, "Not dest `%s`", name);
+        }
     }
     int session = luaL_checkinteger(L, 2);
     int type = luaL_checkinteger(L, 3);

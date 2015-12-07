@@ -1,2 +1,0 @@
-local CTX = {}
-return CTX

@@ -48,19 +48,6 @@ shaco_handle_unregister(struct shaco_context *ctx) {
     }
 }
 
-struct shaco_context *
-shaco_handle_context(uint32_t handle) {
-    struct shaco_context *ctx;
-    if (handle > 0 && handle <= H->context_count)
-        ctx = H->contexts[handle-1];
-    else
-        ctx = NULL;
-    if (ctx == NULL) {
-        shaco_error(NULL,"Handle not found %x", handle);
-    }
-    return ctx;
-}
-
 void
 shaco_handle_bindname(uint32_t handle, const char *name) {
     if (H->handle_count == H->handle_cap) {
@@ -74,11 +61,16 @@ shaco_handle_bindname(uint32_t handle, const char *name) {
 
 void
 shaco_handle_send(int dest, int source, int session, int type, const void *msg, int sz) {
-    struct shaco_context *ctx = shaco_handle_context(dest);
-    if (ctx) {
-        shaco_context_send(ctx, source, session, type, msg, sz);
+    if (dest > 0 && dest <= H->context_count) {
+        struct shaco_context *ctx = H->contexts[dest-1];
+        if (ctx) {
+            shaco_context_send(ctx, source, session, type, msg, sz);
+        } else {
+            shaco_error(NULL,"Context no found: %0x->%0x session:%d type:%d sz:%d",
+                    source, dest, session, type, sz);
+        }
     } else {
-        shaco_error(NULL,"Context no found: %0x->%0x session:%d type:%d sz:%d",
+        shaco_error(NULL,"Invalid dest handle: %0x->%0x session:%d type:%d sz:%d",
                 source, dest, session, type, sz);
     }
 }

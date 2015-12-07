@@ -4,10 +4,12 @@ local socket = require "socket"
 local _harbor_handle
 local _slaveid
 local _addr
-local _slaves = {}
 local _master_sock
 local _wait
 local _connect_queue
+local _slaves = {}
+local _regs = {}
+local _querys = {}
 
 local function pack(...)
     local msg = shaco.packstring(...)
@@ -75,6 +77,23 @@ local function connect_slave(slaveid, addr)
     end
 end
 
+local function handle_harbor(_,session, command)
+    local t = string.sub(command, 1, 1)
+    local args = string.sub(command, 3)
+    if t=='D' then
+        local slaveid = tonumber(args)
+        local slave = _slaves[slaveid]
+        if slave then
+            _slaves[slaveid] = nil
+            shaco.info(string.format('Slave %02x#%s exit', slaveid, slave))
+        elseif _wait then
+            _wait[slaveid] = nil
+        end
+    else
+        shaco.error("Invalid harbor message type "..t)
+    end
+end
+
 local master = {}
 
 function master.C(id, addr)
@@ -96,6 +115,19 @@ function master.D(id, addr)
             _connect_queue[id] = nil
         else
             _wait[id] = nil
+        end
+    end
+end
+
+function master.N(name, handle)
+    assert(type(name)=='string' and type(handle)=='number')
+    local slaveid = (handle>>8)&0xff
+    assert(slaveid > 0)
+    if slaveid ~= _slaveid then
+        local q = _querys[name]
+        if q then
+            _querys[name] = nil
+            shaco.call('.service', 'lua', 'REG', name..' '..handle)
         end
     end
 end
@@ -124,20 +156,43 @@ local function handle_master(co_main)
     shaco.wakeup(co_main)
 end
 
-local function handle_harbor(_,session, command)
-    local t = string.sub(command, 1, 1)
-    local args = string.sub(command, 3)
-    if t=='D' then
-        local slaveid = tonumber(args)
-        local slave = _slaves[slaveid]
-        if slave then
-            _slaves[slaveid] = nil
-            shaco.info(string.format('Slave %02x#%s exit', slaveid, slave))
-        elseif _wait then
-            _wait[slaveid] = nil
+local harbor = {}
+
+local function send_reg_handle(name, handle)
+    socket.send(_master_sock, pack('R', name, handle))
+end
+
+local function send_query_handle(name)
+    socket.send(_master_sock, pack('Q', name))
+end
+
+function harbor.REG(name, handle)
+    assert(type(name)=='string' and type(handle)=='number')
+    if not _regs[name] then
+        _regs[name] = handle
+        if not _wait then
+            send_reg_handle(name, handle)
         end
+    end
+end
+
+function harbor.QUERY(name)
+    assert(type(name)=='string' and #name > 0)
+    local q = _querys[name]
+    if q == nil then
+        _querys[name] = true
+        if not _wait then
+            send_query_handle(name)
+        end
+    end
+end
+
+local function handle_command(source, session, cmd, ...)
+    local func = harbor[cmd]
+    if func then
+        func(...)
     else
-        shaco.error("Invalid harbor message type "..t)
+        shaco.error('Invalid harbor command '..tostring(cmd))
     end
 end
 
@@ -147,6 +202,12 @@ local function ready()
     _connect_queue = nil
     for k, v in ipairs(queue) do
         connect_slave(k, v)
+    end
+    for name, handle in pairs(_regs) do
+        send_reg_handle(name, handle)
+    end
+    for name, v in pairs(_querys) do
+        send_query_handle(name)
     end
 end
 
@@ -235,6 +296,7 @@ shaco.start(function()
     _slaveid = assert(tonumber(shaco.getenv('slaveid')))
     _addr = assert(shaco.getenv('address'))
 
+    shaco.dispatch('lua',  handle_command)
     shaco.dispatch('text', handle_harbor)
 
     while true do

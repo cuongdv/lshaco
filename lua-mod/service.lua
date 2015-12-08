@@ -8,9 +8,9 @@ local table = table
 local _slave_handle 
 local _cache_q = {}
 
-local CMD = {}
+local service = {}
 
-function CMD.QUERY(source, session, name)
+function service.QUERY(source, session, name)
     local global 
     if string.byte(name,1)==46 then --'.' local query
         name = string.sub(name,2)
@@ -39,7 +39,7 @@ function CMD.QUERY(source, session, name)
     shaco.ret(session, source, shaco.pack(handle))
 end
 
-function CMD.REG(source, session, param)
+function service.REG(source, session, param)
     local t, name, handle = assert(string.match(param, '(%.?)([%w%_]+) (%d+)'))
     handle = tonumber(handle)
 
@@ -63,7 +63,7 @@ end
 shaco.start(function()
     _slave_handle = tonumber(shaco.command('QUERY', 'slave'))
     shaco.dispatch("lua", function(source, session, type, param) 
-        local func = CMD[type]
+        local func = service[type]
         if func then
             func(source, session, param)
         end

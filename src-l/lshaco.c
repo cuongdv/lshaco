@@ -131,7 +131,6 @@ ltostring(lua_State *L) {
     void *p = lua_touserdata(L,1);
     size_t sz = luaL_checkinteger(L,2);
     lua_pushlstring(L, p, sz);
-    shaco_free(p);
     return 1;
 }
 

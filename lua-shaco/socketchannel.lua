@@ -1,45 +1,45 @@
 local shaco = require "shaco"
 local socket = require "socket"
-local table = table
-local coroutine = coroutine
-local tbl = require "tbl"
+local error = error
+local corunning = coroutine.running
+local tinsert = table.insert
+local tremove = table.remove
 
 local socketchannel = {}
 socketchannel.__index = socketchannel
 
 local function close(self)
-    if self.__id then
-        socket.close(self.__id)
-        self.__id = false
+    if self._id then
+        socket.close(self._id)
+        self._id = false
     end
 end
 
 local function wakeup_all(self, err)
-    self.__error = err
-    for i=1, #self.__response_func do
-        self.__response_func[i] = nil
+    self._error = err
+    for i=1, #self._response_func do
+        self._response_func[i] = nil
     end
-    for i=1, #self.__response_co do
-        local co = self.__response_co[i]
-        self.__response_co[i] = nil
+    for i=1, #self._response_co do
+        local co = self._response_co[i]
+        self._response_co[i] = nil
         shaco.wakeup(co)
     end
 end
 
 local function pop_response(self)
-    return table.remove(self.__response_func, 1), 
-           table.remove(self.__response_co, 1)
+    return tremove(self._response_func, 1), 
+           tremove(self._response_co, 1)
 end
 
 local function dispatch(self)
-    socket.start(self.__id)
-    while self.__id do
+    while self._id do
         local func, co = pop_response(self)
         if func then
-            local ok, data, err = pcall(func, self.__id)
+            local ok, data, err = pcall(func, self._id)
             if ok then
                 if data then
-                    self.__result_data[co] = data
+                    self._result_data[co] = data
                     shaco.wakeup(co)
                 else
                     close(self)
@@ -52,7 +52,7 @@ local function dispatch(self)
                 wakeup_all(self, data or "raise error")
             end
         else
-            local ok, err = socket.block(self.__id)
+            local ok, err = socket.block(self._id)
             if not ok then
                 close(self)
                 error(err)
@@ -62,24 +62,24 @@ local function dispatch(self)
 end
 
 local function connect(self)
-    if self.__id then
+    if self._id then
         return true
     end
-    local co = coroutine.running()
-    if #self.__connecting > 0 then
-        table.insert(self.__connecting, co)
-        coroutine.yield() 
+    local co = corunning()
+    if #self._connecting > 0 then
+        tinsert(self._connecting, co)
+        shaco.wait()
         return true
     else
-        self.__error = nil
-        self.__connecting[1] = co
-        local id, err = socket.connect(self.__host, self.__port)
-        self.__connecting[1] = nil
+        self._error = nil
+        self._connecting[1] = co
+        local id, err = socket.connect(self._host, self._port)
+        self._connecting[1] = nil
         local ok
         if id then
-            socket.readenable(id, true)
-            if self.__auth then
-                ok, err = pcall(self.__auth, id)
+            socket.readon(id)
+            if self._auth then
+                ok, err = pcall(self._auth, id)
                 if not ok then
                     socket.close(id)
                 end
@@ -89,13 +89,13 @@ local function connect(self)
         else
             ok = false
         end
-        for i=2, #self.__connecting do
-            local co = self.__connecting[i]
+        for i=2, #self._connecting do
+            local co = self._connecting[i]
             shaco.wakeup(co)
-            self.__connecting[i] = nil
+            self._connecting[i] = nil
         end
         if ok then
-            self.__id = id 
+            self._id = id 
             shaco.fork(dispatch, self)
             return true
         else
@@ -105,17 +105,23 @@ local function connect(self)
 end
 
 function socketchannel.create(opts) 
+    local host = opts.host
+    local port = opts.port
+    if not port then
+        host, port = string.match(host, "([^:]+):?(%d+)$")
+        port = tonumber(port)
+    end
     local self = setmetatable({
-        __host = assert(opts.host),
-        __port = assert(opts.port),
-        __id = false,
-        __auth = opts.auth,
-        __connecting = {},
-        __response_func = {},
-        __response_co = {},
-        __result_data = {},
-        __error = false,
-    }, socketchannel) 
+        _host = host,
+        _port = port,
+        _id = false,
+        _auth = opts.auth,
+        _connecting = {},
+        _response_func = {},
+        _response_co = {},
+        _result_data = {},
+        _error = false,
+    }, socketchannel)
     return self
 end
 
@@ -131,24 +137,24 @@ function socketchannel:request(req, response)
     if not connect(self) then
         return
     end
-    local ok, err = socket.send(self.__id, req)
+    local ok, err = socket.send(self._id, req)
     if not ok then
         close(self)
         wakeup_all(self, err)
         error(err)
     end
 
-    local co = coroutine.running()
-    table.insert(self.__response_func, response)
-    table.insert(self.__response_co, co)
+    local co = corunning()
+    tinsert(self._response_func, response)
+    tinsert(self._response_co, co)
 
-    coroutine.yield()
+    shaco.wait()
 
-    if self.__error then
-        error(self.__error)
+    if self._error then
+        error(self._error)
     else
-        local r = self.__result_data[co]
-        self.__result_data[co] = nil
+        local r = self._result_data[co]
+        self._result_data[co] = nil
         return r 
     end
 end

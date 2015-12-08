@@ -1,6 +1,10 @@
 local shaco = require "shaco"
 local socket = require "socket"
-local tbl = require "tbl"
+local assert = assert
+local tonumber = tonumber
+local pairs = pairs
+local string = string
+local table = table
 
 local CHUNK_LIMIT=64*1024
 
@@ -92,7 +96,7 @@ local function chunksize(id, chunk)
         if #chunk > 128 then
             error("Too large chunksize body")
         end
-        chunk = chunk..assert(socket.read(id, "*a"))
+        chunk = chunk..assert(socket.read(id))
     end
 end
 
@@ -136,7 +140,7 @@ end
 local function statusline(id)
     local chunk = ""
     while true do
-        chunk = chunk..assert(socket.read(id, "*a"))
+        chunk = chunk..assert(socket.read(id))
         local i = chunk:find("\r\n",1,true)
         if i then
             return chunk:sub(1,i), chunk:sub(i+2)
@@ -163,7 +167,7 @@ local function header(id, chunk)
             if l+#chunk > CHUNK_LIMIT then
                 error "Too large header size"
             end
-            chunk = chunk..assert(socket.read(id, "*a"))
+            chunk = chunk..assert(socket.read(id))
         end
     end
 end
@@ -202,7 +206,7 @@ local function request(host, uri, headers, form)
     end
 
     assert(socket.send(id, total))
-    socket.readenable(id, true)
+    socket.readon(id)
 
     local status, chunk
     status, chunk = statusline(id)

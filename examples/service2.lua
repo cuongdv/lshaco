@@ -9,8 +9,8 @@ shaco.start(function()
     end)
 
     print ('query service1 ...')
-    S1 = shaco.queryservice('.service1')
+    S1 = shaco.queryservice('service1')
     print ('query service1 return handle:'..S1)
 
-    shaco.register('.service2')
+    shaco.register('service2')
 end)

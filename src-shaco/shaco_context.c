@@ -117,7 +117,7 @@ cmd_query(struct shaco_context *ctx, const char *param) {
     if (handle == 0) {
         return NULL;
     } else {
-        sprintf(ctx->result, "%0x", handle);
+        sprintf(ctx->result, "0x%0x", handle);
         return ctx->result;
     }
 }

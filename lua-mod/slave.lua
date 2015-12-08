@@ -121,13 +121,14 @@ end
 
 function master.N(name, handle)
     assert(type(name)=='string' and type(handle)=='number')
+    assert(string.byte(name,1)~=46)
     local slaveid = (handle>>8)&0xff
     assert(slaveid > 0)
     if slaveid ~= _slaveid then
         local q = _querys[name]
         if q then
             _querys[name] = nil
-            shaco.call('.service', 'lua', 'REG', name..' '..handle)
+            shaco.call('.service', 'lua', 'REG', '.'..name..' '..handle)
         end
     end
 end
@@ -168,6 +169,7 @@ end
 
 function harbor.REG(name, handle)
     assert(type(name)=='string' and type(handle)=='number')
+    assert(string.byte(name,1)~=46)
     if not _regs[name] then
         _regs[name] = handle
         if not _wait then
@@ -178,6 +180,7 @@ end
 
 function harbor.QUERY(name)
     assert(type(name)=='string' and #name > 0)
+    assert(string.byte(name,1)~=46)
     local q = _querys[name]
     if q == nil then
         _querys[name] = true

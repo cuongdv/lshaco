@@ -15,9 +15,9 @@ local function read_package(id)
     return shaco.unpackstring(msg)
 end
 
-local slave = {}
+local command = {}
 
-function slave.R(slave, name, handle)
+function command.R(slave, name, handle)
     local slaveid = slave.id
     local sock = slave.sock
     if handle <= 0 or handle >= 256 then
@@ -36,7 +36,7 @@ function slave.R(slave, name, handle)
     end
 end
 
-function slave.Q(slave, name)
+function command.Q(slave, name)
     local sock = slave.sock
     local handle = _global_names[name]
     if handle then
@@ -47,7 +47,7 @@ end
 local function dispatch_slave(slave)
     local sock = slave.sock
     local t, p1, p2 = read_package(sock)
-    local func = slave[t]
+    local func = command[t]
     if func then
         func(slave, p1, p2)
     else

@@ -14,7 +14,7 @@ shaco_harbor_start(struct shaco_context *ctx) {
 
 int
 shaco_harbor_isremote(int handle) {
-    return 0; // todo
+    return (handle>>8) != 0;
 }
 
 void

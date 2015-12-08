@@ -61,7 +61,7 @@ function CMD.REG(source, session, param)
 end
 
 shaco.start(function()
-    _slave_handle = tonumber(shaco.command('QUERY '..'slave'))
+    _slave_handle = tonumber(shaco.command('QUERY', 'slave'))
     shaco.dispatch("lua", function(source, session, type, param) 
         local func = CMD[type]
         if func then

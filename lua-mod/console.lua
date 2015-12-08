@@ -12,8 +12,10 @@ function console.help()
     end
 end
 
-function console.start(name)
-    assert(shaco.luaservice(name))
+function console.start(name, ...)
+    local args = {...}
+    args = table.concat(args, ' ')
+    assert(shaco.luaservice(name..' '..args))
 end
 
 function console.load(name)

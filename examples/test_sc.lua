@@ -8,7 +8,6 @@ local function test(sc, n, times)
         local resp = sc:request(
             string.format('%d:%d\n', n, i), 
             function(id)
-                assert(false)
                 return assert(socket.read(id, "\n"))
             end)
         print(string.format("[%d] read %s", n, resp))
@@ -21,8 +20,7 @@ shaco.start(function()
         --auth = nil,
     })
     sc:connect()
-    local times = 1
-    print ("fork 1")
+    local times = 1000
     for i=1, 10 do
         shaco.fork(test, sc, i, times)
     end

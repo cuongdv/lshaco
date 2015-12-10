@@ -2,6 +2,7 @@
 *.o
 *.dSYM
 .*
+shaco
 tool/srcpack
 tool/*.sl
 3rd/lua/src/liblua.a

@@ -1,6 +1,7 @@
 Todo
 ===
-1. remote service query
+1. linenoise
+2. command to master
 
 Bug
 ===

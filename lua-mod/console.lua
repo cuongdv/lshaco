@@ -7,7 +7,7 @@ local console = {}
 
 shaco.start(function()
     commandline.expand_path('./examples/?.lua')
-   print (shaco.getenv('daemon'))
+  
     -- stdin
     if tonumber(shaco.getenv('daemon')) ~=1 then
         local reader = function()
@@ -21,7 +21,7 @@ shaco.start(function()
         local response = function(...)
             print(...)
         end
-        commandline.start(reader(), response)
+        shaco.fork(commandline.loop, reader(), response)
     end
     -- harbor
     if tonumber(shaco.getenv('slaveid')) then
@@ -35,7 +35,7 @@ shaco.start(function()
         local response = function(...)
             -- todo to slave
         end
-        commandline.start(read, response)
+        shaco.fork(commandline.loop, read, response)
         shaco.fork(function()
             while true do
                 shaco.wait()
@@ -58,12 +58,21 @@ shaco.start(function()
                 socket.start(id)
                 socket.readon(id)
                 local read = function()
-                    assert(socket.read(id, '\n'))
+                    local ok, info = pcall(function()
+                        return assert(socket.read(id, '\n'))
+                    end)
+                    if ok then
+                        return info
+                    else -- return nil to break commandline loop
+                        shaco.error(info)
+                        return nil
+                    end
                 end
                 local response = function(...)
-                    socket.send(id,...)
+                    local msg = {...}
+                    socket.send(id, table.concat(msg, ' ')..'\n')
                 end
-                commandline.start(read, response)
+                commandline.loop(read, response)
                 socket.close(id)
             end))
     end

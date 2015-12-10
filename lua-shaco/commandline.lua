@@ -30,7 +30,7 @@ function command.start(response, name, ...)
     assert(shaco.luaservice(name..' '..args))
 end
 
-function command.load(response, name)
+function command.load(response, name, ...)
     assert(name, 'no name')
     command.unload() -- unload last one
 
@@ -57,7 +57,7 @@ function command.load(response, name)
     end
     assert(type(h.handle)=='function', 'no handle')
     if h.init then
-        local ok, err = xpcall(h.init, debug.traceback, response)
+        local ok, err = xpcall(h.init, debug.traceback, response, ...)
         if not ok then
             response(err)
             if h.fini then
@@ -80,7 +80,7 @@ end
 
 local function handle_private(response, cmdline)
     local args = {}
-    for w in string.gmatch(cmdline, '[%w%._]+') do
+    for w in string.gmatch(cmdline, '[^%s]+') do
         table.insert(args, w)
     end
     if #args > 0 then
@@ -93,29 +93,31 @@ local function handle_private(response, cmdline)
     end
 end
 
-function commandline.start(read, response)
-    shaco.fork(function()
-        while true do 
-            local ok, err = xpcall(function()
-                local cmdline = read()
-                if cmdline and #cmdline > 0 then
-                    local private = false
-                    if string.byte(cmdline,1)==46 then --'.'
-                        private = true
-                        cmdline = string.sub(cmdline,2)
-                    end
-                    if _expand and not private then
-                        _expand.handle(response, cmdline)
-                    else
-                        handle_private(response, cmdline)
-                    end
+-- read: return nil to break loop
+function commandline.loop(read, response)
+    local loop = true
+    while loop do 
+        local ok, err = xpcall(function()
+            local cmdline = read()
+            if cmdline == nil then
+                loop = false
+            elseif #cmdline > 0 then
+                local private = false
+                if string.byte(cmdline,1)==46 then --'.'
+                    private = true
+                    cmdline = string.sub(cmdline,2)
                 end
-            end, debug.traceback)
-            if not ok then
-                shaco.error(err)
+                if _expand and not private then
+                    _expand.handle(response, cmdline)
+                else
+                    handle_private(response, cmdline)
+                end
             end
+        end, debug.traceback)
+        if not ok then
+            shaco.error(err)
         end
-    end)
+    end
 end
 
 function commandline.expand_path(path)

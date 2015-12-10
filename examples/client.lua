@@ -1,15 +1,35 @@
+local shaco = require "shaco"
 local socket = require "socket"
 
 local client = {}
 
 local sock
+local addr
 
-function client.init(response)
-    client.fini()
-    local addr = '127.0.0.1:1234'
-    response('client connect '..addr)
+local function connect(response)
+    response('Client connect '..addr)
     sock = assert(socket.connect(addr))
-    socket.readon(sock)
+    shaco.fork(function()
+        socket.readon(sock)
+        while true do
+            local data, info = socket.read(sock, '\n')
+            response(data)
+            if not data then
+                break
+            end
+        end
+        socket.close(sock)
+        sock = nil
+    end)
+end
+
+function client.init(response, ...)
+    if not sock then
+        addr = ...
+        connect(response)
+    else
+        response('Client already exist')
+    end
 end
 
 function client.fini()
@@ -20,17 +40,11 @@ function client.fini()
 end
 
 function client.handle(response, cmdline)
-    local ok, info = pcall(function()
-        if not sock then
-            client.init()
-        end
-        assert(socket.send(sock, cmdline..'\n'))
-        response((assert(socket.read(sock, '\n'))))
-    end)
-    if not ok then
-        print (info)
-        response(info)
-        client.fini()
+    if not sock then
+        connect(response)
+    end
+    if sock then
+        socket.send(sock, cmdline..'\n')
     end
 end
 

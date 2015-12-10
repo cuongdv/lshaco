@@ -28,8 +28,9 @@ all_t=\
 	lib-l/shaco.so \
 	lib-l/socket.so \
 	lib-l/socketbuffer.so \
-	lib-l/serialize.so #\
-	lib-l/memory.so \
+	lib-l/serialize.so \
+	lib-l/linenoise.so #\
+#	lib-l/memory.so \
 #	lib-l/util.so \
 #	lib-l/crypt.so \
 #	lib-l/mysqlaux.so \
@@ -112,6 +113,9 @@ lib-l/memory.so: src-l/lmemory.c | lib-l
 	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO) $(ILUA)
 
 lib-l/serialize.so: src-l/lserialize.c | lib-l
+	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO) $(ILUA)
+
+lib-l/linenoise.so: src-l/llinenoise.c | lib-l
 	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO) $(ILUA)
 
 lib-l/util.so: src-l/lutil.c | lib-l

@@ -1,5 +1,6 @@
 local shaco = require "shaco"
 local socket = require "socket"
+local linenoise = require "linenoise"
 
 local console = {}
 
@@ -82,10 +83,13 @@ end
 
 shaco.start(function()
     local id = assert(socket.stdin())
+    local reader = function(...)
+        return assert(socket.read(...))
+    end
     while true do 
         local ok, err = xpcall(function()
-            local cmdline = assert(socket.read(id, '\n'))
-            if #cmdline > 0 then
+            local cmdline = linenoise.read(reader, id)
+            if cmdline and #cmdline > 0 then
                 local private = false
                 if string.byte(cmdline,1)==46 then --'.'
                     private = true

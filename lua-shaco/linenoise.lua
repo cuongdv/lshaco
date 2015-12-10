@@ -7,7 +7,7 @@ local _line
 local _cursor_pos
 local _historys = {}
 local _history_index
-local _history_max = 10
+local _history_max = 10 -- just simple
 
 local function clear_line()
     _line = ""
@@ -56,14 +56,13 @@ local function move_end()
 end
 
 local function append_history()
-    local cur = _historys[_history_index]
-    if cur =='' then
-        table.remove(_historys, _history_index)
-    end
     if #_historys > 0 then
         local last = _historys[#_historys]
         if last==_line then 
             return 
+        end
+        if last=='' then
+            table.remove(_historys)
         end
     end
     if _line~='' then
@@ -74,22 +73,9 @@ local function append_history()
     end
 end
 
-local function history(index, next_index)
-    local temp
-    if index >= 1 and index <= #_historys then
-        temp = _historys[index]
-        _historys[index] = _line
-    else
-        temp = _line
-    end
-    local show
-    if next_index >= 1 and next_index <= #_historys then
-        show = _historys[next_index]
-        _historys[next_index] = temp
-    else
-        show = temp
-    end
-    _history_index = next_index;
+local function history(index)
+    local show = _historys[index]
+    _historys[index] = _line
     _line = show
     _cursor_pos = #_line+1
     refresh()
@@ -97,13 +83,15 @@ end
 
 local function move_up()
     if _history_index > 1 then
-        history(_history_index, _history_index-1)
+        _history_index = _history_index-1
+        history(_history_index)
     end
 end
 
 local function move_down()
     if _history_index <= #_historys then
-        history(_history_index, _history_index+1)
+        history(_history_index)
+        _history_index = _history_index+1
     end
 end
 

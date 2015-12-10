@@ -1,109 +1,70 @@
 local shaco = require "shaco"
 local socket = require "socket"
+local commandline = require "commandline"
 local linenoise = require "linenoise"
 
 local console = {}
 
-local _handle_path = './examples/?.lua'
-local _handle
-
-function console.help()
-    for k,v in pairs(console) do
-        print('* '..k)
-    end
-end
-
-function console.start(name, ...)
-    local args = {...}
-    args = table.concat(args, ' ')
-    assert(shaco.luaservice(name..' '..args))
-end
-
-function console.load(name)
-    console.unload() -- unload last one
-
-    local func
-    local errv = {}
-    for pattern in string.gmatch(_handle_path, '([^;]+);*') do
-        local fname = string.gsub(pattern, '?', name)
-        local block, err = loadfile(fname)
-        if not block then
-            table.insert(errv, err)
-        else
-            func = block 
-            break
-        end
-    end
-    if not func then
-        print(table.concat(errv, '\n'))
-        return
-    end
-    local ok, h = pcall(func)
-    if not ok then
-        print(h)
-        return
-    end
-    assert(type(h.handle)=='function', 'no handle')
-    if h.init then
-        local ok, err = xpcall(h.init, debug.traceback)
-        if not ok then
-            print(err)
-            if h.fini then
-                h.fini()
-            end
-            return
-        end
-    end
-    _handle = h
-end
-
-function console.unload()
-    if _handle then
-        if _handle.fini then
-            _handle.fini()
-        end
-        _handle = nil
-    end
-end
-
-local function handle_private(cmdline)
-    local args = {}
-    for w in string.gmatch(cmdline, '[%w%._]+') do
-        table.insert(args, w)
-    end
-    if #args > 0 then
-        local func = console[args[1]]
-        if func then
-            func(select(2, table.unpack(args)))
-        else
-            print("Unknown console command "..args[1])
-        end
-    end
-end
-
 shaco.start(function()
-    local id = assert(socket.stdin())
-    local reader = function(...)
-        return assert(socket.read(...))
+    commandline.expand_path('./examples/?.lua')
+   print (shaco.getenv('daemon'))
+    -- stdin
+    if tonumber(shaco.getenv('daemon')) ~=1 then
+        local reader = function()
+            local id = assert(socket.stdin())
+            return function()
+                return linenoise.read(id, function(...)
+                    return assert(socket.read(...))
+                end)
+            end
+        end
+        local response = function(...)
+            print(...)
+        end
+        commandline.start(reader(), response)
     end
-    while true do 
-        local ok, err = xpcall(function()
-            local cmdline = linenoise.read(reader, id)
-            if cmdline and #cmdline > 0 then
-                local private = false
-                if string.byte(cmdline,1)==46 then --'.'
-                    private = true
-                    cmdline = string.sub(cmdline,2)
-                end
-                if _handle and not private then
-                    _handle.handle(cmdline)
+    -- harbor
+    if tonumber(shaco.getenv('slaveid')) then
+        local co_commandline
+        local read = function()
+            co_commandline = coroutine.running()
+            shaco.wait()
+            co_commandline = nil
+            return _result
+        end
+        local response = function(...)
+            -- todo to slave
+        end
+        commandline.start(read, response)
+        shaco.fork(function()
+            while true do
+                shaco.wait()
+                if co_commandline then
+                    shaco.wakeup(co_commandline)
                 else
-                    handle_private(cmdline)
+                    -- todo error
                 end
             end
-        end, debug.traceback)
-        if not ok then
-            shaco.error(err)
-        end
+        end)
+    end
+
+    -- socket input
+    local addr = shaco.getenv('console')
+    if addr ~= '1' then
+        shaco.info('Console listen on '..addr)
+        local sock = assert(socket.listen(
+            addr,
+            function(id)
+                socket.start(id)
+                socket.readon(id)
+                local read = function()
+                    assert(socket.read(id, '\n'))
+                end
+                local response = function(...)
+                    socket.send(id,...)
+                end
+                commandline.start(read, response)
+                socket.close(id)
+            end))
     end
 end)

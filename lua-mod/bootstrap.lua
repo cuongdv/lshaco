@@ -2,7 +2,7 @@ local shaco = require "shaco"
 
 shaco.start(function()
     local handle
-    if shaco.getenv('console') == '1' then
+    if shaco.getenv('console') then
         assert(shaco.luaservice('console'))
     end
     if tonumber(shaco.getenv('slaveid')) then

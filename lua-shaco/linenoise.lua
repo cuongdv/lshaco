@@ -175,12 +175,12 @@ local function key_ctrl_w()
     end
 end
 
-local function key_esc(reader, fd)
-    local c1 = assert(reader(fd,1))
-    local c2 = assert(reader(fd,1))
+local function key_esc(fd, read)
+    local c1 = assert(read(fd,1))
+    local c2 = assert(read(fd,1))
     if c1=='[' then
         if c2>='0' and c2<='9' then
-            local c3 = assert(reader(fd,1))
+            local c3 = assert(read(fd,1))
             if c3=='~' then
                 if c2=='3' then
                     key_delete()
@@ -228,17 +228,17 @@ local control = {
     [27] = key_esc,         --ESC
 }
 
-function linenoise.read(reader, fd)
+function linenoise.read(fd, read)
     local ok, info = pcall(function()
         local flag
         clear_line()
         assert(c.rawmode_on(fd))
         while true do
-            local c = assert(reader(fd,1))
+            local c = assert(read(fd,1))
             local b = string.byte(c)
             local func = control[b]
             if func then
-                if func(reader, fd) then
+                if func(fd, read) then
                     break
                 end
             else

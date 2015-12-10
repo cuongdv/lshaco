@@ -4,9 +4,10 @@ local client = {}
 
 local sock
 
-function client.init()
+function client.init(response)
+    client.fini()
     local addr = '127.0.0.1:1234'
-    print ('connect '..addr)
+    response('client connect '..addr)
     sock = assert(socket.connect(addr))
     socket.readon(sock)
 end
@@ -18,16 +19,17 @@ function client.fini()
     end
 end
 
-function client.handle(cmdline)
+function client.handle(response, cmdline)
     local ok, info = pcall(function()
         if not sock then
             client.init()
         end
         assert(socket.send(sock, cmdline..'\n'))
-        print(assert(socket.read(sock, '\n')))
+        response((assert(socket.read(sock, '\n'))))
     end)
     if not ok then
         print (info)
+        response(info)
         client.fini()
     end
 end

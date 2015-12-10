@@ -1,6 +1,3 @@
-[submodule "3rd/elog"]
-	path = 3rd/elog
-	url = git@github.com:lvshaco/elog.git
 [submodule "3rd/lsocket"]
 	path = 3rd/lsocket
 	url = git@github.com:lvshaco/lsocket.git

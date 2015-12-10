@@ -8,3 +8,6 @@ tool/*.sl
 3rd/lua/src/lua
 3rd/lua/src/luac
 3rd/pbc/build
+lib-l
+lib-cmod
+lib-3rd

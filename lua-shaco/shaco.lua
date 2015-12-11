@@ -7,8 +7,6 @@ local ipairs = ipairs
 local tostring = tostring
 local tonumber = tonumber
 local assert = assert
-local xpcall = xpcall
-local pcall = pcall
 local sformat = string.format
 local tunpack = table.unpack
 local tremove = table.remove
@@ -20,6 +18,7 @@ local coyield = coroutine.yield
 local corunning = coroutine.running
 local traceback = debug.traceback
 
+local _co_pool = {}
 local _suspend_co_map = {}
 local _session_id = 0
 local _fork_queue = {}
@@ -69,6 +68,7 @@ shaco.tostring = c.tostring
 shaco.topointstring = c.topointstring
 shaco.packstring = serialize.serialize_string
 shaco.unpackstring = serialize.deserialize_string
+
 function shaco.pack(...)
     return serialize.serialize(serialize.pack(...))
 end
@@ -76,11 +76,28 @@ function shaco.unpack(p,sz)
     return serialize.deserialize(p)
 end
 
+local function suspend(co, result, param)
+    if not result then
+        error(traceback(co, param))
+    end
+end
+
 local function co_create(func)
-    -- todo: conroutine cache pool
-    return cocreate(function(...)
-        assert(xpcall(func, traceback, ...))
-    end)
+    local co = tremove(_co_pool)
+    if co == nil then
+        co = cocreate(function()
+            func()
+            while true do
+                func = nil
+                _co_pool[#_co_pool+1] = co
+                func = coyield('EXIT')
+                func(coyield())
+            end
+        end)
+    else
+        coresume(co, func)
+    end
+    return co
 end
 
 function shaco.register_protocol(class)
@@ -132,7 +149,7 @@ local function dispatch_wakeup()
             local co = tremove(_wakeup_queue, 1)
             _wakeup_map[co] = nil
             _wakeuping = co
-            assert(coresume(co))
+            suspend(co, coresume(co))
             _wakeuping = nil
         end
     end
@@ -142,19 +159,22 @@ local function dispatch_task()
     dispatch_wakeup()
     while #_fork_queue > 0 do
         local co = tremove(_fork_queue, 1)
-        assert(coresume(co))
+        suspend(co, coresume(co))
         dispatch_wakeup()
     end
 end
 
 local function dispatchcb(source, session, typeid, msg, sz)
     local p = proto[typeid]
-    if typeid == 8 or -- shaco.TTIME or
-       typeid == 6 then -- shaco.TRET then
-        p.dispatch(source, session, msg, sz)
+    if typeid == 8 then -- shaco.TTIME
+        local co = _suspend_co_map[session]
+        suspend(co, coresume(co, session))
+    elseif typeid == 6 then -- shaco.TRET then
+        local co = _suspend_co_map[session]
+        suspend(co, coresume(co, session, msg, sz))
     else
         local co = co_create(p.dispatch)
-        assert(coresume(co, source, session, p.unpack(msg, sz)))
+        suspend(co, coresume(co, source, session, p.unpack(msg, sz)))
     end
     dispatch_task()
 end
@@ -162,9 +182,10 @@ end
 function shaco.fork(func, ...)
     local args = {...}
     local co = cocreate(function()
-        assert(xpcall(func, traceback, tunpack(args)))
+        func(tunpack(args))
     end)
     tinsert(_fork_queue, co)
+    return co
 end
 
 function shaco.wakeup(co)
@@ -211,11 +232,11 @@ end
 shaco.register_protocol {
     id = shaco.TTIME,
     name = "time",
-    unpack = function() end,
-    dispatch = function(_,session)
-        local co = _suspend_co_map[session]
-        assert(coresume(co, session))
-    end
+}
+
+shaco.register_protocol {
+    id = shaco.TRET,
+    name = "ret",
 }
 
 shaco.register_protocol {
@@ -230,15 +251,6 @@ shaco.register_protocol {
     name = "lua",
     pack = shaco.pack,
     unpack = shaco.unpack
-}
-
-shaco.register_protocol {
-    id = shaco.TRET,
-    name = "ret",
-    dispatch = function(_,session,msg,sz) 
-        local co = _suspend_co_map[session]
-        assert(coresume(co, session, msg, sz))
-    end
 }
 
 function shaco.getenv(key)

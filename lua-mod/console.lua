@@ -6,7 +6,7 @@ local linenoise = require "linenoise"
 local console = {}
 
 shaco.start(function()
-    commandline.expand_path('./examples/?.lua')
+    commandline.expand_path('./examples/?.lua') -- todo
   
     -- stdin
     if tonumber(shaco.getenv('daemon')) ~=1 then
@@ -24,29 +24,29 @@ shaco.start(function()
         shaco.fork(commandline.loop, reader(), response)
     end
     -- harbor
-    if tonumber(shaco.getenv('slaveid')) then
-        local co_commandline
-        local read = function()
-            co_commandline = coroutine.running()
-            shaco.wait()
-            co_commandline = nil
-            return _result
-        end
-        local response = function(...)
-            -- todo to slave
-        end
-        shaco.fork(commandline.loop, read, response)
-        shaco.fork(function()
-            while true do
-                shaco.wait()
-                if co_commandline then
-                    shaco.wakeup(co_commandline)
-                else
-                    -- todo error
-                end
-            end
-        end)
-    end
+    --if tonumber(shaco.getenv('slaveid')) then
+    --    local co_commandline
+    --    local read = function()
+    --        co_commandline = coroutine.running()
+    --        shaco.wait()
+    --        co_commandline = nil
+    --        return _result
+    --    end
+    --    local response = function(...)
+    --        -- todo to slave
+    --    end
+    --    shaco.fork(commandline.loop, read, response)
+    --    shaco.fork(function()
+    --        while true do
+    --            shaco.wait()
+    --            if co_commandline then
+    --                shaco.wakeup(co_commandline)
+    --            else
+    --                -- todo error
+    --            end
+    --        end
+    --    end)
+    --end
 
     -- socket input
     local addr = shaco.getenv('console')

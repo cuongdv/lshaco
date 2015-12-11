@@ -1,6 +1,5 @@
 local c = require "shaco.c"
 local socket = require "socket.c"
---local memory = require "memory.c"
 local serialize = require "serialize.c"
 local error = error
 local pairs = pairs
@@ -77,33 +76,11 @@ function shaco.unpack(p,sz)
     return serialize.deserialize(p)
 end
 
---shaco.unpack_msgid = socket.unpack_msgid
---shaco.sendpack_um = socket.sendpack_um
-
---local monitor_map = {}
---function shaco.uniquemodule(name, active, eventcb)
---    local co = corunning()
---    local vhandle, published = c.uniquemodule(name, active)
---    if published then
---        if eventcb then
---            eventcb("START", vhandle)
---        end
---    else
---        monitor_map[name] = { co=co, eventcb=eventcb }
---        coyield()
---    end
---    return vhandle
---end
-
---shaco.broadcast = c.broadcast
---shaco.sendraw = c.sendraw
-
 local function co_create(func)
     -- todo: conroutine cache pool
     return cocreate(function(...)
         assert(xpcall(func, traceback, ...))
     end)
-    --return cocreate(func)
 end
 
 function shaco.register_protocol(class)
@@ -176,17 +153,6 @@ local function dispatchcb(source, session, typeid, msg, sz)
        typeid == 6 then -- shaco.TRET then
         p.dispatch(source, session, msg, sz)
     else
---    return function(session, source, ...)
---        local co = cocreate(
---            function(session, source, ...)
---                assert(xpcall(f, traceback, session, source, ...))
---            end)
---        assert(coresume(co, session, source, ...))
---    end
-        --local co = cocreate(
-        --    function(...)
-        --        assert(xpcall(p.dispatch, traceback, ...))
-        --    end)
         local co = co_create(p.dispatch)
         assert(coresume(co, source, session, p.unpack(msg, sz)))
     end
@@ -196,7 +162,6 @@ end
 function shaco.fork(func, ...)
     local args = {...}
     local co = cocreate(function()
-        --func(tunpack(args))
         assert(xpcall(func, traceback, tunpack(args)))
     end)
     tinsert(_fork_queue, co)
@@ -243,57 +208,6 @@ function shaco.start(func)
     dispatch_task()
 end
 
--- CMD
---local __CMD = {}
---__CMD.help = function()
---    local t = {""}
---    for k, v in pairs(__CMD) do
---        if type(v) == "function" then
---            tinsert(t, k)
---        end
---    end
---    return tconcat(t, "\n____ ")
---end
---
---__CMD.gc = function()
---    local m1 = collectgarbage("count")
---    collectgarbage("collect")
---    local m2 = collectgarbage("count")
---    return sformat("%f <- %f", m2, m1)
---end
---
---__CMD.mem = function()
---    memory.stat()
---    return sformat("used(%fK) lua(%fK)", memory.used()/1024, collectgarbage("count"))
---end
---
---local function __cmdr(source, id, result, pure)
---    shaco.send(source, shaco.pack(id, "RES", result, pure))
---end
---
---local function __cmdcall(source, id, s)
---    local args = {}
---    for w in string.gmatch(s, "%g+") do
---        tinsert(args, w)
---    end
---    if #args == 0 then
---        __cmdr(source, id, "no input")
---    else
---        local f = __CMD[args[1]]
---        if f then
---            __cmdr(source, id, select(2, pcall(f, select(2, tunpack(args)))))
---        else
---            __cmdr(source, id, "no found command")
---        end
---    end
---end
---
---function shaco.register_command(cmd)
---    for k, v in pairs(cmd) do
---        __CMD[k] = v
---    end
---end
-
 shaco.register_protocol {
     id = shaco.TTIME,
     name = "time",
@@ -303,43 +217,6 @@ shaco.register_protocol {
         assert(coresume(co, session))
     end
 }
-
---shaco.register_protocol {
---    id = shaco.TCMD,
---    name = "cmd",
---    unpack = shaco.unpack,
---    dispatch = function(source, _,id, s)
---        __cmdcall(source, id, s)
---    end
---}
-
---shaco.register_protocol {
---    id = shaco.TMONITOR,
---    name = "monitor",
---    unpack = function(msg,sz)
---        local s = util.bytes2str(msg,sz)
---        return string.unpack("i1zi4",s)
---    end,
---    dispatch = function(_, _, type, name, vhandle)
---        if type == 0 then -- MONITOR_START
---            local mo = monitor_map[name]
---            local co = mo.co
---            if mo.eventcb then
---                mo.eventcb("START", vhandle)
---            end
---            if co then
---                mo.co = nil
---                shaco.wakeup(co)
---            end
---        elseif type == 1 then -- MONITOR_EXIT
---            local mo = monitor_map[name]
---            if mo.eventcb then
---                mo.eventcb("EXIT", vhandle)
---            end
---        end
---    end
---}
---
 
 shaco.register_protocol {
     id = shaco.TTEXT,

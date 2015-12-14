@@ -40,17 +40,6 @@ sig_handler_init() {
 static void
 rlimit_check() {
     struct rlimit l;
-    if (getrlimit(RLIMIT_CORE, &l) == -1) {
-        shaco_exit(NULL, "getrlimit core fail: %s", strerror(errno));
-    }
-    if (l.rlim_cur !=-1 && 
-        l.rlim_cur < 128*1024*1024) {
-        l.rlim_cur = -1;
-        l.rlim_max = -1;
-        if (setrlimit(RLIMIT_CORE, &l) == -1) {
-            shaco_exit(NULL, "setrlimit core fail: %s", strerror(errno));
-        }
-    }
     int max = shaco_optint("maxsocket", 0) + 1024;
     if (getrlimit(RLIMIT_NOFILE, &l) == -1) {
         shaco_exit(NULL, "getrlimit nofile fail: %s", strerror(errno));

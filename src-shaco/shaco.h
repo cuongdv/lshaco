@@ -15,7 +15,7 @@ struct shaco_context;
 #define SHACO_TMONITOR 3
 #define SHACO_TLOG 4
 #define SHACO_TCMD 5
-#define SHACO_TRET 6
+#define SHACO_TRESPONSE 6
 #define SHACO_TSOCKET 7
 #define SHACO_TTIME 8
 #define SHACO_TREMOTE 9

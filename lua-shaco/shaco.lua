@@ -19,12 +19,16 @@ local corunning = coroutine.running
 local traceback = debug.traceback
 
 local _co_pool = {}
-local _suspend_co_map = {}
+local _call_session = {}
+local _yield_session_co = {}
+local _sleep_co = {}
+local _response_co_session = {}
+local _response_co_address = {}
+
 local _session_id = 0
 local _fork_queue = {}
-local _wakeup_map = {}
-local _wakeup_queue = {}
-local _wakeuping
+local _error_queue = {}
+local _wakeup_co = {}
 
 -- proto type
 local proto = {}
@@ -34,9 +38,11 @@ local shaco = {
     TMONITOR = 3,
     TLOG = 4,
     TCMD = 5,
-    TRET = 6,
+    TRESPONSE = 6,
     TSOCKET = 7,
     TTIME = 8,
+    TREMOTE = 9,
+    TERROR = 10,
 }
 
 -- log
@@ -76,17 +82,21 @@ function shaco.unpack(p,sz)
     return serialize.deserialize(p)
 end
 
-local function suspend(co, result, param)
-    if not result then
-        error(traceback(co, param))
+local function gen_session()
+    _session_id = _session_id + 1
+    if _session_id > 0xffffffff then
+        _session_id = 1
     end
+    return _session_id
 end
+
+local suspend
 
 local function co_create(func)
     local co = tremove(_co_pool)
     if co == nil then
-        co = cocreate(function()
-            func()
+        co = cocreate(function(...)
+            func(...)
             while true do
                 func = nil
                 _co_pool[#_co_pool+1] = co
@@ -100,88 +110,171 @@ local function co_create(func)
     return co
 end
 
-function shaco.register_protocol(class)
-    if proto[class.id] then
-        error("repeat protocol id "..tostring(class.id))
-    end
-    if proto[class.name] then
-        error("repeat protocol name "..tostring(class.name))
-    end
-    proto[class.id] = class
-    proto[class.name] = class
-end
-
 function shaco.send(dest, typename, ...)
     local p = proto[typename]
     return c.send(dest, 0, p.id, p.pack(...))
 end
 
-function shaco.ret(session, dest, msg, sz)
-    local p = proto['ret']
-    return c.send(dest, session, p.id, msg, sz)
-end
-
-local function gen_session()
-    _session_id = _session_id + 1
-    if _session_id > 0xffffffff then
-        _session_id = 1
-    end
-    return _session_id
-end
-
 function shaco.call(dest, typename, ...)
     local p = proto[typename]
-    local co, ismain = corunning()
-    assert(ismain==false, "shaco.call should not in main coroutine")
-    local session, msg, sz
-    session = gen_session()
-    assert(_suspend_co_map[session] ==nil)
-    _suspend_co_map[session] = co
+    local session = gen_session()
     c.send(dest, session, p.id, p.pack(...))
-    session, msg, sz = coyield()
-    _suspend_co_map[session] = nil
-    return p.unpack(msg, sz)
+    local ok, ret, sz = coyield('CALL', session)
+    _sleep_co[corunning()] = nil
+    _call_session[session] = nil
+    if not ok then
+        -- BREAK can use for timeout call
+        error('call error')
+    end
+    return p.unpack(ret, sz)
+end
+
+function shaco.ret(msg, sz)
+    return coyield('RETURN', msg, sz)
+end
+
+function shaco.response()
+    return coyield('RESPONSE')
 end
 
 local function dispatch_wakeup()
-    if not _wakeuping then
-        while #_wakeup_queue > 0 do
-            local co = tremove(_wakeup_queue, 1)
-            _wakeup_map[co] = nil
-            _wakeuping = co
-            suspend(co, coresume(co))
-            _wakeuping = nil
+    local co = next(_wakeup_co)
+    if co then
+        _wakeup_co[co] = nil
+        local session = _sleep_co[co]
+        if session then
+            -- _yield_session_co if tag _sleep_co can break by wakeup
+            _yield_session_co[session] = 'BREAK' 
+            return suspend(co, coresume(co, false, 'BREAK'))
         end
     end
 end
 
-local function dispatch_task()
+local function dispatch_error_queue()
+    local session = tremove(_error_queue, 1)
+    if session then
+        if _call_session[session] then
+            local co = _yield_session_co[session]
+            _yield_session_co[session] = nil
+            return suspend(co, coresume(co, false))
+        end
+    end
+end
+
+local function dispatch_error(source, session)
+    if _call_session[session] then
+        tinsert(_error_queue, session)
+    end
+end
+
+function suspend(co, result, command, param, sz)
+    if not result then
+        local session = _response_co_session[co]
+        if session then
+            local address = _response_co_address[co]
+            _response_co_session[co] = nil
+            _response_co_address[co] = nil
+            c.send(address, session, shaco.TERROR, "")
+        end
+        error(traceback(co, command))
+    end
+    if command == 'SLEEP' then
+        _yield_session_co[param] = co
+        _sleep_co[co] = param
+    elseif command == 'CALL' then
+        _call_session[param] = true
+        _yield_session_co[param] = co
+        --_sleep_co[co] = param -- no support BREAK yet
+    elseif command == 'RETURN' then
+        local session = _response_co_session[co]
+        local address = _response_co_address[co]
+        if not session then
+            error('No session to response')
+        end
+        local ret = c.send(address, session, shaco.TRESPONSE, param, sz)
+        _response_co_session[co] = nil
+        _response_co_address[co] = nil
+        return suspend(co, coresume(co, ret))
+    elseif command == 'RESPONSE' then
+        local session = _response_co_session[co]
+        local address = _response_co_address[co]
+        if not session then
+            error(traceback(co, 'Already responsed or No session to response'))
+        end
+        local function response(msg, sz)
+            if _response_co_session[co] == nil then
+                error(traceback(co, 'Try response repeat'))
+            end
+            local ret = c.send(address, session, shaco.TRESPONSE, msg, sz)
+            _response_co_session[co] = nil
+            _response_co_address[co] = nil
+            return ret
+        end
+        return suspend(co, coresume(co, response))
+    elseif command == 'EXIT' then
+        local session = _response_co_session[co]
+        if session then
+            local address = _response_co_address[co]
+            _response_co_session[co] = nil
+            _response_co_address[co] = nil
+            c.send(address, session, shaco.TERROR, "")
+        end
+    else
+        error(traceback(co, 'Suspend unknown command '..command))
+    end
     dispatch_wakeup()
-    while #_fork_queue > 0 do
-        local co = tremove(_fork_queue, 1)
-        suspend(co, coresume(co))
-        dispatch_wakeup()
+    dispatch_error_queue()
+end
+
+local function dispatch_message(source, session, typeid, msg, sz)
+    local p = proto[typeid]
+    if typeid == 8 or -- shaco.TTIME
+       typeid == 6 then -- shaco.TRESPONSE 
+        local co = _yield_session_co[session] 
+        if co == 'BREAK' then -- BREAK by wakeup yet
+            _yield_session_co[session] = nil 
+        elseif co == nil then
+            error(sformat('unknown response %d session %d from %04x', typeid, session, source))
+        else
+            _yield_session_co[session] = nil
+            suspend(co, coresume(co, true, msg, sz))
+        end
+    else
+        local co = co_create(p.dispatch)
+        if session > 0 then
+            _response_co_session[co] = session
+            _response_co_address[co] = source
+        end
+        suspend(co, coresume(co, source, session, p.unpack(msg, sz)))
     end
 end
 
 local function dispatchcb(source, session, typeid, msg, sz)
-    local p = proto[typeid]
-    if typeid == 8 then -- shaco.TTIME
-        local co = _suspend_co_map[session]
-        suspend(co, coresume(co, session))
-    elseif typeid == 6 then -- shaco.TRET then
-        local co = _suspend_co_map[session]
-        suspend(co, coresume(co, session, msg, sz))
-    else
-        local co = co_create(p.dispatch)
-        suspend(co, coresume(co, source, session, p.unpack(msg, sz)))
+    local ok, err = xpcall(dispatch_message, traceback, source, session, typeid, msg, sz)
+    while true do
+        local key, co = next(_fork_queue)
+        if not key then
+            break
+        end
+        _fork_queue[key] = nil
+        local fok, ferr = xpcall(suspend, traceback, co, coresume(co))
+        if not fok then
+            if ok then
+                ok = false
+                err = ferr
+            else
+                err = err..'\n'..ferr 
+            end
+        end
     end
-    dispatch_task()
+    if not ok then
+        error(err)
+    end
 end
 
 function shaco.fork(func, ...)
     local args = {...}
-    local co = cocreate(function()
+    local co = co_create(function()
         func(tunpack(args))
     end)
     tinsert(_fork_queue, co)
@@ -189,14 +282,44 @@ function shaco.fork(func, ...)
 end
 
 function shaco.wakeup(co)
-    if _wakeup_map[co] == nil then
-        _wakeup_map[co] = true
-        tinsert(_wakeup_queue, co)
+    if _sleep_co[co] then
+        if _wakeup_co[co] == nil then
+            _wakeup_co[co] = true
+        end
+    else
+        error('Try wakeup untag sleep coroutine')
     end
 end
 
 function shaco.wait()
-    return coyield()
+    local session = gen_session()
+    coyield('SLEEP', session)
+    _sleep_co[corunning()] = nil
+    _yield_session_co[session] = nil
+end
+
+function shaco.sleep(interval)
+    local session = gen_session()
+    c.timer(session, interval)
+    local ok, ret = coyield('SLEEP', session)
+    _sleep_co[corunning()] = nil
+    if ok then
+        return
+    else
+        if ret == 'BREAK' then
+            return ret
+        else
+            error(ret)
+        end
+    end
+end
+
+function shaco.timeout(interval, func)
+    local co = co_create(func)
+    local session = gen_session()
+    assert(_yield_session_co[session] == nil, 'Repeat session '..session)
+    _yield_session_co[session] = co
+    c.timer(session, interval)
 end
 
 function shaco.dispatch(protoname, fun)
@@ -205,28 +328,20 @@ function shaco.dispatch(protoname, fun)
     p.dispatch = fun
 end
 
-function shaco.sleep(interval)
-    local co = corunning()
-    local session = gen_session()
-    assert(_suspend_co_map[session]==nil)
-    _suspend_co_map[session] = co
-    c.timer(session, interval)
-    session = coyield()
-    _suspend_co_map[session] = nil
-end
-
-function shaco.timeout(interval, func)
-    local co = co_create(func)
-    local session = gen_session()
-    assert(_suspend_co_map[session] == nil)
-    _suspend_co_map[session] = co
-    c.timer(session, interval)
-end
-
 function shaco.start(func)
     c.callback(dispatchcb)
-    shaco.fork(func)
-    dispatch_task()
+    shaco.timeout(0, func)
+end
+
+function shaco.register_protocol(class)
+    if proto[class.id] then
+        error("Repeat protocol id "..tostring(class.id))
+    end
+    if proto[class.name] then
+        error("Repeat protocol name "..tostring(class.name))
+    end
+    proto[class.id] = class
+    proto[class.name] = class
 end
 
 shaco.register_protocol {
@@ -235,8 +350,8 @@ shaco.register_protocol {
 }
 
 shaco.register_protocol {
-    id = shaco.TRET,
-    name = "ret",
+    id = shaco.TRESPONSE,
+    name = "response",
 }
 
 shaco.register_protocol {
@@ -251,6 +366,13 @@ shaco.register_protocol {
     name = "lua",
     pack = shaco.pack,
     unpack = shaco.unpack
+}
+
+shaco.register_protocol  {
+    id = shaco.TERROR,
+    name = "error",
+    unpack = function(...) return ... end,
+    dispatch = dispatch_error,
 }
 
 function shaco.getenv(key)

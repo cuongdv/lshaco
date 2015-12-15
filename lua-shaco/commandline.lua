@@ -55,7 +55,7 @@ function command.load(response, name, ...)
         response(h)
         return
     end
-    assert(type(h.handle)=='function', 'no handle')
+    assert(h and type(h.handle)=='function', 'no handle')
     if h.init then
         local ok, err = xpcall(h.init, debug.traceback, response, ...)
         if not ok then

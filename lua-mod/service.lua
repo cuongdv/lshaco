@@ -36,7 +36,7 @@ function service.QUERY(source, session, name)
         handle = tonumber(shaco.command('QUERY', name))
         assert(handle)
     end
-    shaco.ret(session, source, shaco.pack(handle))
+    shaco.ret(shaco.pack(handle))
 end
 
 function service.REG(source, session, param)
@@ -50,7 +50,7 @@ function service.REG(source, session, param)
         end
     end
     -- ret null, just wakeup session call
-    shaco.ret(session, source, shaco.pack())
+    shaco.ret(shaco.pack())
     local ql = _cache_q[name]
     if ql then
         while #ql > 0 do

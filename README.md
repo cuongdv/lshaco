@@ -1,14 +1,9 @@
 Todo
 ===
-1. linenoise
 2. command to master
-
 Bug
 ===
-valgrind --leak-check=yes ./shaco conf/config
-start service1
-start service2
-coredump
+1. lsend, memory leak, if argument error, no free
 
 ###monitor###
 1. one-time monitor

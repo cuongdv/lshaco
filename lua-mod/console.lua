@@ -7,7 +7,7 @@ local console = {}
 
 shaco.start(function()
     commandline.expand_path('./examples/?.lua') -- todo
-  
+    
     -- stdin
     if tonumber(shaco.getenv('daemon')) ~=1 then
         local reader = function()

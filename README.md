@@ -4,6 +4,7 @@ Todo
 Bug
 ===
 1. lsend, memory leak, if argument error, no free
+2. lsend return value
 
 ###monitor###
 1. one-time monitor

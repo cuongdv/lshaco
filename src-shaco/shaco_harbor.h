@@ -12,6 +12,6 @@ struct shaco_remote_message {
 
 void shaco_harbor_start(struct shaco_context *ctx);
 int  shaco_harbor_isremote(int handle);
-void shaco_harbor_send(int dest, int source, int session, int type, const void *msg, int sz);
+int  shaco_harbor_send(int dest, int source, int session, int type, const void *msg, int sz);
 
 #endif

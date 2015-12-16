@@ -7,6 +7,17 @@ local assert = assert
 local type = type
 local tonumber = tonumber
 
+local c_connect = assert(c.connect)
+local c_listen = assert(c.listen)
+local c_close = assert(c.close)
+local c_bind = assert(c.bind)
+local c_read = assert(c.read)
+local c_send = assert(c.send)
+local c_unpack = assert(c.unpack)
+local c_readon = assert(c.readon)
+local c_readoff = assert(c.readoff)
+local socketbuffer_new = assert(socketbuffer.new)
+
 local socket_pool = {}
 
 local function suspend(s)
@@ -28,7 +39,7 @@ local function close(s, force)
         local id = s.id
         socket_pool[id] = nil
         if s.connected then
-            c.close(id, force)
+            c_close(id, force)
         end
     end
 end
@@ -39,7 +50,7 @@ local event = {}
 event[0] = function(id)
     local s = socket_pool[id] 
     if s then
-        local data, n = c.read(id)
+        local data, n = c_read(id)
         if data then
             n = s.buffer:push(data, n)
             local format = s.read_format
@@ -106,7 +117,7 @@ end
 shaco.register_protocol {
     id = shaco.TSOCKET,
     name = "socket",
-    unpack = c.unpack,
+    unpack = c_unpack,
     dispatch = function(_,_,type, ...)
         local f = event[type]
         if f then f(...) end
@@ -159,7 +170,7 @@ function socket.listen(ip, port, callback)
     else
         assert(type(callback)=='function')
     end
-    local id, err = c.listen(ip, port)
+    local id, err = c_listen(ip, port)
     if id then
         local s = alloc(id, callback)
         s.connected = true
@@ -174,7 +185,7 @@ function socket.connect(ip, port)
         ip, port = string.match(ip, '([^:]+):(%d+)$')
         port = tonumber(port)
     end
-    local id, conning = c.connect(ip, port)
+    local id, conning = c_connect(ip, port)
     if id then
         local s = alloc(id)
         if conning then 
@@ -193,7 +204,7 @@ end
 
 -- wrap a exist fd to socket
 function socket.bind(fd)
-    local id, err = c.bind(fd)
+    local id, err = c_bind(fd)
     if id then
         local s = alloc(id)
         s.connected = true
@@ -230,16 +241,16 @@ end
 function socket.readon(id)
     local s = socket_pool[id]
     assert(s) 
-    c.readon(id)
+    c_readon(id)
     if not s.buffer then 
-        s.buffer = socketbuffer.new()
+        s.buffer = socketbuffer_new()
     end
 end
 
 function socket.readoff(id)
     local s = socket_pool[id]
     assert(s) 
-    c.readoff(id)
+    c_readoff(id)
 end
 
 function socket.block(id)
@@ -274,7 +285,7 @@ function socket.send(id, data, i, j)
     local s = socket_pool[id]
     assert(s)
     if s.connected then
-        local err = c.send(id, data, i, j)
+        local err = c_send(id, data, i, j)
         if err then
             socket_pool[id] = nil
             return nil, err

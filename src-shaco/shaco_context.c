@@ -59,7 +59,7 @@ shaco_context_handle(struct shaco_context *ctx) {
     return ctx->handle;
 }
 
-void 
+int
 shaco_context_send(struct shaco_context *ctx, int source, int session, int type, const void *msg, int sz) {
     int result = ctx->cb(ctx, ctx->ud, source, session, type, msg, sz);
     if (result !=0 ) {
@@ -67,6 +67,7 @@ shaco_context_send(struct shaco_context *ctx, int source, int session, int type,
         "Context `%s` cb fail:%d : %0x->%0x session:%d type:%d sz:%d", 
         ctx->name, result, source, ctx->handle, session, type, sz);
     }
+    return result;
 }
 
 void 
@@ -190,7 +191,6 @@ cmd_setloglevel(struct shaco_context *ctx, const char *param) {
 
 static const char *
 cmd_exit(struct shaco_context *ctx, const char *param) {
-    shaco_stop(param);
     return NULL;
 }
 

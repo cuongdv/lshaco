@@ -27,7 +27,7 @@ function command.start(response, name, ...)
     assert(name, 'no name')
     local args = {...}
     args = table.concat(args, ' ')
-    assert(shaco.luaservice(name..' '..args))
+    assert(shaco.newservice(name..' '..args))
 end
 
 function command.load(response, name, ...)

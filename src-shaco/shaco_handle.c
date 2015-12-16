@@ -59,12 +59,12 @@ shaco_handle_bindname(uint32_t handle, const char *name) {
     h->handle = handle;
 }
 
-void
+int
 shaco_handle_send(int dest, int source, int session, int type, const void *msg, int sz) {
     if (dest > 0 && dest <= H->context_count) {
         struct shaco_context *ctx = H->contexts[dest-1];
         if (ctx) {
-            shaco_context_send(ctx, source, session, type, msg, sz);
+            return shaco_context_send(ctx, source, session, type, msg, sz);
         } else {
             shaco_error(NULL,"Context no found: %0x->%0x session:%d type:%d sz:%d",
                     source, dest, session, type, sz);
@@ -73,6 +73,7 @@ shaco_handle_send(int dest, int source, int session, int type, const void *msg, 
         shaco_error(NULL,"Invalid dest handle: %0x->%0x session:%d type:%d sz:%d",
                 source, dest, session, type, sz);
     }
+    return 1;
 }
 
 void

@@ -37,7 +37,7 @@ void shaco_stop(const char* info);
 
 uint32_t shaco_launch(struct shaco_context *ctx, const char *name);
 void shaco_callback(struct shaco_context *context, shaco_cb cb, void *ud);
-void shaco_send(struct shaco_context *ctx, int dest, int session, int type, const void *msg, int sz);
+int  shaco_send(struct shaco_context *ctx, int dest, int session, int type, const void *msg, int sz);
 const char *shaco_command(struct shaco_context *ctx, const char *name, const char *param);
 
 void shaco_backtrace(struct shaco_context *ctx);

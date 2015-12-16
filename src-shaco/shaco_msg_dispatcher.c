@@ -103,7 +103,7 @@ shaco_msg_dispatcher_fini() {
     }
 }
 
-void
+int
 shaco_send(struct shaco_context *ctx, int dest, int session, int type, const void *msg, int sz) {
     uint32_t source = shaco_context_handle(ctx);
     if (shaco_harbor_isremote(dest)) {
@@ -113,10 +113,11 @@ shaco_send(struct shaco_context *ctx, int dest, int session, int type, const voi
             free = true;
         } else
             free = false;
-        shaco_harbor_send(dest, source, session, type, msg, sz);
+        int ret = shaco_harbor_send(dest, source, session, type, msg, sz);
         if (free) {
             shaco_free((void*)msg);
         }
+        return ret;
     } else {
         if (type & SHACO_DONT_COPY) {
             type &= ~SHACO_DONT_COPY;
@@ -126,5 +127,6 @@ shaco_send(struct shaco_context *ctx, int dest, int session, int type, const voi
             msg = tmp;
         }
         shaco_msg_push(dest, source, session, type, msg, sz);
+        return 0;
     }
 }

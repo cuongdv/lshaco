@@ -106,8 +106,7 @@ _sock_error(struct shaco_context *ctx, struct harbor *self, int sock, int err) {
         sb_fini(&s->sb);
         char tmp[64];
         int n = sprintf(tmp, "D %d", slaveid);
-        shaco_send(ctx, self->slave_handle, 0, SHACO_TTEXT, tmp, n);
-        return 0; 
+        return shaco_send(ctx, self->slave_handle, 0, SHACO_TTEXT, tmp, n);
     } else {
         shaco_info(ctx, "Unknown slave socket=%d error: %s", 
                 sock, shaco_socket_error(err));

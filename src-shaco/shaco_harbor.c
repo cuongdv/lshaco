@@ -17,7 +17,7 @@ shaco_harbor_isremote(int handle) {
     return (handle>>8) != 0;
 }
 
-void
+int
 shaco_harbor_send(int dest, int source, int session, int type, const void *msg, int sz) {
     if (H) {
         struct shaco_remote_message rmsg;
@@ -25,9 +25,10 @@ shaco_harbor_send(int dest, int source, int session, int type, const void *msg, 
         rmsg.type = type;
         rmsg.msg = msg;
         rmsg.sz = sz;
-        shaco_context_send(H, source, session, SHACO_TREMOTE, &rmsg, sizeof(rmsg));
+        return shaco_context_send(H, source, session, SHACO_TREMOTE, &rmsg, sizeof(rmsg));
     } else {
         shaco_error(NULL,"No harbor: %0x->%0x session:%d type:%d sz:%d", 
                 source, dest, session, type, sz);
+        return 1;
     }
 }

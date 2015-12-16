@@ -69,8 +69,13 @@ lsend(lua_State *L) {
             return luaL_error(L, "Not dest `%s`", name);
         }
     }
-    shaco_send(ctx, dest, session, type, msg, sz);
-    return 0;
+    int ret = shaco_send(ctx, dest, session, type, msg, sz);
+    if (ret != 0) {
+        lua_pushboolean(L, 0);
+    } else {
+        lua_pushboolean(L, 1);
+    }
+    return 1;
 }
 
 static int

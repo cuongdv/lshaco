@@ -1,5 +1,4 @@
 local c = require "shaco.c"
-local socket = require "socket.c"
 local serialize = require "serialize.c"
 local error = error
 local pairs = pairs
@@ -18,6 +17,10 @@ local coyield = coroutine.yield
 local corunning = coroutine.running
 local traceback = debug.traceback
 
+local c_log = assert(c.log)
+local c_send = assert(c.send)
+local c_timer = assert(c.timer)
+
 local _co_pool = {}
 local _call_session = {}
 local _yield_session_co = {}
@@ -27,7 +30,6 @@ local _response_co_address = {}
 
 local _session_id = 0
 local _fork_queue = {}
-local _error_queue = {}
 local _wakeup_co = {}
 
 -- proto type
@@ -35,13 +37,13 @@ local proto = {}
 local shaco = {
     TTEXT = 1,
     TLUA = 2,
-    TMONITOR = 3,
-    TLOG = 4,
-    TCMD = 5,
+    --TMONITOR = 3,
+    --TLOG = 4,
+    --TCMD = 5,
     TRESPONSE = 6,
     TSOCKET = 7,
     TTIME = 8,
-    TREMOTE = 9,
+    --TREMOTE = 9,
     TERROR = 10,
 }
 
@@ -52,35 +54,30 @@ local LOG_INFO    =2
 local LOG_WARNING =3
 local LOG_ERROR   =4
 
-function shaco.log(level, ...) 
+local function log(level, ...) 
     local argv = {...}
     local t = {}
     for _, v in ipairs(argv) do
         tinsert(t, tostring(v))
     end
-    c.log(level, tconcat(t, ' '))
+    c_log(level, tconcat(t, ' '))
 end
 
-shaco.error   = function(...) shaco.log(LOG_ERROR, ...) end
-shaco.warning = function(...) shaco.log(LOG_WARNING, ...) end
-shaco.info    = function(...) shaco.log(LOG_INFO, ...) end
-shaco.trace   = function(...) shaco.log(LOG_TRACE, ...) end
-shaco.debug   = function(...) shaco.log(LOG_DEBUG, ...) end
+shaco.error   = function(...) log(LOG_ERROR, ...) end
+shaco.warning = function(...) log(LOG_WARNING, ...) end
+shaco.info    = function(...) log(LOG_INFO, ...) end
+shaco.trace   = function(...) log(LOG_TRACE, ...) end
+shaco.debug   = function(...) log(LOG_DEBUG, ...) end
 
-shaco.now = c.now
-shaco.command = c.command
-shaco.handle = c.handle
-shaco.tostring = c.tostring
-shaco.topointstring = c.topointstring
-shaco.packstring = serialize.serialize_string
-shaco.unpackstring = serialize.deserialize_string
-
-function shaco.pack(...)
-    return serialize.serialize(serialize.pack(...))
-end
-function shaco.unpack(p,sz)
-    return serialize.deserialize(p)
-end
+shaco.now = assert(c.now)
+shaco.command = assert(c.command)
+shaco.handle = assert(c.handle)
+shaco.tostring = assert(c.tostring)
+shaco.topointstring = assert(c.topointstring)
+shaco.packstring = assert(serialize.serialize_string)
+shaco.unpackstring = assert(serialize.deserialize_string)
+function shaco.pack(...) return serialize.serialize(serialize.pack(...)) end
+function shaco.unpack(p,sz) return serialize.deserialize(p) end
 
 local function gen_session()
     _session_id = _session_id + 1
@@ -112,18 +109,20 @@ end
 
 function shaco.send(dest, typename, ...)
     local p = proto[typename]
-    return c.send(dest, 0, p.id, p.pack(...))
+    return c_send(dest, 0, p.id, p.pack(...))
 end
 
 function shaco.call(dest, typename, ...)
     local p = proto[typename]
     local session = gen_session()
-    c.send(dest, session, p.id, p.pack(...))
+    if not c_send(dest, session, p.id, p.pack(...)) then
+        error('call error')
+    end
     local ok, ret, sz = coyield('CALL', session)
     _sleep_co[corunning()] = nil
     _call_session[session] = nil
     if not ok then
-        -- BREAK can use for timeout call
+        -- todo BREAK can use for timeout call
         error('call error')
     end
     return p.unpack(ret, sz)
@@ -150,23 +149,6 @@ local function dispatch_wakeup()
     end
 end
 
-local function dispatch_error_queue()
-    local session = tremove(_error_queue, 1)
-    if session then
-        if _call_session[session] then
-            local co = _yield_session_co[session]
-            _yield_session_co[session] = nil
-            return suspend(co, coresume(co, false))
-        end
-    end
-end
-
-local function dispatch_error(source, session)
-    if _call_session[session] then
-        tinsert(_error_queue, session)
-    end
-end
-
 function suspend(co, result, command, param, sz)
     if not result then
         local session = _response_co_session[co]
@@ -174,7 +156,7 @@ function suspend(co, result, command, param, sz)
             local address = _response_co_address[co]
             _response_co_session[co] = nil
             _response_co_address[co] = nil
-            c.send(address, session, shaco.TERROR, "")
+            c_send(address, session, shaco.TERROR, "")
         end
         error(traceback(co, command))
     end
@@ -184,14 +166,14 @@ function suspend(co, result, command, param, sz)
     elseif command == 'CALL' then
         _call_session[param] = true
         _yield_session_co[param] = co
-        --_sleep_co[co] = param -- no support BREAK yet
+        --_sleep_co[co] = param -- todo: no support BREAK yet
     elseif command == 'RETURN' then
         local session = _response_co_session[co]
         local address = _response_co_address[co]
         if not session then
             error('No session to response')
         end
-        local ret = c.send(address, session, shaco.TRESPONSE, param, sz)
+        local ret = c_send(address, session, shaco.TRESPONSE, param, sz)
         _response_co_session[co] = nil
         _response_co_address[co] = nil
         return suspend(co, coresume(co, ret))
@@ -205,7 +187,7 @@ function suspend(co, result, command, param, sz)
             if _response_co_session[co] == nil then
                 error(traceback(co, 'Try response repeat'))
             end
-            local ret = c.send(address, session, shaco.TRESPONSE, msg, sz)
+            local ret = c_send(address, session, shaco.TRESPONSE, msg, sz)
             _response_co_session[co] = nil
             _response_co_address[co] = nil
             return ret
@@ -217,17 +199,15 @@ function suspend(co, result, command, param, sz)
             local address = _response_co_address[co]
             _response_co_session[co] = nil
             _response_co_address[co] = nil
-            c.send(address, session, shaco.TERROR, "")
+            c_send(address, session, shaco.TERROR, "")
         end
     else
         error(traceback(co, 'Suspend unknown command '..command))
     end
-    dispatch_wakeup()
-    dispatch_error_queue()
+    return dispatch_wakeup()
 end
 
 local function dispatch_message(source, session, typeid, msg, sz)
-    local p = proto[typeid]
     if typeid == 8 or -- shaco.TTIME
        typeid == 6 then -- shaco.TRESPONSE 
         local co = _yield_session_co[session] 
@@ -239,7 +219,22 @@ local function dispatch_message(source, session, typeid, msg, sz)
             _yield_session_co[session] = nil
             suspend(co, coresume(co, true, msg, sz))
         end
+    elseif typeid == 10 then -- shaco.TERROR
+        if _call_session[session] then
+            local co = _yield_session_co[session] 
+            if co == 'BREAK' then -- BREAK by wakeup yet
+                _yield_session_co[session] = nil 
+            elseif co == nil then
+                error(sformat('unknown error session %d from %04x', session, source))
+            else
+                _yield_session_co[session] = nil
+                suspend(co, coresume(co, false))
+            end
+        else
+            error(sformat('unknown error session %d from %04x', session, source))
+        end
     else
+        local p = proto[typeid]
         local co = co_create(p.dispatch)
         if session > 0 then
             _response_co_session[co] = session
@@ -247,6 +242,7 @@ local function dispatch_message(source, session, typeid, msg, sz)
         end
         suspend(co, coresume(co, source, session, p.unpack(msg, sz)))
     end
+
 end
 
 local function dispatchcb(source, session, typeid, msg, sz)
@@ -300,7 +296,7 @@ end
 
 function shaco.sleep(interval)
     local session = gen_session()
-    c.timer(session, interval)
+    c_timer(session, interval)
     local ok, ret = coyield('SLEEP', session)
     _sleep_co[corunning()] = nil
     if ok then
@@ -319,7 +315,7 @@ function shaco.timeout(interval, func)
     local session = gen_session()
     assert(_yield_session_co[session] == nil, 'Repeat session '..session)
     _yield_session_co[session] = co
-    c.timer(session, interval)
+    c_timer(session, interval)
 end
 
 function shaco.dispatch(protoname, fun)
@@ -331,6 +327,10 @@ end
 function shaco.start(func)
     c.callback(dispatchcb)
     shaco.timeout(0, func)
+end
+
+function shaco.exit(info)
+    shaco.command('EXIT', info or 'in lua')
 end
 
 function shaco.register_protocol(class)
@@ -354,6 +354,11 @@ shaco.register_protocol {
     name = "response",
 }
 
+shaco.register_protocol  {
+    id = shaco.TERROR,
+    name = "error",
+}
+
 shaco.register_protocol {
     id = shaco.TTEXT,
     name = "text",
@@ -368,13 +373,6 @@ shaco.register_protocol {
     unpack = shaco.unpack
 }
 
-shaco.register_protocol  {
-    id = shaco.TERROR,
-    name = "error",
-    unpack = function(...) return ... end,
-    dispatch = dispatch_error,
-}
-
 function shaco.getenv(key)
     return shaco.command('GETENV', key)
 end
@@ -383,7 +381,7 @@ function shaco.launch(name)
     return tonumber(shaco.command('LAUNCH', name))
 end
 
-function shaco.luaservice(name)
+function shaco.newservice(name)
     return shaco.launch('lua '..name)
 end
 
@@ -393,10 +391,6 @@ end
 
 function shaco.register(name)
     shaco.call('.service', 'lua', 'REG', name..' '..shaco.handle())
-end
-
-function shaco.exit(info)
-    shaco.command('EXIT', info or 'in lua')
 end
 
 return shaco

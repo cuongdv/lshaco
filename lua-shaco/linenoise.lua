@@ -1,4 +1,6 @@
 local c = require "linenoise.c"
+local io = io
+local table = table
 local string = string
 
 local linenoise = {}
@@ -7,7 +9,7 @@ local _line
 local _cursor_pos
 local _historys = {}
 local _history_index
-local _history_max = 10 -- just simple
+local _history_max = 20 --default
 
 local function clear_line()
     _line = ""
@@ -111,7 +113,7 @@ end
 
 local function key_ctrl_c()
     -- now is not catch by linenoise, see llinenoise.c
-    return true
+    return false
 end
 
 local function key_delete()
@@ -229,8 +231,8 @@ local control = {
 }
 
 function linenoise.read(fd, read)
+    local res
     local ok, info = pcall(function()
-        local flag
         clear_line()
         assert(c.rawmode_on(fd))
         while true do
@@ -238,7 +240,8 @@ function linenoise.read(fd, read)
             local b = string.byte(c)
             local func = control[b]
             if func then
-                if func(fd, read) then
+                res = func(fd, read)
+                if res ~= nil then
                     break
                 end
             else
@@ -252,7 +255,50 @@ function linenoise.read(fd, read)
         print('\x1b[31m'..info..'\x1b[0m')
         return ""
     else
-        return _line
+        return res and _line or nil
+    end
+end
+
+function linenoise.history(max)
+    _history_max = max or _history_max
+end
+
+function linenoise.loadhistory(file)
+    if #_historys >= _history_max then
+        return true
+    end
+    local f, err = io.open(file, 'r')
+    if f then
+        for c in f:lines('l') do
+            if #_historys < _history_max then
+                if c ~= '' then
+                    table.insert(_historys, 1, c)
+                end
+            else break
+            end
+        end
+        return true
+    else
+        return nil, err
+    end
+end
+
+function linenoise.savehistory(file)
+    local f, err = io.open(file, 'w')
+    if f then
+        if _historys[#_historys] == '' and _line ~= '' then
+            _historys[#_historys] = _line
+        end
+        for i=#_historys, 1, -1 do
+            local c = _historys[i]
+            if c ~= '' then
+                f:write(c..'\n')
+            end
+        end
+        f:close()
+        return true
+    else
+        return nil, err
     end
 end
 

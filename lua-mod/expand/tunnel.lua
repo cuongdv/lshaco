@@ -1,20 +1,23 @@
 local shaco = require "shaco"
 local socket = require "socket"
 
-local client = {}
+local tunnel = {}
 
 local sock
 local addr
 
 local function connect(response)
-    response('Client connect '..addr)
+    assert(addr, 'tunnel address is nil')
+    response('Tunnel to '..addr)
     sock = assert(socket.connect(addr))
     shaco.fork(function()
         socket.readon(sock)
         while true do
             local data, info = socket.read(sock, '\n')
-            response(data)
-            if not data then
+            if data then
+                response(data)
+            else
+                response('Tunnel broken: '..info)
                 break
             end
         end
@@ -23,23 +26,23 @@ local function connect(response)
     end)
 end
 
-function client.init(response, ...)
+function tunnel.init(response, ...)
     if not sock then
         addr = ...
         connect(response)
     else
-        response('Client already exist')
+        response('Tunnel already exist')
     end
 end
 
-function client.fini()
+function tunnel.fini()
     if sock then
         socket.close(sock)
         sock = nil
     end
 end
 
-function client.handle(response, cmdline)
+function tunnel.handle(response, cmdline)
     if not sock then
         connect(response)
     end
@@ -48,4 +51,4 @@ function client.handle(response, cmdline)
     end
 end
 
-return client
+return tunnel

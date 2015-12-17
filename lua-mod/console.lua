@@ -6,10 +6,11 @@ local linenoise = require "linenoise"
 local console = {}
 
 shaco.start(function()
-    commandline.expand_path('./examples/?.lua') -- todo
-    
+    local path = shaco.getenv('console_expandpath') or './lua-mod/expand/?.lua'
+    commandline.expand_path(path)
+ 
     -- stdin
-    if tonumber(shaco.getenv('daemon')) ~=1 then
+    if tonumber(shaco.getenv('daemon')) ~=1 then 
         local reader = function()
             local id = assert(socket.stdin())
             return function()
@@ -21,7 +22,18 @@ shaco.start(function()
         local response = function(...)
             print(...)
         end
-        shaco.fork(commandline.loop, reader(), response)
+        shaco.fork(function(...)
+            linenoise.history(tonumber(shaco.getenv('console_historymax')))
+            local history_file = shaco.getenv('console_historyfile')
+            if history_file then
+                linenoise.loadhistory(history_file)
+            end
+            commandline.loop(...)
+            if history_file then
+                linenoise.savehistory(history_file)
+            end
+            os.exit() -- just exit
+        end, reader(), response)
     end
     -- harbor
     --if tonumber(shaco.getenv('slaveid')) then

@@ -13,7 +13,7 @@ local pcall = pcall
 local commandline = {}
 
 local _expand_path 
-local _expand
+local _expand = {}
 
 local command = {}
 
@@ -32,8 +32,10 @@ end
 
 function command.load(response, name, ...)
     assert(name, 'no name')
-    command.unload() -- unload last one
-
+    if _expand[name] then
+        response('Expand already load')
+        return
+    end
     local func
     local errv = {}
     for pattern in string.gmatch(_expand_path, '([^;]+);*') do
@@ -66,15 +68,16 @@ function command.load(response, name, ...)
             return
         end
     end
-    _expand = h
+    _expand[name] = h
 end
 
-function command.unload(response)
-    if _expand then
-        if _expand.fini then
-            _expand.fini()
+function command.unload(response, name)
+    local h = _expand[name]
+    if h then
+        if h.fini then
+            h.fini()
         end
-        _expand = nil
+        _expand[name] = nil
     end
 end
 
@@ -102,13 +105,16 @@ function commandline.loop(read, response)
             if cmdline == nil then
                 loop = false
             elseif #cmdline > 0 then
-                local private = false
-                if string.byte(cmdline,1)==46 then --'.'
-                    private = true
-                    cmdline = string.sub(cmdline,2)
-                end
-                if _expand and not private then
-                    _expand.handle(response, cmdline)
+                if string.byte(cmdline,1)==58 then --':'
+                    local name, cmdline = string.match(cmdline, ':([%w%_]+)[ ]+(.+)')
+                    if name and cmdline then
+                        local h = _expand[name]
+                        if h then
+                            h.handle(response, cmdline)
+                        else
+                            response('No expand '..name)
+                        end
+                    end
                 else
                     handle_private(response, cmdline)
                 end

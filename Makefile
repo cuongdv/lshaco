@@ -1,4 +1,4 @@
-.PHONY: all clean cleanall 3rd 3rdclean 3rduninstall pack deploy patch
+.PHONY: all clean 3rd 3rduninstall 
  #-Wpointer-arith -Winline
 
 #mod_src=$(wildcard src-mod/*.c)
@@ -29,11 +29,11 @@ all_t=\
 	lib-l/socket.so \
 	lib-l/socketbuffer.so \
 	lib-l/serialize.so \
-	lib-l/linenoise.so #\
+	lib-l/linenoise.so \
+	lib-l/crypt.so \
+	lib-l/mysqlaux.so #\
 #	lib-l/memory.so \
 #	lib-l/util.so \
-#	lib-l/crypt.so \
-#	lib-l/mysqlaux.so \
 #	lib-l/md5.so
 
 PLATS=linux macosx
@@ -141,31 +141,8 @@ tool/srcpack: tool/srcpack.c \
 3rduninstall:
 	cd 3rd && make uninstall
 
-pack:
-	cd tool && \
-	for one in base node game db test; do \
-	python srcpack.py ../lua/$$one ../bin ../lua/$$one ; \
-	done
-	cd ..
-
-DEPLOY_PATH=~/server/trunk
-deploy:
-	cp -r bin/*.so bin/base.lso bin/shaco $(DEPLOY_PATH)/bin
-	cp -r 3rdlib $(DEPLOY_PATH)
-
-patch:
-	scp bin/base.lso lvxiaojun@192.168.1.220:~/server/trunk/bin
-
 clean:	
 	rm -f $(all_t) 
 	rm -rf lib-cmod
 	rm -rf lib-l
-	rm -f shaco
 	rm -rf *.dSYM
-
-cleanall: clean
-	cd 3rd/lua && make clean
-	cd 3rd/jemalloc && make clean
-	rm -rf cscope.* tags
-	rm -rf bin/*.lso
-	rm -rf tool/*.sl

@@ -3,21 +3,19 @@ local mysql = require "mysql"
 local tbl = require "tbl"
 local conn
 
-local function ping()
-    shaco.trace('start exec')
-    local result = conn:execute("select data from x_task where roleid=691")
-    tbl.print(result)
-    result = result[1]
-end
-
 shaco.start(function()
     conn = assert(mysql.connect{
-        host = "192.168.1.200",
+        host = "127.0.0.1",
         port = 3306,
-        db = "game",
-        user = "game",
-        passwd = "123456",
+        db = "",
+        user = "root",
     })
-   
-    shaco.fork(ping)
+ 
+    local result
+    result = conn:execute("use mysql")
+    assert(result.err_code==nil, result.message)
+    
+    result = conn:execute("select * from user")
+    assert(result.err_code==nil, result.message)
+    print(tbl(result, 'res'))
 end)

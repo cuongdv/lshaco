@@ -18,6 +18,9 @@ local CLIENT_SESSION_TRACK = 0x00800000
 local SERVER_SESSION_STATE_CHANGED = 0x4000
 
 local function native_password(s, key)
+    if s == "" then
+        return ""
+    end
     local t1 = crypt.sha1(s)
     local t2 = crypt.sha1(key..crypt.sha1(t1))
     local i = 0
@@ -316,6 +319,7 @@ local function handshake_response(id, handshake, user, passwd, db)
     else
         db = ""
     end
+    passwd = passwd or ""
     passwd = native_password(passwd, string.sub(handshake.auth_plugin_data,1,20))
     local s =
     string.pack("<I4",capability)..
@@ -323,7 +327,7 @@ local function handshake_response(id, handshake, user, passwd, db)
     string.char(33)..
     string.rep("\0",23)..
     user.."\0"..
-    string.char(20)..
+    string.char(#passwd)..
     passwd..
     db..
     auth_plugin_name.."\0"

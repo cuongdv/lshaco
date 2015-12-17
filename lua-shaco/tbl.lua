@@ -9,7 +9,7 @@ local sgsub = string.gsub
 
 local tbl = {}
 
-local function _key(k)
+local function key(k)
     if type(k) == "number" then
         return "["..k.."]"
     else
@@ -17,16 +17,16 @@ local function _key(k)
     end
 end
 
-local function _value(v)
+local function value(v)
     if type(v) == "string" then
         v = sgsub(v, '"', '\\"')
-        return sformat('"%s"', v)
+        return '"'..v..'"'
     else
         return tostring(v)
     end
 end
 
-local function _ns_key(ns, k)
+local function fullkey(ns, k)
     if type(k) == "number" then
         return ns.."["..k.."]"
     else
@@ -34,33 +34,29 @@ local function _ns_key(ns, k)
     end
 end
 
-function tbl.serialize(t, name)
+return function (t, name)
+    if type(name) ~= 'string' then
+        name = tostring(t)
+    end
     local cache = { [t] = name }
 	local function serialize(t, name, tab, ns)
         local tab2 = tab.."  "
         local fields = {}
 		for k, v in pairs(t) do
 			if cache[v] then
-                tinsert(fields, tostring(k).."="..cache[v])
+                tinsert(fields, key(k).."="..cache[v])
 			else
                 if type(v) == "table" then
-                    local ns_key = _ns_key(ns, k)
-				    cache[v] = ns_key
-				    tinsert(fields, serialize(v, k, tab2, ns_key))
+                    local fk = fullkey(ns, k)
+				    cache[v] = fk
+				    tinsert(fields, serialize(v, k, tab2, fk))
                 else
-                    tinsert(fields, _key(k).."=".._value(v))
+                    tinsert(fields, key(k).."="..value(v))
                 end
 			end
 		end	
-        return _key(name).."={\n"..tab2..
+        return key(name).."={\n"..tab2..
             tconcat(fields, ",\n"..tab2).."\n"..tab.."}"
 	end	
 	return serialize(t, name, "", name)
 end
-
-function tbl.print(t, name, out)
-    out = out or print
-    out(tbl.serialize(t, tostring(name)))
-end
-
-return tbl

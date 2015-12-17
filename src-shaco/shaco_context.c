@@ -194,6 +194,12 @@ cmd_exit(struct shaco_context *ctx, const char *param) {
     return NULL;
 }
 
+static const char *
+cmd_abort(struct shaco_context *ctx, const char *param) {
+    shaco_stop(param);
+    return NULL;
+}
+
 struct command C[] = {
     { "LAUNCH", cmd_launch },
     { "QUERY", cmd_query },
@@ -206,6 +212,7 @@ struct command C[] = {
     { "GETLOGLEVEL", cmd_getloglevel },
     { "SETLOGLEVEL", cmd_setloglevel },
     { "EXIT", cmd_exit },
+    { "ABORT", cmd_abort },
     { NULL, NULL },
 };
 

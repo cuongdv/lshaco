@@ -329,8 +329,12 @@ function shaco.start(func)
     shaco.timeout(0, func)
 end
 
-function shaco.exit(info)
-    shaco.command('EXIT', info or 'in lua')
+function shaco.exit()
+    shaco.command('EXIT')
+end
+
+function shaco.abort(info)
+    shaco.command('ABORT', info or 'by lua')
 end
 
 function shaco.register_protocol(class)

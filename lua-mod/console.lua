@@ -32,7 +32,7 @@ shaco.start(function()
             if history_file then
                 linenoise.savehistory(history_file)
             end
-            os.exit() -- just exit
+            shaco.abort('by console')
         end, reader(), response)
     end
     -- harbor

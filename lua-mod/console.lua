@@ -14,8 +14,8 @@ shaco.start(function()
         local reader = function()
             local id = assert(socket.stdin())
             return function()
-                return linenoise.read(id, function(...)
-                    return assert(socket.read(...))
+                return linenoise.read(function()
+                    return socket.read(id, 1)
                 end)
             end
         end

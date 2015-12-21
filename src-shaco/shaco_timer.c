@@ -94,7 +94,7 @@ static uint64_t
 _elapsed() {
 #if !defined(__APPLE__)
     struct timespec ti;
-    clock_gettime(CLOCK_MONOTONIC, &ti);
+    clock_gettime(CLOCK_MONOTONIC_RAW, &ti);
     return (uint64_t)ti.tv_sec * 1000 + (uint64_t)ti.tv_nsec / 1000000;
 #else
     struct timeval tv;

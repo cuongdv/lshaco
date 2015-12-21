@@ -1,6 +1,8 @@
 Todo
 ===
-2. command to master
+1. command to master
+2. openssl crypt
+
 Bug
 ===
 1. lsend, memory leak, if argument error, no free

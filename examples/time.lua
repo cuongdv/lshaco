@@ -22,8 +22,8 @@ shaco.start(function()
         end
     end)
     local function tick()
-        print ('    tick per second...')
         shaco.timeout(1000, tick);
+        print ('    tick per second...')
     end
     shaco.timeout(1000, tick);
 end)

@@ -84,8 +84,8 @@ _prefix(struct shaco_context *ctx, int level) {
 
 static inline void
 _log(struct shaco_context *ctx, int level, const char *log) {
-    int tag = _color_begin(level);
     _prefix(ctx, level);
+    int tag = _color_begin(level);
     fprintf(F, "%s\n", log);
     _color_end(tag);
     fflush(F);
@@ -93,8 +93,8 @@ _log(struct shaco_context *ctx, int level, const char *log) {
 
 static inline void
 _logv(struct shaco_context *ctx, int level, const char *fmt, va_list ap) {
-    int tag = _color_begin(level);
     _prefix(ctx, level);
+    int tag = _color_begin(level);
     vfprintf(F, fmt, ap);
     fprintf(F, "%s", "\n");
     _color_end(tag);

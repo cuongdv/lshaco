@@ -161,6 +161,8 @@ shaco_timer_trigger() {
 
 void
 shaco_timer_register(uint32_t handle, int session, int interval) {
+    _elapsed_time();
+    
     struct time_node n;
     n.handle = handle;
     n.session = session;

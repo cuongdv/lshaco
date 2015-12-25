@@ -19,7 +19,7 @@ init() {
     int i;
     size_t len = 0;
     for (i=0; environ[i]; ++i) {
-        len = strlen(environ[i])+1;
+        len += strlen(environ[i])+1;
     }
     arg_end = shaco_os_argv[0];
     for (i=0; shaco_os_argv[i]; ++i) {

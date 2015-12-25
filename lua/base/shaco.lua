@@ -25,7 +25,7 @@ local shaco = {
 local __fork_queue = {}
 local __wakeup_map = {}
 local __wakeup_queue = {}
-local __wakeuping
+
 
 local function fix_um_dispatch(f)
     return function(session, source, ...)
@@ -278,7 +278,10 @@ shaco.register_protocol {
     unpack = function() end,
     dispatch = function(session,_)
         if session == 0 then
-            __timeout_func()
+            local ok, err = xpcall(__timeout_func, debug.traceback)
+            if not ok then
+                shaco.error(err)
+            end
             c.timer(0, __timeout_interval)
         else
             local co = time_map[session]

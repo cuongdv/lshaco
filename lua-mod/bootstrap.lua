@@ -3,17 +3,18 @@ local shaco = require "shaco"
 shaco.start(function()
     local handle
     if shaco.getenv('console') then
-        assert(shaco.newservice('console'))
+        handle = assert(shaco.uniqueservice('console'))
+        shaco.command('REG', 'console '..handle)
     end
     if tonumber(shaco.getenv('slaveid')) then
         if shaco.getenv('standalone') then
-            assert(shaco.newservice('master'))
+            assert(shaco.uniqueservice('master'))
         end
-        handle = assert(shaco.newservice('slave'))
+        handle = assert(shaco.uniqueservice('slave'))
         shaco.command('REG', 'slave '..handle)
     end
-    handle = assert(shaco.newservice('service'))
+    handle = assert(shaco.uniqueservice('service'))
     shaco.command('REG', 'service '..handle)
 
-    pcall(shaco.newservice(shaco.getenv('start') or 'main'))
+    pcall(shaco.uniqueservice(shaco.getenv('start') or 'main'))
 end)

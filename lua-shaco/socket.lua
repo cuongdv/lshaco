@@ -7,16 +7,21 @@ local assert = assert
 local type = type
 local tonumber = tonumber
 
+local socket = {}
+
 local c_connect = assert(c.connect)
 local c_listen = assert(c.listen)
 local c_close = assert(c.close)
 local c_bind = assert(c.bind)
-local c_read = assert(c.read)
+--local c_read = assert(c.read)
 local c_send = assert(c.send)
+local c_sendmsg = assert(c.sendmsg)
 local c_unpack = assert(c.unpack)
 local c_readon = assert(c.readon)
 local c_readoff = assert(c.readoff)
+local c_drop = assert(c.drop)
 local socketbuffer_new = assert(socketbuffer.new)
+socket.getfd = assert(c.getfd)
 
 local socket_pool = {}
 
@@ -47,32 +52,28 @@ end
 local event = {}
 
 -- LS_EREAD
-event[0] = function(id)
+event[0] = function(id, data, size)
     local s = socket_pool[id] 
-    if s then
-        local data, n = c_read(id)
-        if data then
-            n = s.buffer:push(data, n)
-            local format = s.read_format
-            local rt = type(format)
-            -- read by number, or socket.block
-            if rt == 'number' then 
-                if n >= format then 
-                    wakeup(s)
-                end
-            -- read by separator
-            elseif rt == 'string' then
-                if s.buffer:findsep(format) then
-                    wakeup(s)
-                end
-            else -- read all
-                wakeup(s)
-            end
-        elseif n then -- no data, n may is error
-            s.connected = false
-            s.error = n 
+    if s == nil then
+        shaco.error(string.format('Socket %d drop data size=%d', id, size))
+        c_drop(data, size)
+        return
+    end
+    size = s.buffer:push(data, size)
+    local format = s.read_format
+    local rt = type(format)
+    -- read by number, or socket.block
+    if rt == 'number' then 
+        if size >= format then 
             wakeup(s)
         end
+    -- read by separator
+    elseif rt == 'string' then
+        if s.buffer:findsep(format) then
+            wakeup(s)
+        end
+    else -- read all
+        wakeup(s)
     end
 end
 
@@ -123,8 +124,6 @@ shaco.register_protocol {
         if f then f(...) end
     end,
 }
-
-local socket = {}
 
 local function alloc(id, callback)
     local s = socket_pool[id]
@@ -203,8 +202,12 @@ function socket.connect(ip, port)
 end
 
 -- wrap a exist fd to socket
-function socket.bind(fd)
-    local id, err = c_bind(fd)
+function socket.bind(fd, protocol)
+    if protocol == 'IPC' then
+        protocol = 2 -- see socket_define.h
+    else protocol = nil
+    end
+    local id, err = c_bind(fd, protocol)
     if id then
         local s = alloc(id)
         s.connected = true
@@ -298,5 +301,81 @@ function socket.send(id, data, i, j)
         return nil, s.error
     end
 end
+
+function socket.recvmsg(id)
+    local s = socket_pool[id]
+    assert(s)
+    s.read_format = nil -- nil for recvmsg
+    local _, data = s.buffer:pop(nil)
+    if _ then
+        return data
+    else -- check connected first 
+        if s.connected then 
+            suspend(s)
+            if s.connected then
+                _, data = s.buffer:pop(nil)
+                return data
+            end
+        end
+        socket_pool[id] = nil
+        return nil, s.error
+    end
+end
+
+function socket.sendmsg(id, data, i, j)
+    local s = socket_pool[id]
+    assert(s)
+    if s.connected then
+        local err = c_sendmsg(id, -1, data, i, j)
+        if err then
+            socket_pool[id] = nil
+            return nil, err
+        else return true 
+        end
+    else
+        -- do not clear socket when connected is false,
+        -- do this only when reading
+        -- socket_pool[id] = nil
+        return nil, s.error
+    end
+end
+
+function socket.read_fd(id)
+    local s = socket_pool[id]
+    assert(s)
+    s.read_format = nil -- nil for recvmsg
+    local fd, data = s.buffer:pop(nil)
+    if fd then
+        return fd, data
+    else -- check connected first 
+        if s.connected then 
+            suspend(s)
+            if s.connected then
+                return s.buffer:pop(nil)
+            end
+        end
+        socket_pool[id] = nil
+        return nil, s.error
+    end
+end
+
+function socket.send_fd(id, fd, data)
+    local s = socket_pool[id]
+    assert(s)
+    if s.connected then
+        local err = c_sendmsg(id, fd, data or ' ')
+        if err then
+            socket_pool[id] = nil
+            return nil, err
+        else return true 
+        end
+    else
+        -- do not clear socket when connected is false,
+        -- do this only when reading
+        -- socket_pool[id] = nil
+        return nil, s.error
+    end
+end
+
 
 return socket

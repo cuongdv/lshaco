@@ -190,7 +190,17 @@ cmd_setloglevel(struct shaco_context *ctx, const char *param) {
 }
 
 static const char *
-cmd_exit(struct shaco_context *ctx, const char *param) {
+cmd_kill(struct shaco_context *ctx, const char *param) {
+    // todo
+    uint32_t handle = shaco_handle_query(param);
+    if (handle > 0) {
+        struct shaco_context *c = shaco_context_get(handle);
+        if (c != ctx) {
+            shaco_info(ctx, "Kill [%02x] %s", handle, param);
+            shaco_context_free(c);
+            shaco_info(ctx, "Kill [%02x] %s", handle, param);
+        }
+    }
     return NULL;
 }
 
@@ -211,7 +221,7 @@ struct command C[] = {
     { "SETENV", cmd_setenv },
     { "GETLOGLEVEL", cmd_getloglevel },
     { "SETLOGLEVEL", cmd_setloglevel },
-    { "EXIT", cmd_exit },
+    { "KILL", cmd_kill },
     { "ABORT", cmd_abort },
     { NULL, NULL },
 };

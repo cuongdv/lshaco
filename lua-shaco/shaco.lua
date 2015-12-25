@@ -329,8 +329,8 @@ function shaco.start(func)
     shaco.timeout(0, func)
 end
 
-function shaco.exit()
-    shaco.command('EXIT')
+function shaco.kill(name)
+    shaco.command('KILL', name)
 end
 
 function shaco.abort(info)
@@ -387,6 +387,12 @@ end
 
 function shaco.newservice(name)
     return shaco.launch('lua '..name)
+end
+
+function shaco.uniqueservice(name)
+    -- todo uniqueservice
+    local handle = tonumber(shaco.command('QUERY', name))
+    return handle or shaco.newservice(name)
 end
 
 function shaco.queryservice(name)

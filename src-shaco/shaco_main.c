@@ -8,6 +8,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+char *shaco_arg;
+char **shaco_os_argv;
+
 static void
 _init_env(lua_State *L) {
 	lua_pushglobaltable(L);
@@ -100,6 +103,19 @@ main(int argc, char* argv[]) {
 
     //shaco_setenv("startup_args", args);
     //shaco_free(args);
+
+    shaco_os_argv = argv;
+    int len = 0;
+    for (i=0; i<argc; ++i) {
+        len += strlen(argv[i])+1;
+    }
+    shaco_arg = shaco_malloc(len);
+    strcpy(shaco_arg, argv[0]);
+    for (i=1; i<argc; ++i) {
+        strcat(shaco_arg, " ");
+        strcat(shaco_arg, argv[i]);
+    }
+    shaco_arg[len-1] = '\0';
 
     shaco_init();
     shaco_start();

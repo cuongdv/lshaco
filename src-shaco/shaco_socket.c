@@ -45,6 +45,11 @@ shaco_socket_send_nodispatcherror(int id, void *data, int sz) {
     else return event.err;
 }
 
+int 
+shaco_socket_sendmsg(int id, void *data, int size, int fd) {
+    return socket_sendmsg(N, id, data, size, fd);
+}
+
 void 
 shaco_socket_init(int max_socket) {
     signal(SIGHUP, SIG_IGN);
@@ -67,8 +72,8 @@ shaco_socket_fini() {
 }
 
 int 
-shaco_socket_bind(struct shaco_context *ctx, int fd) {
-    return socket_bind(N, fd, shaco_context_handle(ctx));
+shaco_socket_bind(struct shaco_context *ctx, int fd, int protocol) {
+    return socket_bind(N, fd, shaco_context_handle(ctx), protocol);
 }
 int 
 shaco_socket_listen(struct shaco_context *ctx, const char *addr, int port) { 

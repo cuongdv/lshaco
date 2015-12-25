@@ -76,6 +76,14 @@ shaco_handle_send(int dest, int source, int session, int type, const void *msg, 
     return 1;
 }
 
+struct shaco_context *
+shaco_context_get(uint32_t handle) {
+    if (handle > 0 && handle <= H->context_count) {
+        return H->contexts[handle-1];
+    } else
+        return NULL;
+}
+
 void
 shaco_handle_init() {
     H = shaco_malloc(sizeof(*H));

@@ -8,21 +8,21 @@ local shaco = require "shaco"
 local socket = require "socket"
 
 shaco.start(function()
-    local addr = '127.0.0.1:1234'
+    local addr = shaco.getenv('addr') or ('127.0.0.1:1234')
     local sock = assert(socket.listen(
-        addr,
-        function(id)
+        addr, function(id)
             print ('new socket '..id)
             socket.start(id)
             socket.readon(id)
             while true do
                 local ok, s = pcall(function()
-                    return assert(socket.read(id, '\n'))
+                    return assert(socket.read(id, '\r\n'))
                 end)
                 if not ok then
                     print(s)
                     break
                 end
+                print (string.format('[%d] %s', id, s))
                 if s == 'exit' then
                     break
                 end
@@ -31,5 +31,5 @@ shaco.start(function()
             socket.close(id)
             print (id..' exit')
         end))
-    print('listen on '..addr)
+    print('listen on '..addr, sock, socket.getfd(sock))
 end)

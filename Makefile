@@ -31,7 +31,8 @@ all_t=\
 	lib-l/serialize.so \
 	lib-l/linenoise.so \
 	lib-l/crypt.so \
-	lib-l/mysqlaux.so #\
+	lib-l/mysqlaux.so \
+	lib-l/process.so #\
 #	lib-l/memory.so \
 #	lib-l/util.so \
 #	lib-l/md5.so
@@ -130,6 +131,8 @@ lib-l/mysqlaux.so: src-l/lmysqlaux.c | lib-l
 lib-l/md5.so: 3rd/lua-md5/md5lib.c 3rd/lua-md5/md5.c 3rd/lua-md5/compat-5.2.c | lib-l
 	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ILUA) -I3rd/lua-md5
 
+lib-l/process.so: src-l/lprocess.c | lib-l
+	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO) $(ILUA) 
 
 tool/srcpack: tool/srcpack.c \
 	3rd/lua/src/srcpack.c

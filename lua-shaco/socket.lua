@@ -314,10 +314,11 @@ function socket.ipc_readfd(id, format)
             local data
             data, err = socket.read(id, format)
             if data then
-                fd = string.unpack('=i4', fd);
+                fd = string.unpack('=i4', fd)
                 return fd, data
             end
-        else 
+        else
+            fd = string.unpack('=i4', fd)
             return fd
         end
     end

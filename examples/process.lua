@@ -69,6 +69,7 @@ end
 local function start_listen(addr)
     local listen_sock = assert(socket.listen(
         addr, function(id)
+            print ('1111')
             local pid = process.getpid()
             local newfd = socket.getfd(id)
             print (string.format('Master [%d] accpet sock %d', pid, id))
@@ -106,4 +107,4 @@ end
 shaco.start(function()
     local listen_sock = start_listen('127.0.0.1:1234')
     fork_worker(nworker, listen_sock)
-end)
+end

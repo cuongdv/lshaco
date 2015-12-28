@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <sys/socket.h>
+#include <errno.h>
 
 // socket
 
@@ -78,24 +80,39 @@ lconnect(lua_State *L) {
     }
 }
 
-//static int
-//lread(lua_State *L) {
-//    int id = luaL_checkinteger(L, 1);
-//    void *data;
-//    int n = shaco_socket_read(id, &data);
-//    if (n > 0) {
-//        lua_pushlightuserdata(L, data);
-//        lua_pushinteger(L, n);
-//        return 2;
-//    } else if (n == 0) {
-//        lua_pushnil(L);
-//        return 1;
-//    } else {
-//        lua_pushnil(L);
-//        lua_pushstring(L, SHACO_SOCKETERR);
-//        return 2;
-//    }
-//}
+static int
+lpair(lua_State *L) {
+    int fildes[2];
+    if (!socketpair(AF_UNIX, SOCK_STREAM, 0, fildes)) {
+        fprintf(stderr, "lpair:%d,%d\n", fildes[0], fildes[1]);
+        lua_pushinteger(L, fildes[0]);
+        lua_pushinteger(L, fildes[1]);
+        return 2;
+    } else {
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+}
+
+static int
+lread(lua_State *L) {
+    int id = luaL_checkinteger(L, 1);
+    void *data;
+    int n = shaco_socket_read(id, &data);
+    if (n > 0) {
+        lua_pushlightuserdata(L, data);
+        lua_pushinteger(L, n);
+        return 2;
+    } else if (n == 0) {
+        lua_pushnil(L);
+        return 1;
+    } else {
+        lua_pushnil(L);
+        lua_pushstring(L, SHACO_SOCKETERR);
+        return 2;
+    }
+}
 
 static int
 lsend(lua_State *L) {
@@ -133,7 +150,7 @@ lsend(lua_State *L) {
 }
 
 static int
-lsendmsg(lua_State *L) {
+lsendfd(lua_State *L) {
     int id = luaL_checkinteger(L,1);
     int fd;
     if (lua_isinteger(L, 2)) {
@@ -142,31 +159,39 @@ lsendmsg(lua_State *L) {
         fd = -1;
     }
     void *msg;
-    int sz;
-    int type = lua_type(L,3);
-    switch (type) {
-    case LUA_TLIGHTUSERDATA:
-        msg = lua_touserdata(L,3);
-        sz = luaL_checkinteger(L,4);
-        break;
-    case LUA_TSTRING: {
-        size_t l;
-        const char *s = luaL_checklstring(L,3,&l);
-        int start = luaL_optinteger(L, 4, 1);
-        int end = luaL_optinteger(L, 5, l);
-        if (start < 1) start = 1;
-        if (end > l) end = l;
-        if (start > end) {
-            return luaL_error(L, "send range error");
+    int   sz;
+    if (lua_gettop(L) > 2) {
+        int type = lua_type(L,3);
+        switch (type) {
+        case LUA_TLIGHTUSERDATA:
+            msg = lua_touserdata(L,3);
+            sz = luaL_checkinteger(L,4);
+            break;
+        case LUA_TSTRING: {
+            size_t l;
+            const char *s = luaL_checklstring(L,3,&l);
+            int start = luaL_optinteger(L, 4, 1);
+            int end = luaL_optinteger(L, 5, l);
+            if (start < 1) start = 1;
+            if (end > l) end = l;
+            if (start > end) {
+                return luaL_error(L, "send range error");
+            }
+            sz = end-start+1;
+            msg = shaco_malloc(sz);
+            memcpy(msg, s+start-1, sz);
+            break; }
+        default:
+            return luaL_argerror(L, 2, "invalid type");
         }
-        sz = end-start+1;
-        msg = shaco_malloc(sz);
-        memcpy(msg, s+start-1, sz);
-        break; }
-    default:
-        return luaL_argerror(L, 2, "invalid type");
+    } else {
+        if (fd == -1) {
+            return luaL_error(L, "sendfd nothing");
+        }
+        msg = NULL;
+        sz  = 1;
     }
-    int err = shaco_socket_sendmsg(id, msg, sz, fd);
+    int err = shaco_socket_sendfd(id, msg, sz, fd);
     if (err != 0)
         lua_pushstring(L, shaco_socket_error(err));
     else lua_pushnil(L);
@@ -247,26 +272,18 @@ lunpack(lua_State *L) {
     switch (type) {
     case LS_EREAD: {
         void *data;
-        int size = shaco_socket_read(id, &data);
-        if (size > 0) {
-            lua_pushinteger(L, type);
-            lua_pushinteger(L, id);
-            lua_pushlightuserdata(L, data);
-            lua_pushinteger(L, size);
-            return 4;
-        } else if (size == 0) {
-            lua_pushinteger(L, LS_EREAD0);
-            lua_pushinteger(L, id);
-            return 2;
-        } else {
-            lua_pushinteger(L, LS_ESOCKERR);
-            lua_pushinteger(L, id);
-            lua_pushstring(L, SHACO_SOCKETERR);
-            return 3;
-        }}break;
-    case LS_EREADMSG: {
-        void *data;
-        int size = shaco_socket_read(id, &data);
+        int size;
+        switch (event->err) {
+        case LS_PROTOCOL_TCP:
+            size = shaco_socket_read(id, &data);
+            break;
+        case LS_PROTOCOL_IPC:
+            size = shaco_socket_readfd(id, &data);
+            fprintf(stderr, "id=%d, readfd=%d\n", id, size);
+            break;
+        default:
+            return luaL_error(L, "Invalid socket protocol type %d", event->err);
+        }
         if (size > 0) {
             lua_pushinteger(L, type);
             lua_pushinteger(L, id);
@@ -380,13 +397,14 @@ luaopen_socket_c(lua_State *L) {
         {"bind", lbind },
         {"listen", llisten},
         {"connect", lconnect},
+        {"pair", lpair},
         {NULL, NULL},
 	}; 
     luaL_Reg l2[] = {
         {"close", lclose},
-        //{"read", lread},
+        {"read", lread},
         {"send", lsend},
-        {"sendmsg", lsendmsg},
+        {"sendfd", lsendfd},
         {"readon", lreadon},
         {"readoff", lreadoff},
         {"address", laddress},

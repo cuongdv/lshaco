@@ -391,7 +391,8 @@ end
 
 function shaco.uniqueservice(name)
     -- todo uniqueservice
-    local handle = tonumber(shaco.command('QUERY', name))
+    local mod_name = string.match(name, '([%w_]+)')
+    local handle = tonumber(shaco.command('QUERY', mod_name))
     return handle or shaco.newservice(name)
 end
 

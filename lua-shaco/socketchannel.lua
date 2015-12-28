@@ -105,16 +105,22 @@ local function connect(self)
 end
 
 function socketchannel.create(opts) 
-    local host = opts.host
-    local port = opts.port
-    if not port then
-        host, port = string.match(host, "([^:]+):?(%d+)$")
-        port = tonumber(port)
+    local id, host, port
+    id = opts.id
+    if id then
+        assert(type(id)=='number', 'Invalid id')
+    else
+        host = opts.host
+        port = opts.port
+        if not port then
+            host, port = string.match(host, "([^:]+):?(%d+)$")
+            port = tonumber(port)
+        end
     end
     local self = setmetatable({
         _host = host,
         _port = port,
-        _id = false,
+        _id = id or false,
         _auth = opts.auth,
         _connecting = {},
         _response_func = {},
@@ -122,6 +128,9 @@ function socketchannel.create(opts)
         _result_data = {},
         _error = false,
     }, socketchannel)
+    if self._id then
+        shaco.fork(dispatch, self)
+    end
     return self
 end
 
@@ -137,13 +146,17 @@ function socketchannel:request(req, response)
     if not connect(self) then
         return
     end
-    local ok, err = socket.send(self._id, req)
+    local ok, err
+    if type(req) == 'function' then
+        ok, err = req(self._id)
+    else
+        ok, err = socket.send(self._id, req)
+    end
     if not ok then
         close(self)
         wakeup_all(self, err)
         error(err)
     end
-
     local co = corunning()
     tinsert(self._response_func, response)
     tinsert(self._response_co, co)

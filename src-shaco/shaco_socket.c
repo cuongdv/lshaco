@@ -46,8 +46,13 @@ shaco_socket_send_nodispatcherror(int id, void *data, int sz) {
 }
 
 int 
-shaco_socket_sendmsg(int id, void *data, int size, int fd) {
-    return socket_sendmsg(N, id, data, size, fd);
+shaco_socket_sendfd(int id, void *data, int size, int fd) {
+    return socket_sendfd(N, id, data, size, fd);
+}
+
+int 
+shaco_socket_readfd(int id, void **data) {
+    return socket_readfd(N, id, data);
 }
 
 void 

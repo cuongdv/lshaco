@@ -16,10 +16,10 @@ _to_littleendian16(uint16_t n, uint8_t *buffer) {
     buffer[1] = (n >> 8) & 0xff;
 }
 
-static inline uint16_t
-_from_littleendian16(const uint8_t *buffer) {
-    return buffer[0] | buffer[1] << 8;
-}
+//static inline uint16_t
+//_from_littleendian16(const uint8_t *buffer) {
+//    return buffer[0] | buffer[1] << 8;
+//}
 
 static int
 lbind(lua_State *L) {
@@ -159,7 +159,7 @@ lsendfd(lua_State *L) {
     int fd;
     if (lua_isinteger(L, 2)) {
         fd = lua_tointeger(L,2);
-    } else {
+   } else {
         fd = -1;
     }
     void *msg;
@@ -195,11 +195,15 @@ lsendfd(lua_State *L) {
         msg = NULL;
         sz  = 1;
     }
-    int err = shaco_socket_sendfd(id, msg, sz, fd);
-    if (err != 0)
-        lua_pushstring(L, shaco_socket_error(err));
-    else lua_pushnil(L);
-    return 1;
+    int n = shaco_socket_sendfd(id, msg, sz, fd);
+    if (n < 0) {
+        lua_pushnil(L);
+        lua_pushstring(L, SHACO_SOCKETERR);
+        return 2;
+    } else {
+        lua_pushboolean(L,1);
+        return 1;
+    }
 }
 
 static int

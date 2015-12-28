@@ -11,13 +11,11 @@ local slaves_iter = 0
 local function worker(pipefd)
     local pipe = assert(socket.bind(pipefd, 'IPC'))
     socket.readon(pipe)
-    print ('workder pipe:', pipe)
     while true do
-        print ('ipc.. read...');
         local newfd = assert(socket.ipc_readfd(pipe))
-        print ('ipc.. read ok');
         shaco.fork(function(fd)
             local pid = process.getpid()
+            print (string.format('Slave [%d] accept fd %d', pid, fd))
             local id = assert(socket.bind(fd))
             print (string.format('Slave [%d] accept sock %d', pid, id))
             socket.readon(id)
@@ -29,6 +27,7 @@ local function worker(pipefd)
                     break
                 end
                 socket.send(id, s..'\n')
+                print (string.format('Slave [%d] send %s', pid, s))
             end
             print (string.format('Slave [%d] close sock %d', pid, id))
             assert(socket.ipc_send(pipe, 'exit\n'))
@@ -69,7 +68,6 @@ end
 local function start_listen(addr)
     local listen_sock = assert(socket.listen(
         addr, function(id)
-            print ('1111')
             local pid = process.getpid()
             local newfd = socket.getfd(id)
             print (string.format('Master [%d] accpet sock %d', pid, id))
@@ -87,17 +85,12 @@ local function start_listen(addr)
                     return socket.ipc_sendfd(id, newfd)
                 end,
                 function(id)
-                    print ('Master request return ----------')
                     return assert(socket.ipc_read(id, '\n'))
                 end)
-           -- socket.readon(pipe)
-            --local data = assert(socket.recvmsg(pipe))
             print (string.format("Master [%d] get %s from slave [%d:%d]", 
                 pid, data, iter, slave[1]))
-            --print (string.format('Master [%d] sleep 3s, then close sock %d', pid, id))
-            --shaco.sleep(3000)
+            shaco.sleep(1000)
             print (string.format('Master [%d] close sock %d', pid, id))
-            socket.start(id)
             socket.close(id)
         end))
     print ('listen on '..addr..' '..listen_sock)
@@ -107,4 +100,4 @@ end
 shaco.start(function()
     local listen_sock = start_listen('127.0.0.1:1234')
     fork_worker(nworker, listen_sock)
-end
+end)

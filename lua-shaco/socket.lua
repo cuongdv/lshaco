@@ -3,6 +3,7 @@ local c = require "socket.c"
 local socketbuffer = require "socketbuffer.c"
 local co_running = coroutine.running
 local string = string
+local strunpack = string.unpack
 local assert = assert
 local type = type
 local tonumber = tonumber
@@ -237,9 +238,12 @@ end
 --end
 
 function socket.close(id, force)
+    force = force or true
     local s = socket_pool[id]
     if s then
-        close(s, force or true)
+        close(s, force)
+    else
+        c_close(id, force)
     end
 end
 
@@ -290,8 +294,8 @@ function socket.send(id, data, i, j)
     local s = socket_pool[id]
     assert(s)
     if s.connected then
-        local err = c_send(id, data, i, j)
-        if err then
+        local ok, err = c_send(id, data, i, j)
+        if not ok then
             socket_pool[id] = nil
             return nil, err
         else return true 
@@ -309,18 +313,21 @@ function socket.ipc_read(id, format)
 end
 
 function socket.ipc_readfd(id, format)
-    local fd, err = socket.read(id, 4)
-    if fd then
-        if format ~= nil then
-            local data
+    local fd, err
+    if format == nil then
+        fd, err = socket.read(id, 5) -- send fd only with one byte empty data
+        if fd then
+            fd = strunpack('=i', fd)
+            return fd
+        end
+    else
+        fd, err = socket.read(id, 4)
+        if fd then
             data, err = socket.read(id, format)
             if data then
-                fd = string.unpack('=i4', fd)
+                fd = strunpack('=i', fd)
                 return fd, data
             end
-        else
-            fd = string.unpack('=i4', fd)
-            return fd
         end
     end
     return nil, err
@@ -330,8 +337,8 @@ function socket.ipc_sendfd(id, fd, ...)
     local s = socket_pool[id]
     assert(s)
     if s.connected then
-        local err = c_sendfd(id, fd, ...)
-        if err then
+        local ok, err = c_sendfd(id, fd, ...)
+        if not ok then
             socket_pool[id] = nil
             return nil, err
         else return true 
@@ -348,8 +355,8 @@ function socket.ipc_send(id, data)
     local s = socket_pool[id]
     assert(s)
     if s.connected then
-        local err = c_sendfd(id, nil, data)
-        if err then
+        local ok, err = c_sendfd(id, nil, data)
+        if not ok then
             socket_pool[id] = nil
             return nil, err
         else return true 

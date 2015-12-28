@@ -184,7 +184,7 @@ _toremote(struct shaco_context *ctx, struct harbor *self, int session, int sourc
     tmp[7] = (uint8_t)type&0xff;
     _to_bigendian32(session, tmp+8);
     memcpy(tmp+HEADSZ+4, msg, sz);
-    return shaco_socket_send(s->sock, tmp, len);
+    return shaco_socket_psend(ctx, s->sock, tmp, len);
 }
 
 static int

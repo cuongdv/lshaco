@@ -23,6 +23,7 @@ local c_readoff = assert(c.readoff)
 local c_drop = assert(c.drop)
 local socketbuffer_new = assert(socketbuffer.new)
 socket.getfd = assert(c.getfd)
+socket.pair = assert(c.pair)
 
 local socket_pool = {}
 

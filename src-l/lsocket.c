@@ -80,11 +80,11 @@ lconnect(lua_State *L) {
     }
 }
 
+// return fd[2]
 static int
 lpair(lua_State *L) {
     int fildes[2];
     if (!socketpair(AF_UNIX, SOCK_STREAM, 0, fildes)) {
-        fprintf(stderr, "lpair:%d,%d\n", fildes[0], fildes[1]);
         lua_pushinteger(L, fildes[0]);
         lua_pushinteger(L, fildes[1]);
         return 2;
@@ -142,11 +142,15 @@ lsend(lua_State *L) {
     default:
         return luaL_argerror(L, 2, "invalid type");
     }
-    int err = shaco_socket_send_nodispatcherror(id,msg,sz);
-    if (err != 0) 
-        lua_pushstring(L, shaco_socket_error(err));
-    else lua_pushnil(L);
-    return 1;
+    int n = shaco_socket_send(id,msg,sz);
+    if (n < 0) {
+        lua_pushnil(L);
+        lua_pushstring(L,SHACO_SOCKETERR);
+        return 2;
+    } else {
+        lua_pushboolean(L,1);
+        return 1;
+    }
 }
 
 static int
@@ -272,18 +276,7 @@ lunpack(lua_State *L) {
     switch (type) {
     case LS_EREAD: {
         void *data;
-        int size;
-        switch (event->err) {
-        case LS_PROTOCOL_TCP:
-            size = shaco_socket_read(id, &data);
-            break;
-        case LS_PROTOCOL_IPC:
-            size = shaco_socket_readfd(id, &data);
-            fprintf(stderr, "id=%d, readfd=%d\n", id, size);
-            break;
-        default:
-            return luaL_error(L, "Invalid socket protocol type %d", event->err);
-        }
+        int size = shaco_socket_read(id, &data);
         if (size > 0) {
             lua_pushinteger(L, type);
             lua_pushinteger(L, id);
@@ -341,54 +334,60 @@ lsendpack(lua_State *L) {
     uint8_t *msg = shaco_malloc(sz+2);
     _to_littleendian16(sz, msg);
     memcpy(msg+2, p, sz);
-    int ok = shaco_socket_send(id,msg,sz+2) == 0;
-    lua_pushboolean(L,ok);
-    return 1;
-}
-
-static int
-lsendpack_um(lua_State *L) {
-    int id = luaL_checkinteger(L,1);
-    int msgid = luaL_checkinteger(L,2);
-
-    int type = lua_type(L, 3);
-    void *p;
-    int sz;
-    if (type == LUA_TLIGHTUSERDATA) {
-        p = lua_touserdata(L, 3);
-        sz = luaL_checkinteger(L, 4);
-    } else if (type == LUA_TSTRING) {
-        size_t l;
-        p = (void*)lua_tolstring(L, 3, &l);
-        sz = (int)l;
-    } else {
-        return luaL_argerror(L, 2, "invalid type");
-    }
-    uint8_t *msg = shaco_malloc(sz+4);
-    _to_littleendian16(sz+2, msg);
-    _to_littleendian16(msgid, msg+2);
-    if (p && sz > 0)
-        memcpy(msg+4, p, sz);
-    int ok = shaco_socket_send(id,msg,sz+4) == 0;
-    lua_pushboolean(L,ok);
-    return 1;
-}
-
-static int
-lunpack_msgid(lua_State *L) {
-    luaL_checktype(L, 1, LUA_TLIGHTUSERDATA);
-    uint8_t *p = lua_touserdata(L, 1);
-    int sz = luaL_checkinteger(L, 2);
-    if (sz >= 2) {
-        lua_pushinteger(L, _from_littleendian16(p));
-        lua_pushlightuserdata(L, p+2);
-        lua_pushinteger(L, sz-2);
-        return 3;
-    } else {
+    int n = shaco_socket_send(id,msg,sz+2);
+    if (n < 0) {
         lua_pushnil(L);
+        lua_pushstring(L,SHACO_SOCKETERR);
+        return 2;
+    } else {
+        lua_pushboolean(L,1);
         return 1;
     }
 }
+
+//static int
+//lsendpack_um(lua_State *L) {
+//    int id = luaL_checkinteger(L,1);
+//    int msgid = luaL_checkinteger(L,2);
+//
+//    int type = lua_type(L, 3);
+//    void *p;
+//    int sz;
+//    if (type == LUA_TLIGHTUSERDATA) {
+//        p = lua_touserdata(L, 3);
+//        sz = luaL_checkinteger(L, 4);
+//    } else if (type == LUA_TSTRING) {
+//        size_t l;
+//        p = (void*)lua_tolstring(L, 3, &l);
+//        sz = (int)l;
+//    } else {
+//        return luaL_argerror(L, 2, "invalid type");
+//    }
+//    uint8_t *msg = shaco_malloc(sz+4);
+//    _to_littleendian16(sz+2, msg);
+//    _to_littleendian16(msgid, msg+2);
+//    if (p && sz > 0)
+//        memcpy(msg+4, p, sz);
+//    int ok = shaco_socket_send(id,msg,sz+4) == 0;
+//    lua_pushboolean(L,ok);
+//    return 1;
+//}
+//
+//static int
+//lunpack_msgid(lua_State *L) {
+//    luaL_checktype(L, 1, LUA_TLIGHTUSERDATA);
+//    uint8_t *p = lua_touserdata(L, 1);
+//    int sz = luaL_checkinteger(L, 2);
+//    if (sz >= 2) {
+//        lua_pushinteger(L, _from_littleendian16(p));
+//        lua_pushlightuserdata(L, p+2);
+//        lua_pushinteger(L, sz-2);
+//        return 3;
+//    } else {
+//        lua_pushnil(L);
+//        return 1;
+//    }
+//}
 
 int
 luaopen_socket_c(lua_State *L) {
@@ -397,7 +396,6 @@ luaopen_socket_c(lua_State *L) {
         {"bind", lbind },
         {"listen", llisten},
         {"connect", lconnect},
-        {"pair", lpair},
         {NULL, NULL},
 	}; 
     luaL_Reg l2[] = {
@@ -410,14 +408,12 @@ luaopen_socket_c(lua_State *L) {
         {"address", laddress},
         {"limit", llimit}, 
         {"getfd", lgetfd},
+        {"pair", lpair},
         {"drop", ldrop},
-        {NULL, NULL},
-    };
-    luaL_Reg l3[] = {
         {"unpack", lunpack},
         {"sendpack", lsendpack},
-        {"sendpack_um", lsendpack_um},
-        {"unpack_msgid", lunpack_msgid},
+    //    {"sendpack_um", lsendpack_um},
+    //    {"unpack_msgid", lunpack_msgid},
         {NULL, NULL},
     };
     luaL_newlibtable(L, l);
@@ -427,6 +423,5 @@ luaopen_socket_c(lua_State *L) {
 		return luaL_error(L, "init shaco context first");
 	luaL_setfuncs(L,l,1);
     luaL_setfuncs(L,l2,0);
-    luaL_setfuncs(L,l3,0);
 	return 1;
 }

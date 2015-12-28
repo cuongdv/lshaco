@@ -29,30 +29,17 @@ shaco_socket_poll(int timeout) {
 }
 
 int 
-shaco_socket_send(int id, void* data, int sz) {
-    struct socket_event event;
-    int n = socket_send(N, id, data, sz, &event);
-    if (n == 0) return 0;
-    else if (n < 0) return 1;
-    else {_dispatch_one(&event); return 1;}
-}
-
-int 
-shaco_socket_send_nodispatcherror(int id, void *data, int sz) {
-    struct socket_event event;
-    int n = socket_send(N, id, data, sz, &event);
-    if (n<=0) return 0;
-    else return event.err;
-}
-
-int 
-shaco_socket_sendfd(int id, void *data, int size, int fd) {
-    return socket_sendfd(N, id, data, size, fd);
-}
-
-int 
-shaco_socket_readfd(int id, void **data) {
-    return socket_readfd(N, id, data);
+shaco_socket_psend(struct shaco_context *ctx, int id, void *data, int sz) {
+    int n = socket_send(N, id, data, sz);
+    if (n < 0) {
+        struct socket_event event;
+        event.id = id;
+        event.type = LS_ESOCKERR;
+        event.udata = shaco_context_handle(ctx);
+        event.err = socket_lasterrno(N);
+        _dispatch_one(&event);
+    }
+    return n;
 }
 
 void 
@@ -102,6 +89,8 @@ shaco_socket_start(struct shaco_context *ctx, int id) {
 int shaco_socket_close(int id, int force) { return socket_close(N, id, force); }
 int shaco_socket_enableread(int id, int read) { return socket_enableread(N, id, read); }
 int shaco_socket_read(int id, void **data) { return socket_read(N, id, data); }
+int shaco_socket_send(int id, void *data, int sz) { return socket_send(N, id, data, sz); }
+int shaco_socket_sendfd(int id, void *data, int sz, int fd) { return socket_sendfd(N, id, data, sz, fd); }
 int shaco_socket_address(int id, struct socket_addr *addr) { return socket_address(N, id, addr); }
 int shaco_socket_limit(int id, int slimit, int rlimit) { return socket_limit(N, id, slimit, rlimit); }
 int shaco_socket_lasterrno() { return socket_lasterrno(N); }

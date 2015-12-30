@@ -370,10 +370,11 @@ function socket.ipc_send(id, data)
 
 end
 
-function socket.clear_pool()
+function socket.reinit()
     for id, s in pairs(socket_pool) do
         close(s, true)
     end
+    c.reinit()
 end
 
 return socket

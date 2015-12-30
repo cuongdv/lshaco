@@ -8,11 +8,9 @@ local nworker = tonumber(...) or 1
 local slaves = {}
 local slaves_iter = 0
 
-local function worker(pipefd)
-    local pipe = assert(socket.bind(pipefd, 'IPC'))
-    socket.readon(pipe)
+local function worker(ipc)
     while true do
-        local newfd = assert(socket.ipc_readfd(pipe))
+        local newfd = assert(socket.ipc_readfd(ipc))
         shaco.fork(function(fd)
             local pid = process.getpid()
             print (string.format('Slave [%d] accept fd %d', pid, fd))
@@ -30,17 +28,35 @@ local function worker(pipefd)
                 print (string.format('Slave [%d] send %s', pid, s))
             end
             print (string.format('Slave [%d] close sock %d', pid, id))
-            assert(socket.ipc_send(pipe, 'exit\n'))
+            assert(socket.ipc_send(ipc, 'exit\n'))
             socket.close(id)
         end, newfd)
     end
 end
 
-local function fork_worker(n, listen_sock)
-    local pid, pipe = assert(process.fork())
+local function ipc(fd)
+    local id = assert(socket.bind(fd, 'IPC'))
+    socket.readon(id)
+    return id
+end
+
+local function ipc_channel(fd)
+    local id = ipc(fd)
+    return assert(socketchannel.create{id=id})
+end
+
+local function fork_worker(n)
+    process.signal('SIGCHLD', function(sig)
+    end)
+    process.signal{
+        SIGCHLD = function(sig)
+        end,
+
+    }
+    local fd0, fd1 = assert(socket.pair())
+    local pid = assert(process.fork())
     if pid == 0 then
         print ('I am child')
-        socket.close(listen_sock)
         process.settitle('worker process')
         shaco.kill('console')
         for i=1, #slaves do
@@ -51,16 +67,14 @@ local function fork_worker(n, listen_sock)
         end
         slaves = nil
         socket.reinit()
-        shaco.fork(worker, pipe)
+        shaco.fork(worker, ipc(fd1))
     else
         print ('I am parent, my child is '..pid)
         process.settitle('master process')
-        local id = assert(socket.bind(pipe, 'IPC'))
-        socket.readon(id)
-        local sc = assert(socketchannel.create{id=id})
-        slaves[#slaves+1] = {pid, sc}
+        local ic = ipc_channel(fd0)
+        slaves[#slaves+1] = {pid, ic}
         if #slaves < n then
-            fork_worker(n, listen_sock)
+            fork_worker(n)
         end
     end
 end
@@ -79,8 +93,8 @@ local function start_listen(addr)
             local slave = slaves[iter]
             print (string.format("Master [%d] select slave [%d:%d] ...", 
                 pid, iter, slave[1]))
-            local sc = slave[2]
-            local data = sc:request(
+            local ic = slave[2]
+            local data = ic:request(
                 function(id)
                     return socket.ipc_sendfd(id, newfd)
                 end,
@@ -94,10 +108,9 @@ local function start_listen(addr)
             socket.close(id)
         end))
     print ('listen on '..addr..' '..listen_sock)
-    return listen_sock
 end
 
 shaco.start(function()
-    local listen_sock = start_listen('127.0.0.1:1234')
-    fork_worker(nworker, listen_sock)
+    start_listen('127.0.0.1:1234')
+    fork_worker(nworker)
 end)

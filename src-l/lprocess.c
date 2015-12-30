@@ -104,8 +104,6 @@ lfork(lua_State *L) {
             //dup2(fd, STDERR_FILENO);
             if (fd > STDERR_FILENO) close(fd);
         }
-        shaco_socket_fini();
-        shaco_socket_init(shaco_optint("maxsocket", 0));
         lua_pushinteger(L, 0);
         lua_pushinteger(L, fildes[0]);
         return 2;
@@ -129,5 +127,7 @@ luaopen_process_c(lua_State *L) {
         { NULL, NULL },
 	}; 
 	luaL_newlib(L, l);
+
+
 	return 1;
 }

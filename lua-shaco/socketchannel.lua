@@ -55,7 +55,7 @@ local function dispatch(self)
             local ok, err = socket.block(self._id)
             if not ok then
                 close(self)
-                error(err)
+                wakeup_all(self, err)
             end
         end
     end

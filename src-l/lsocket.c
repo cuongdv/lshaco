@@ -1,5 +1,6 @@
 #include "shaco.h"
 #include "shaco_socket.h"
+#include "socket_platform.h"
 #include <lua.h>
 #include <lauxlib.h>
 #include <stdlib.h>
@@ -214,6 +215,13 @@ lreinit(lua_State *L) {
 }
 
 static int
+lclosefd(lua_State *L) {
+    int fd = luaL_checkinteger(L, 1);
+    _socket_close(fd);
+    return 0;
+}
+
+static int
 lclose(lua_State *L) {
     int id = luaL_checkinteger(L, 1);
     int force = lua_toboolean(L, 2);
@@ -411,6 +419,7 @@ luaopen_socket_c(lua_State *L) {
 	}; 
     luaL_Reg l2[] = {
         {"reinit", lreinit},
+        {"closefd", lclosefd},
         {"close", lclose},
         {"read", lread},
         {"send", lsend},

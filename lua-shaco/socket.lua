@@ -25,6 +25,7 @@ local c_drop = assert(c.drop)
 local socketbuffer_new = assert(socketbuffer.new)
 socket.getfd = assert(c.getfd)
 socket.pair = assert(c.pair)
+socket.closefd = assert(c.closefd)
 
 local socket_pool = {}
 

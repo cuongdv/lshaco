@@ -1,6 +1,5 @@
 local shaco = require "shaco"
 local socket = require "socket"
-local error = error
 local corunning = coroutine.running
 local tinsert = table.insert
 local tremove = table.remove
@@ -71,6 +70,11 @@ local function connect(self)
         shaco.wait()
         return true
     else
+        if self._reconn_times == 0 then
+            return nil, 'No reconnect times' 
+        elseif self._reconn_times > 0 then
+            self._reconn_times = self._reconn_times - 1
+        end
         self._error = nil
         self._connecting[1] = co
         local id, err = socket.connect(self._host, self._port)
@@ -99,7 +103,7 @@ local function connect(self)
             shaco.fork(dispatch, self)
             return true
         else
-            error(err)
+            return nil, err
         end
     end
 end
@@ -127,8 +131,10 @@ function socketchannel.create(opts)
         _response_co = {},
         _result_data = {},
         _error = false,
+        _reconn_times = opts.reconn_times or -1, -- -1 for always reconnect
     }, socketchannel)
     if self._id then
+        self._reconn_times = 0
         shaco.fork(dispatch, self)
     end
     return self
@@ -143,19 +149,20 @@ function socketchannel:close()
 end
 
 function socketchannel:request(req, response)
-    if not connect(self) then
-        return
+    local ok, err = connect(self)
+    if not ok then
+        return nil, err
     end
     local ok, err
     if type(req) == 'function' then
-        ok, err = req(self._id)
+        ok, err = pcall(req, self._id)
     else
         ok, err = socket.send(self._id, req)
     end
     if not ok then
         close(self)
         wakeup_all(self, err)
-        error(err)
+        return nil, err
     end
     local co = corunning()
     tinsert(self._response_func, response)
@@ -164,7 +171,7 @@ function socketchannel:request(req, response)
     shaco.wait()
 
     if self._error then
-        error(self._error)
+        return nil, self._error
     else
         local r = self._result_data[co]
         self._result_data[co] = nil

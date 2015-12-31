@@ -1,6 +1,4 @@
 #include "shaco.h"
-#include "shaco_socket.h"
-#include <sys/socket.h>
 #include <lua.h>
 #include <lauxlib.h>
 #include <unistd.h>
@@ -74,40 +72,32 @@ lsettitle(lua_State *L) {
 
 static int
 lfork(lua_State *L) {
-    int fildes[2];
-    if (socketpair(AF_UNIX, SOCK_STREAM, 0, fildes)) {
-        lua_pushnil(L);
-        lua_pushstring(L, strerror(errno));
-        return 2;
-    }
     pid_t pid = fork();
     if (pid < 0) {
-        close(fildes[0]);
-        close(fildes[1]);
         lua_pushnil(L);
         lua_pushstring(L, strerror(errno));
         return 2;
-    } else if (pid > 0) {
-        close(fildes[0]);
-        lua_pushinteger(L, pid);
-        lua_pushinteger(L, fildes[1]);
-        return 2;
     } else {
-        close(fildes[1]);
-        // close  stdin, stout, stderr
-        // close  log
-        // close  net socket
+        lua_pushinteger(L, pid);
+        return 1;
+    }
+}
+
+static int
+lstdnull(lua_State *L) {
+    int c0 = luaL_checkinteger(L, 1);
+    int c1 = luaL_checkinteger(L, 2);
+    int c2 = luaL_checkinteger(L, 3);
+    if (c0 || c1 || c2) {
         int fd;
         if ((fd = open("/dev/null", O_RDWR, 0)) != -1) {
-            dup2(fd, STDIN_FILENO);
-            //dup2(fd, STDOUT_FILENO);
-            //dup2(fd, STDERR_FILENO);
+            if (c0) dup2(fd, STDIN_FILENO);
+            if (c1) dup2(fd, STDOUT_FILENO);
+            if (c2) dup2(fd, STDERR_FILENO);
             if (fd > STDERR_FILENO) close(fd);
         }
-        lua_pushinteger(L, 0);
-        lua_pushinteger(L, fildes[0]);
-        return 2;
     }
+    return 0;
 }
 
 static int
@@ -121,9 +111,10 @@ luaopen_process_c(lua_State *L) {
 	luaL_checkversion(L);
     init();
 	luaL_Reg l[] = { 
-        {"fork", lfork },
-        {"getpid", lgetpid },
-        {"settitle", lsettitle },
+        {"fork", lfork},
+        {"getpid", lgetpid},
+        {"settitle", lsettitle},
+        {"stdnull", lstdnull},
         { NULL, NULL },
 	}; 
 	luaL_newlib(L, l);

@@ -94,18 +94,15 @@ shaco_handle_init() {
     H->handle_count = 0;
     H->handles = shaco_malloc(sizeof(H->handles[0])*H->handle_cap);
 }
-#include <stdio.h>
+
 void
 shaco_handle_fini() {
     if (H == NULL)
         return;
-    fprintf(stderr, "handle fini ...\n");
     if (H->contexts) {
         int i;
         for (i=0; i<H->context_count; ++i) {
-    fprintf(stderr, "handle fini context %d ...\n", i);
             shaco_context_free(H->contexts[i]);
-    fprintf(stderr, "handle fini context %d ok\n", i); 
         } 
         shaco_free(H->contexts); 
         H->contexts = NULL; 
@@ -113,9 +110,7 @@ shaco_handle_fini() {
     if (H->handles) {
         int i; 
         for (i=0; i<H->handle_count; ++i) {
-    fprintf(stderr, "handle fini handle %d ...\n", i);
             shaco_free(H->handles[i].name);
-    fprintf(stderr, "handle fini handle %d ok\n", i);
         }
         shaco_free(H->handles);
         H->handles = NULL;

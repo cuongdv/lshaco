@@ -93,27 +93,28 @@ sig_hook(lua_State *L, lua_Debug *ar) {
         }
     }
     lua_pop(L,1);
+    
     sigprocmask(SIG_SETMASK, &oldset, NULL);
 }
 
 static void
 sig_handler(int sig) {
-    fprintf(stderr, "sig_handler 1----------------- %d\n", sig);
+   // fprintf(stderr, "sig_handler 1----------------- %d\n", sig);
     if (sig >= _sig_max) {
         return; // should be no here
     }
-    fprintf(stderr, "sig_handler 2-----------------\n");
+   // fprintf(stderr, "sig_handler 2-----------------\n");
     // notice: if the _sig_tag is free (if lua_State free), must return, or will dump
     // this will happen at exit, then lua_State free (_sig_tag free first, then may
     // receive signal, eg in calling malloc
     if (_sig_tag == NULL) {
         return; 
     }
-    fprintf(stderr, "sig_handler 3-----------------\n");
+    //fprintf(stderr, "sig_handler 3-----------------\n");
     _sig_tag[sig]++;
     //lua_sethook(_signalL, sig_hook, LUA_MASKCALL | LUA_MASKRET | LUA_MASKCOUNT, 1);
     lua_sethook(_signalL, sig_hook, LUA_MASKCOUNT, 1);
-    fprintf(stderr, "sig_handler 4-----------------\n");
+    //fprintf(stderr, "sig_handler 4-----------------\n");
 }
 
 static int
@@ -216,16 +217,16 @@ lkill(lua_State *L) {
 
 static int 
 _gc_sig(lua_State *L) {
-    fprintf(stderr, "------------------gc_sig....\n");
+    //fprintf(stderr, "------------------gc_sig....\n");
     _sig_tag = NULL;
-    fprintf(stderr, "------------------gc_sig end\n");
+    //fprintf(stderr, "------------------gc_sig end\n");
     return 0;
 }
 static int 
 _gc_signal(lua_State *L) {
-    fprintf(stderr, "------------------gc_signal....\n");
+    //fprintf(stderr, "------------------gc_signal....\n");
     _sig_tag = NULL;
-    fprintf(stderr, "------------------gc_signal end\n");
+    //fprintf(stderr, "------------------gc_signal end\n");
     return 0;
 }
 

@@ -211,6 +211,13 @@ conf = {
 local function mworker(conf)
     conf.worker = conf.worker or 1
     shaco.start(function()
+        --local sigint = signal.signal(signal.SIGINT, 'SIG_DFL')
+        --signal.signal(signal.SIGINT, 
+        --    function(sig)
+        --        sigint()
+        --        print ('----------------------')
+        --        signal.signal(signal.SIGCHLD, 'SIG_DFL')
+        --    end)
         signal.signal(signal.SIGCHLD, 
             function(sig, pid, reason, code, extra)
                 local name = pid

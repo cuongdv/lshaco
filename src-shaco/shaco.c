@@ -98,12 +98,19 @@ shaco_init() {
 
 void
 shaco_fini() {
+    fprintf(stderr, "shaco_msg_dispatcher_fini\n");
     shaco_msg_dispatcher_fini();
+    fprintf(stderr, "shaco_socket_fini\n");
     shaco_socket_fini();
+    fprintf(stderr, "shaco_handle_fini\n");
     shaco_handle_fini();
+    fprintf(stderr, "shaco_module_fini\n");
     shaco_module_fini();
+    fprintf(stderr, "shaco_log_close\n");
     shaco_log_close();
+    fprintf(stderr, "shaco_timer_fini\n");
     shaco_timer_fini();
+    fprintf(stderr, "shaco_env_fini\n");
     shaco_env_fini();
 }
 

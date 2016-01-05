@@ -211,6 +211,7 @@ conf = {
 local function mworker(conf)
     conf.worker = conf.worker or 1
     shaco.start(function()
+        -- todo: uncomment this
         --local sigint = signal.signal(signal.SIGINT, 'SIG_DFL')
         --signal.signal(signal.SIGINT, 
         --    function(sig)

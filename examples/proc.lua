@@ -4,8 +4,8 @@ local mworker = require "mworker"
 local sformat = string.format
 
 local server = {
-    addr = "127.0.0.1:1234",
-    worker = 10,
+    address = "127.0.0.1:1234",
+    worker = 1,
 }
 
 function server.worker_handler(id)
@@ -21,8 +21,8 @@ function server.worker_handler(id)
     end
 end
 
-function server.master_handler(id, worker, work_result)
-    shaco.trace(sformat("Worker %s return %s", worker, work_result))
+function server.master_handler(id, worker, ...)
+    shaco.trace(sformat("Worker %s return ", worker), ...)
     shaco.sleep(1000)
 end
 

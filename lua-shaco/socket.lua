@@ -3,7 +3,7 @@ local c = require "socket.c"
 local socketbuffer = require "socketbuffer.c"
 local co_running = coroutine.running
 local string = string
-local strunpack = string.unpack
+local sunpack = string.unpack
 local assert = assert
 local type = type
 local tonumber = tonumber
@@ -165,15 +165,8 @@ function socket.detachbuffer(id)
     end
 end
 
-function socket.listen(ip, port, callback)
-    if type(port) == 'function' then
-        callback = port
-        ip, port = string.match(ip, '([^:]+):(%d+)$')
-        port = tonumber(port)
-    else
-        assert(type(callback)=='function')
-    end
-    local id, err = c_listen(ip, port)
+function socket.listen(addr, callback)
+    local id, err = c_listen(addr)
     if id then
         local s = alloc(id, callback)
         s.connected = true
@@ -183,12 +176,8 @@ function socket.listen(ip, port, callback)
     end
 end
 
-function socket.connect(ip, port)
-    if port == nil then
-        ip, port = string.match(ip, '([^:]+):(%d+)$')
-        port = tonumber(port)
-    end
-    local id, conning = c_connect(ip, port)
+function socket.connect(...)
+    local id, conning = c_connect(...)
     if id then
         local s = alloc(id)
         if conning then 
@@ -318,7 +307,7 @@ function socket.ipc_readfd(id, format)
     if format == nil then
         fd, err = socket.read(id, 5) -- send fd only with one byte empty data
         if fd then
-            fd = strunpack('=i', fd)
+            fd = sunpack('=i', fd)
             return fd
         end
     else
@@ -326,7 +315,7 @@ function socket.ipc_readfd(id, format)
         if fd then
             data, err = socket.read(id, format)
             if data then
-                fd = strunpack('=i', fd)
+                fd = sunpack('=i', fd)
                 return fd, data
             end
         end
@@ -352,11 +341,11 @@ function socket.ipc_sendfd(id, fd, ...)
     end
 end
 
-function socket.ipc_send(id, data)
+function socket.ipc_send(id, data, i, j)
     local s = socket_pool[id]
     assert(s)
     if s.connected then
-        local ok, err = c_sendfd(id, nil, data)
+        local ok, err = c_sendfd(id, nil, data, i, j)
         if not ok then
             socket_pool[id] = nil
             return nil, err

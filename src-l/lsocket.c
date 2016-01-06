@@ -46,9 +46,25 @@ lbind(lua_State *L) {
 static int
 llisten(lua_State *L) {
     struct shaco_context *ctx = lua_touserdata(L, lua_upvalueindex(1));
-    const char *ip = luaL_checkstring(L, 1);
-    int port = luaL_checkinteger(L, 2);
-    int id = shaco_socket_listen(ctx, ip, port);
+    int id;
+    if (lua_gettop(L) == 1) {
+        size_t sz;
+        const char *ip = luaL_checklstring(L, 1, &sz);
+        char tmp[sz+1];
+        memcpy(tmp, ip, sz);
+        tmp[sz] = '\0';
+        char *p = strchr(tmp, ':');
+        if (p == NULL) {
+            return luaL_error(L, "Invalid address %s", ip);
+        }
+        *p = '\0';
+        int port = strtol(p+1, NULL, 10);
+        id = shaco_socket_listen(ctx, tmp, port);
+    } else {
+        const char *ip = luaL_checkstring(L, 1);
+        int port = luaL_checkinteger(L, 2);
+        id = shaco_socket_listen(ctx, ip, port);
+    }
     if (id >= 0) { 
         lua_pushinteger(L, id); 
         return 1;
@@ -62,9 +78,25 @@ llisten(lua_State *L) {
 static int
 lconnect(lua_State *L) {
     struct shaco_context *ctx = lua_touserdata(L, lua_upvalueindex(1));
-    const char *ip = luaL_checkstring(L, 1);
-    int port = luaL_checkinteger(L, 2);
-    int id = shaco_socket_connect(ctx, ip, port);
+    int id;
+    if (lua_gettop(L) == 1) {
+        size_t sz;
+        const char *ip = luaL_checklstring(L, 1, &sz);
+        char tmp[sz+1];
+        memcpy(tmp, ip, sz);
+        tmp[sz] = '\0';
+        char *p = strchr(tmp, ':');
+        if (p == NULL) {
+            return luaL_error(L, "Invalid address %s", ip);
+        }
+        *p = '\0';
+        int port = strtol(p+1, NULL, 10);
+        id = shaco_socket_connect(ctx, tmp, port);
+    } else {
+        const char *ip = luaL_checkstring(L, 1);
+        int port = luaL_checkinteger(L, 2);
+        id = shaco_socket_connect(ctx, ip, port);
+    }
     if (id >= 0) {
         if (shaco_socket_lasterrno() == LS_CONNECTING) {
             lua_pushinteger(L, id);

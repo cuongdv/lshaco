@@ -13,15 +13,17 @@ local function run_worker(channel, handler)
             local fd = channel.readfd()
             local id = assert(socket.bind(fd))
             shaco.fork(function()
-                local ok, err = pcall(handler, id)
-                socket.close(id)
-                if not ok then
-                    shaco.error(sformat('Client %d error: %s', id, err))
-                    channel.send('error\n')
-                else
-                    shaco.trace(sformat('Client %d closed', id))
-                    channel.send('ok\n')
+                local function response(id, ok, err, ...)
+                    socket.close(id)
+                    local ret
+                    if ok then
+                        ret = shaco.packstring(err, ...)
+                    else
+                        ret = shaco.packstring(false, err)
+                    end
+                    channel.send(string.pack('i2', #ret)..ret)
                 end
+                response(id, pcall(handler, id))
             end)
         end)
         if not ok then
@@ -43,8 +45,8 @@ local function worker_channel(fd)
         end
         return fd
     end
-    local function send(command)
-        local ok, err = socket.ipc_send(channel, command)
+    local function send(...)
+        local ok, err = socket.ipc_send(channel, ...)
         if not ok then
             shaco.error('Channel send error: '..err)
             os.exit(1)
@@ -162,7 +164,7 @@ local function balance()
 end
 
 local function start_listen(conf)
-    local listen_addr = conf.addr
+    local listen_addr = conf.address
     local master_handler = conf.master_handler
     local next_slave = balance()
     local listen_sock = assert(socket.listen(
@@ -176,18 +178,21 @@ local function start_listen(conf)
                 end
                 shaco.trace(sformat("Worker %s selected", slave.name))
                 local channel = slave.channel
-                local result, err = channel:request(
-                    function(id) return assert(socket.ipc_sendfd(id, client_fd)) end,
-                    function(id) return assert(socket.ipc_read(id, '\n')) end)
-                if not result then
-                    channel:close()
-                    slave.channel = false
-                    slave.status  = 'disconnect'
-                    error(err)
+                local function response(ret, err)
+                    if not ret then
+                        channel:close()
+                        slave.channel = false
+                        slave.status  = 'disconnect'
+                        error(err)
+                    end
+                    master_handler(id, slave.name, shaco.unpackstring(ret))
                 end
-                master_handler(id, slave.name, result)
+                response(channel:request(
+                    function(id) return assert(socket.ipc_sendfd(id, client_fd)) end,
+                    function(id) return assert(socket.ipc_read(id, 
+                                        assert(socket.ipc_read(id, 2))))
+                                    end))
             end)
-            shaco.trace(sformat('Sock %d closed', id))
             socket.close(id)
             if not ok then
                 shaco.error(err)
@@ -201,10 +206,10 @@ conf = {
     addr = listen address
     worker = worker number
     worker_handler = function(id),
-    master_handler = function(id, worker, work_result),
+    master_handler = function(id, worker, ...),
         id: socket id
         worker: worker name
-        work_result: 'ok' | 'error' for interrupt
+        ...: by worker_handler
     end,
 }
 ]]
@@ -212,12 +217,12 @@ local function mworker(conf)
     conf.worker = conf.worker or 1
     shaco.start(function()
         -- todo: uncomment this
-        --local sigint = signal.signal(signal.SIGINT, 'SIG_DFL')
-        --signal.signal(signal.SIGINT, 
-        --    function(sig)
-        --        signal.signal(signal.SIGCHLD, 'SIG_DFL')
-        --        sigint()
-        --    end)
+        local sigint = signal.signal(signal.SIGINT, 'SIG_DFL')
+        signal.signal(signal.SIGINT, 
+            function(sig)
+                signal.signal(signal.SIGCHLD, 'SIG_DFL')
+                sigint()
+            end)
         signal.signal(signal.SIGCHLD, 
             function(sig, pid, reason, code, extra)
                 local name = pid

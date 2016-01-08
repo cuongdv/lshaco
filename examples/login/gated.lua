@@ -12,7 +12,7 @@ local internal_id = 0
 
 function server.login(uid, secret)
     -- monitor this
-    shaco.sleep(1000)
+    --shaco.sleep(1000)
 
     internal_id = internal_id + 1
     local subid = internal_id
@@ -26,7 +26,7 @@ function server.login(uid, secret)
     }
     users[uid] = u
     username_map[username] = u
-    msgserver.login(username)
+    msgserver.login(username, secret)
 
     return subid
 end
@@ -59,6 +59,12 @@ end
 
 function server.message(username, data)
     shaco.trace(sformat('User %s message %s', username, data))
+    if data == 'msg1' then
+        print ('shaco. sleep 4000')
+        shaco.sleep(4000)
+        shaco.trace('sleep ok.........')
+    end
+    return data
 end
 
 function server.open(servername, conf)

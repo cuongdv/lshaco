@@ -123,7 +123,7 @@ function gateserver.start(handler)
         end
         listen_id = assert(socket.listen(conf.address))
         maxclient = conf.maxclient or 1024
-
+        shaco.info('listen on ' ..conf.address)
         if handler.open then
             handler.open(conf)
         end

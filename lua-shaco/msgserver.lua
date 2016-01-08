@@ -1,3 +1,4 @@
+local shaco = require "shaco"
 local gateserver = require "gateserver"
 local crypt = require "crypt.c"
 local spack = string.pack
@@ -19,13 +20,16 @@ function msgserver.user_name(uid, subid)
         base64encode(subid))
 end
 
-function msgserver.login(name)
+function msgserver.login(name, secret)
     user_online[name] = {
         sock = false,
         addr = false,
         name = name, 
+        secret = secret,
         version = 0,
+        session = 0,
         index = 0,
+        response = {}
     }
 end
 
@@ -58,6 +62,9 @@ function msgserver.start(handler)
     function server.open(conf)
         servername = assert(conf.name)
         expire_number = conf.expire_number or 128
+        if expire_number <= 0 then
+            expire_number = 1
+        end
         handler_open(servername, conf)
     end
 
@@ -82,19 +89,20 @@ function msgserver.start(handler)
     end
 
     local function do_auth(id, addr, data)
-        local username, version, hmac = string.match(data, '([^@]+)@([^#]+)#(.+)')
+        local username, version, hmac = string.match(data, '([^:]+):([^:]+):(.+)')
         local u = user_online[username]
         if u == nil then
-            return '404 Not Found'
+            error('404 Not Found')
         end
-        if version <= u.version then
-            return '403 Forbidden'
+        version = tonumber(version)
+        if version < u.version then
+            error('403 Forbidden')
         end
-        hmac = crypt.base64decode(hmac)
-        local key = username..':'..version
-        key = crypt.hmac64(crypt.hashkey(key))
+        hmac = base64decode(hmac)
+        local token = username..':'..version
+        token = crypt.hmac64(crypt.hashkey(token), u.secret)
         if token ~= hmac then
-            return '401 Unauthorized'
+            error('401 Unauthorized')
         end 
 
         u.sock = id
@@ -114,7 +122,7 @@ function msgserver.start(handler)
             result = '200 OK'
             succeed = true
         end
-        sendpackage(id, data)
+        sendpackage(id, result)
         if not succeed then
             gateserver.closeclient(id)
         end
@@ -143,11 +151,12 @@ function msgserver.start(handler)
 
     local function do_request(id, data)
         local u = assert(connection[id])
-        assert(data >= 4)
+        assert(#data >= 4)
         local session, pos = sunpack('>I4', data)
         local data = ssub(data, pos)
 
         local p
+        session = tonumber(session)
         if session > u.session then
             error('Session is ahead')
         elseif session < u.session then -- must be another connection
@@ -155,7 +164,7 @@ function msgserver.start(handler)
             if not p then
                 error('Session no cached')
             end
-            if p.version == u.version then
+            if p[3] == u.version then
                 error('Session is expired')
             end
         end
@@ -163,7 +172,8 @@ function msgserver.start(handler)
             p = {id}
             u.response[session] = p
             u.session = session + 1
-            local ok, result = pcall(handler_message(u.name, data))
+            local ok, result = pcall(handler_message, u.name, data)
+            -- handler_message maybe block
             if not ok then
                 shaco.error(result)
                 result = spack('>I4', session)..'\0'
@@ -173,13 +183,14 @@ function msgserver.start(handler)
             p[2] = result
             p[3] = u.version
             p[4] = u.index
-            if connection[id] then
+            id = p[1] -- id maybe change
+            if connection[id] then -- id maybe close
                 sendpackage(id, result)
             end
         else
             p[1] = id
             if p[2] == nil then
-                return -- handling
+                return -- handling, here id is changed
             end
             p[3] = u.version
             p[4] = u.index

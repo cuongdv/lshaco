@@ -41,6 +41,7 @@ function server.login(uid, server, secret)
         server = server,
         subid = subid,
     }
+    return subid
 end
 
 local CMD = {}

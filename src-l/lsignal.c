@@ -108,7 +108,7 @@ sig_handler(int sig) {
     // this will happen at exit, then lua_State free (_sig_tag free first, then may
     // receive signal, eg in calling malloc
     if (_sig_tag == NULL) {
-        return; 
+        //return; 
     }
     //fprintf(stderr, "sig_handler 3-----------------\n");
     _sig_tag[sig]++;

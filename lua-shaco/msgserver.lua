@@ -44,9 +44,20 @@ function msgserver.start(handler)
 
     local server = {}
 
-    function server.open(name, conf)
-        servername = assert(name)
-        expire_number = assert(conf.expire_number)
+    local CMD = {
+        login = assert(handler.login),
+        logout = assert(handler.logout),
+        kick = assert(handler.kick),
+    }
+
+    function server.command(cmd, ...)
+        local f = CMD[cmd]
+        return f(...)
+    end
+
+    function server.open(conf)
+        servername = assert(conf.name)
+        expire_number = conf.expire_number or 128
         handler_open(servername, conf)
     end
 
@@ -199,5 +210,6 @@ function msgserver.start(handler)
     end
 
     gateserver.start(server)
-
 end
+
+return msgserver

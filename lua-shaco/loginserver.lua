@@ -69,12 +69,7 @@ end
 local function master_init()
     --local handle = shaco.uniqueservice('slave')
     shaco.dispatch('lua', function(source, session, cmd, ...)
-        local f = CMD[cmd]
-        if t then
-            shaco.ret(shaco.pack(f(...)))
-        else
-            shaco.ret(shaco.pack(handler_command(cmd, ...)))
-        end
+        shaco.ret(shaco.pack(handler_command(cmd, ...)))
     end)
     if handler_master_init then
         handler_master_init()
@@ -93,7 +88,7 @@ end
 local function loginserver(conf)
     handler_auth = assert(conf.auth) -- (token)
     handler_login = assert(conf.login) -- (uid, server, secret)
-    handler_command = assert(conf.command) -- (cmd, ...)
+    handler_command = conf.command -- (cmd, ...)
     handler_master_init = conf.master_init
     handler_worker_init = conf.worker_init
     conf.master_init = master_init

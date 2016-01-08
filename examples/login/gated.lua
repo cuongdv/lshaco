@@ -1,46 +1,55 @@
 local shaco = require "shaco"
 local msgserver = require "msgserver"
+local sformat = string.format
 
 local loginserver = tonumber(...)
 
 local server = {}
+
 local username_map = {}
 local users = {}
+local internal_id = 0
 
-function server.login(uid, subid)
+function server.login(uid, secret)
+    -- monitor this
+    shaco.sleep(1000)
+
+    internal_id = internal_id + 1
+    local subid = internal_id
     local username = msgserver.user_name(uid, subid)
     shaco.trace(sformat('User %s login', username))
 
-    -- monitor this
-    shaco.sleep(1000)
     local u = {
-        username = username,
+        name = username,
+        uid = uid,
+        subid = subid,
     }
     users[uid] = u
     username_map[username] = u
     msgserver.login(username)
+
+    return subid
 end
 
-local function logout(u)
-    local username = msgserver.user_name(uid, subid)
-    assert(u.name == username)
-    msgserver.logout(username)
-    users[uid] = nil
-    username_map[username] = nil
-    shaco.call(loginserver, 'logout', uid, u.subid)
-end
-
+-- call by client
 function server.logout(uid)
     local u = users[uid]    
     if u then
-        logout(u)
+        local username = u.name
+        msgserver.logout(username)
+        users[uid] = nil
+        username_map[username] = nil
+        shaco.call(loginserver, 'lua', 'logout', uid, u.subid)
     end
 end
 
-function server.kick(username)
-    local u = username_map[username]
+-- call by loginserver
+function server.kick(uid, subid)
+    local u = users[uid]
     if u then
-        logout(u)
+        local username = msgserver.user_name(uid, subid)
+        assert(u.name == username)
+        shaco.call(shaco.handle(), 'lua', 'logout', uid)
     end
 end
 
@@ -53,5 +62,9 @@ function server.message(username, data)
 end
 
 function server.open(servername, conf)
-    shaco.call(loginserver, 'lua', 'register_gate', servername, shaco.handle())
+    local slaveid = tonumber(shaco.getenv('slaveid')) or 0
+    local handle = slaveid<<8 | shaco.handle()
+    shaco.call(loginserver, 'lua', 'register_gate', servername, handle)
 end
+
+msgserver.start(server)

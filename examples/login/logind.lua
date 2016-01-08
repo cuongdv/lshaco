@@ -24,14 +24,14 @@ function server.auth(token)
 end
 
 function server.login(uid, server, secret)
-    shaco.trace(sformat('User %s@%s is login, secret is %s', uid, server, hexencode(secret)))
-    local gameserver = server_list[server]
-    if not gameserver then
+    shaco.trace(sformat('User %s@%s login, secret is %s', uid, server, hexencode(secret)))
+    local gate = server_list[server]
+    if not gate then
         error(sformat('Server %s is no found', server))
     end
     local u = user_online[uid]    
     if u then
-        shaco.call(gameserver, 'lua', 'kick', uid, subid)
+        shaco.call(gate, 'lua', 'kick', uid, u.subid)
     end
     if user_online[uid] then
         assert(sformat('User %s already login in %s', uid, server))

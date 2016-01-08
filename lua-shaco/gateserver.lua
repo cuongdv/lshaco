@@ -35,9 +35,9 @@ end
 
 function gateserver.start(handler)
     local handler_connect = assert(handler.connect)
-    local handler_message = assert(handler.message)
-    local handler_command = assert(handler.command)
     local handler_disconnect = assert(handler.disconnect)
+    local handler_message = assert(handler.message)
+    local handler_command = handler.command
 
     -- local
     function disconnect(id, err) 
@@ -125,8 +125,7 @@ function gateserver.start(handler)
         maxclient = conf.maxclient or 1024
 
         if handler.open then
-            local name = assert(conf.servername)
-            handler.open(name, conf)
+            handler.open(conf)
         end
     end
 

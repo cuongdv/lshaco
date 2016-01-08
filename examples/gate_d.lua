@@ -15,7 +15,10 @@ end
 
 function server.message(id, data)
     shaco.trace('message '..id, data)
-    socket.send(id, string.pack('>i2', #data)..data)
+    socket.send(id, string.pack('>s2', data))
+end
+
+function server.command(cmd, ...)
 end
 
 gateserver.start(server)

@@ -286,6 +286,7 @@ function socket.send(id, data, i, j)
     if s.connected then
         local ok, err = c_send(id, data, i, j)
         if not ok then
+            s.connected = false
             socket_pool[id] = nil
             return nil, err
         else return true 
@@ -329,6 +330,7 @@ function socket.ipc_sendfd(id, fd, ...)
     if s.connected then
         local ok, err = c_sendfd(id, fd, ...)
         if not ok then
+            s.connected = false
             socket_pool[id] = nil
             return nil, err
         else return true 
@@ -347,6 +349,7 @@ function socket.ipc_send(id, data, i, j)
     if s.connected then
         local ok, err = c_sendfd(id, nil, data, i, j)
         if not ok then
+            s.connected = false
             socket_pool[id] = nil
             return nil, err
         else return true 

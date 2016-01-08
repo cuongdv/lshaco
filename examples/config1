@@ -1,5 +1,5 @@
 maxsocket=10
-luamodpath="./lua-mod/?.lua;./examples/?.lua"
+luamodpath="./lua-mod/?.lua;./examples/?.lua;./examples/login/?.lua"
 console=1
 standalone="127.0.0.1:9000"
 slaveid=1

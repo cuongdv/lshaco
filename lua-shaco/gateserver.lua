@@ -11,8 +11,9 @@ local connection = {}
 local listen_id = false
 local maxclient = 0
 local client_number = 0
-
 local gateserver = {}
+
+local disconnect
 
 function gateserver.openclient(id)
     local c = connection[id]
@@ -22,22 +23,33 @@ function gateserver.openclient(id)
 end
 
 function gateserver.closeclient(id)
-    local c = connection[id]
-    if c then
-        connection[id] = nil
-        socket.close(id)
-        client_number = client_number - 1
+    disconnect(id)
+end
+
+function gateserver.send(id, data)
+    local ok, err = socket.send(id, data)
+    if not ok then
+        disconnect(id, err)
     end
 end
 
 function gateserver.start(handler)
     local handler_connect = assert(handler.connect)
-    local handler_disconnect = assert(handler.disconnect)
     local handler_message = assert(handler.message)
+    local handler_command = assert(handler.command)
+    local handler_disconnect = assert(handler.disconnect)
 
-    local function disconnect(id, err)
-        handler_disconnect(id, err)
-        gateserver.closeclient(id)
+    -- local
+    function disconnect(id, err) 
+        local c = connection[id]
+        if c then
+            connection[id] = nil
+            if not err then
+                socket.close(id)
+            end
+            client_number = client_number - 1
+            handler_disconnect(id, err)
+        end
     end
 
     local SOCKET = {}
@@ -69,7 +81,7 @@ function gateserver.start(handler)
             local pack = poppack(c)
             if pack then
                 if handler_message(id, pack) then
-                    disconnect(id, 'handle msg error')
+                    disconnect(id)
                     break
                 end
             else break
@@ -90,12 +102,7 @@ function gateserver.start(handler)
 
     -- LS_ESOCKERR
     SOCKET[4] = function(id, err)
-        local c = connection[id]
-        if c then
-            connection[id] = nil
-            client_number = client_number - 1
-            handler_disconnect(id, err)
-        end
+        disconnect(id, err)
     end
 
     shaco.register_protocol {
@@ -116,6 +123,11 @@ function gateserver.start(handler)
         end
         listen_id = assert(socket.listen(conf.address))
         maxclient = conf.maxclient or 1024
+
+        if handler.open then
+            local name = assert(conf.servername)
+            handler.open(name, conf)
+        end
     end
 
     function CMD.close()
@@ -131,7 +143,7 @@ function gateserver.start(handler)
             if f then
                 shaco.ret(shaco.pack(f(...)))
             else
-                shaco.ret(shaoc.pack(handler.command(...)))
+                shaco.ret(shaco.pack(handler_command(cmd, ...)))
             end
         end)
     end)

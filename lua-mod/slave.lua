@@ -160,6 +160,7 @@ end
 local harbor = {}
 
 local function send_reg_handle(name, handle)
+    shaco.trace('master_sock:', _master_sock, name, handle)
     socket.send(_master_sock, pack('R', name, handle))
 end
 

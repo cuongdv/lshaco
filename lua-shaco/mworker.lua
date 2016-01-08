@@ -4,6 +4,8 @@ local socketchannel = require "socketchannel"
 local process = require "process.c"
 local signal = require "signal.c" 
 local sformat = string.format
+local spack = string.pack
+local sunpack = string.unpack
 
 local _workers = {}
 
@@ -19,9 +21,10 @@ local function run_worker(channel, handler)
                     if ok then
                         ret = shaco.packstring(err, ...)
                     else
-                        ret = shaco.packstring(false, err)
+                        ret = shaco.packstring(false)
+                        shaco.error(err)
                     end
-                    channel.send(string.pack('i2', #ret)..ret)
+                    channel.send(spack('s2', ret))
                 end
                 response(id, pcall(handler, id))
             end)
@@ -103,6 +106,9 @@ local function fork_worker(conf, index)
             end
             _workers = nil
             socket.reinit()
+            if conf.worker_init then
+                conf.worker_init()
+            end
             local channel = worker_channel(fd1)
             shaco.fork(run_worker, channel, conf.worker_handler)
             shaco.info(sformat('Worker %d:%d start', index, process.getpid()))
@@ -189,9 +195,11 @@ local function start_listen(conf)
                 end
                 response(channel:request(
                     function(id) return assert(socket.ipc_sendfd(id, client_fd)) end,
-                    function(id) return assert(socket.ipc_read(id, 
-                                        assert(socket.ipc_read(id, 2))))
-                                    end))
+                    function(id)
+                        local head = assert(socket.ipc_read(id, 2))
+                        head = sunpack('I2', head)
+                        return assert(socket.ipc_read(id, head))
+                    end))
             end)
             socket.close(id)
             if not ok then
@@ -239,6 +247,9 @@ local function mworker(conf)
                 shaco.error(sformat('Worker %s exit due %s(%d) %s', 
                     name, reason, code, extra))
             end)
+        if conf.master_init then
+            conf.master_init()
+        end
         start_listen(conf)
         if prefork_workers(conf) ~= 'child' then
             shaco.fork(function()

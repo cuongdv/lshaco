@@ -319,7 +319,6 @@ function shaco.timeout(interval, func)
 end
 
 function shaco.dispatch(protoname, fun)
-    assert(fun)
     local p = proto[protoname]
     p.dispatch = fun
 end
@@ -400,8 +399,8 @@ function shaco.queryservice(name)
     return assert(shaco.call('.service', 'lua', 'QUERY', name))
 end
 
-function shaco.register(name)
-    shaco.call('.service', 'lua', 'REG', name..' '..shaco.handle())
+function shaco.register(name, handle)
+    shaco.call('.service', 'lua', 'REG', name..' '..handle or shaco.handle())
 end
 
 return shaco

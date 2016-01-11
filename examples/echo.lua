@@ -9,6 +9,7 @@ local socket = require "socket"
 
 shaco.start(function()
     local addr = shaco.getenv('addr') or ('127.0.0.1:1234')
+    print('listen on '..addr)
     local sock = assert(socket.listen(
         addr, function(id)
             print (id, '[new socket]')
@@ -31,5 +32,4 @@ shaco.start(function()
             socket.close(id, false)
             print (id, '[close]')
         end))
-    print('listen on '..addr, sock, socket.getfd(sock))
 end)

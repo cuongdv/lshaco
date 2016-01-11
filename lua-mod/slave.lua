@@ -160,7 +160,6 @@ end
 local harbor = {}
 
 local function send_reg_handle(name, handle)
-    shaco.trace('master_sock:', _master_sock, name, handle)
     socket.send(_master_sock, pack('R', name, handle))
 end
 
@@ -296,35 +295,37 @@ local function waiting_slaves(sock, co_main)
 end
 
 shaco.start(function()
-    _harbor_handle = assert(shaco.launch('harbor '..shaco.handle()))
+    _harbor_handle = assert(tonumber(shaco.command('LAUNCH', 'harbor '..shaco.handle())))
     _slaveid = assert(tonumber(shaco.getenv('slaveid')))
     _addr = assert(shaco.getenv('address'))
 
     shaco.dispatch('lua',  handle_command)
     shaco.dispatch('text', handle_harbor)
 
-    while true do
-        _wait = nil
-        _connect_queue = {}
-        local slave_sock = listen()
-        if slave_sock then
-            _master_sock = connect_master()
-            if _master_sock then
-                local co_main = coroutine.running()
-                shaco.fork(handle_master, co_main)
-                waiting_slaves(slave_sock, co_main)
-                socket.close(slave_sock)
+    shaco.fork(function()
+        while true do
+            _wait = nil
+            _connect_queue = {}
+            local slave_sock = listen()
+            if slave_sock then
+                _master_sock = connect_master()
                 if _master_sock then
-                    shaco.info('Handshake ok')
-                    shaco.fork(ready)
-                    shaco.wait()
+                    local co_main = coroutine.running()
+                    shaco.fork(handle_master, co_main)
+                    waiting_slaves(slave_sock, co_main)
+                    socket.close(slave_sock)
+                    if _master_sock then
+                        shaco.info('Handshake ok')
+                        shaco.fork(ready)
+                        shaco.wait()
+                    else
+                        shaco.error('Handshake break by master exit')
+                    end
                 else
-                    shaco.error('Handshake break by master exit')
+                    socket.close(slave_sock)
                 end
-            else
-                socket.close(slave_sock)
             end
+            shaco.sleep(3000)
         end
-        shaco.sleep(3000)
-    end
+    end)
 end)

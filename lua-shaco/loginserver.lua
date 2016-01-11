@@ -67,7 +67,6 @@ local function master_handler(id, worker, ok, uid, server, secret)
 end
 
 local function master_init()
-    --local handle = shaco.uniqueservice('slave')
     shaco.dispatch('lua', function(source, session, cmd, ...)
         shaco.ret(shaco.pack(handler_command(cmd, ...)))
     end)

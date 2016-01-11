@@ -1,5 +1,6 @@
 Todo
 ===
+*. _response_session clear on service exit
 1. command to master
 2. openssl crypt
 

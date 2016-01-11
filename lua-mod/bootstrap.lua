@@ -2,6 +2,9 @@ local shaco = require "shaco"
 
 shaco.start(function()
     local handle
+    handle = assert(tonumber(shaco.command('LAUNCH', 'lua launcher')))
+    shaco.command('REG', 'launcher '..handle)
+
     if shaco.getenv('console') then
         handle = assert(shaco.uniqueservice('console'))
         shaco.command('REG', 'console '..handle)

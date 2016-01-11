@@ -106,6 +106,7 @@ local function fork_worker(conf, index)
             end
             _workers = nil
             socket.reinit()
+            shaco.command('SETENV', 'isworker 1')
             if conf.worker_init then
                 conf.worker_init()
             end
@@ -173,6 +174,7 @@ local function start_listen(conf)
     local listen_addr = conf.address
     local master_handler = conf.master_handler
     local next_slave = balance()
+    shaco.info('Listen on '..listen_addr)
     local listen_sock = assert(socket.listen(
         listen_addr, function(id)
             local ok, err = pcall(function()
@@ -206,7 +208,6 @@ local function start_listen(conf)
                 shaco.error(err)
             end
         end))
-    shaco.info('listen on '..listen_addr)
 end
 
 --[[

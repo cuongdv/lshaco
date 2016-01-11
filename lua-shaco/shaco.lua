@@ -132,8 +132,9 @@ function shaco.ret(msg, sz)
     return coyield('RETURN', msg, sz)
 end
 
-function shaco.response()
-    return coyield('RESPONSE')
+function shaco.response(pack)
+    pack = pack or shaco.pack
+    return coyield('RESPONSE', pack)
 end
 
 local function dispatch_wakeup()
@@ -156,6 +157,7 @@ function suspend(co, result, command, param, sz)
             local address = _response_co_address[co]
             _response_co_session[co] = nil
             _response_co_address[co] = nil
+            _response_sessoin[session] = nil
             c_send(address, session, shaco.TERROR, "")
         end
         error(traceback(co, command))
@@ -183,23 +185,25 @@ function suspend(co, result, command, param, sz)
         if not session then
             error(traceback(co, 'Already responsed or No session to response'))
         end
-        local function response(msg, sz)
-            if _response_co_session[co] == nil then
+        local f = param
+        local function response(...)
+            if not f then
                 error(traceback(co, 'Try response repeat'))
             end
-            local ret = c_send(address, session, shaco.TRESPONSE, msg, sz)
-            _response_co_session[co] = nil
-            _response_co_address[co] = nil
+            local ret = c_send(address, session, shaco.TRESPONSE, f(...))
+            f = nil
             return ret
         end
+        _response_co_session[co] = nil
+        _response_co_address[co] = nil
         return suspend(co, coresume(co, response))
     elseif command == 'EXIT' then
         local session = _response_co_session[co]
         if session then
             local address = _response_co_address[co]
-            _response_co_session[co] = nil
-            _response_co_address[co] = nil
-            c_send(address, session, shaco.TERROR, "")
+            _response_co_session[co] = nil 
+            _response_co_address[co] = nil 
+            c_send(address, session, shaco.TERROR, "") 
         end
     else
         error(traceback(co, 'Suspend unknown command '..command))
@@ -325,7 +329,15 @@ end
 
 function shaco.start(func)
     c.callback(dispatchcb)
-    shaco.timeout(0, func)
+    shaco.timeout(0, function()
+        local ok, err = xpcall(func, debug.traceback)
+        if ok then
+            shaco.send('.launcher', 'lua', 'LAUNCHOK')
+        else
+            shaco.error('init fail: ', err)
+            shaco.send('.launcher', 'lua', 'LAUNCHFAIL')
+        end
+    end)
 end
 
 function shaco.kill(name)
@@ -380,12 +392,8 @@ function shaco.getenv(key)
     return shaco.command('GETENV', key)
 end
 
-function shaco.launch(name)
-    return tonumber(shaco.command('LAUNCH', name))
-end
-
 function shaco.newservice(name)
-    return shaco.launch('lua '..name)
+    return shaco.call('.launcher', 'lua', 'LAUNCH', name)
 end
 
 function shaco.uniqueservice(name)

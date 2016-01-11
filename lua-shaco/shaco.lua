@@ -157,7 +157,6 @@ function suspend(co, result, command, param, sz)
             local address = _response_co_address[co]
             _response_co_session[co] = nil
             _response_co_address[co] = nil
-            _response_sessoin[session] = nil
             c_send(address, session, shaco.TERROR, "")
         end
         error(traceback(co, command))
@@ -341,6 +340,7 @@ function shaco.start(func)
 end
 
 function shaco.kill(name)
+    -- todo
     shaco.command('KILL', name)
 end
 
@@ -393,7 +393,7 @@ function shaco.getenv(key)
 end
 
 function shaco.newservice(name)
-    return shaco.call('.launcher', 'lua', 'LAUNCH', name)
+    return shaco.call('.launcher', 'lua', 'LAUNCH1', name)
 end
 
 function shaco.uniqueservice(name)

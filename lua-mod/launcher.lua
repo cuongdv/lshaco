@@ -31,6 +31,10 @@ shaco.start(function()
 
     shaco.dispatch('lua', function(source, session, cmd, ...)
         local f = CMD[cmd]
-        f(source, ...)
+        if f then
+            f(source, ...)
+        else
+            error('Invalid command '..cmd)
+        end
     end)
 end)

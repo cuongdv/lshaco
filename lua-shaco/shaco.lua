@@ -188,7 +188,7 @@ function suspend(co, result, command, param, sz)
         local f = param
         local function response(...)
             if not f then
-                error(traceback(co, 'Try response repeat'))
+                error('Try response repeat')
             end
             local ret = c_send(address, session, shaco.TRESPONSE, f(...))
             f = nil

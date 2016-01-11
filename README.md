@@ -1,6 +1,6 @@
 Todo
 ===
-*. _response_session clear on service exit
+* deal service exit clear, eg: _response
 1. command to master
 2. openssl crypt
 

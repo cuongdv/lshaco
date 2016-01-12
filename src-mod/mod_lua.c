@@ -3,6 +3,7 @@
 #include <lauxlib.h>
 #include <string.h>
 #include "shaco.h"
+#include "lua_packer.h"
 
 struct lua {
     lua_State *L;
@@ -37,8 +38,11 @@ _traceback(lua_State *L) {
 
 int
 lua_init(struct shaco_context *ctx, struct lua *self, const char *args) {
+    const char *packagepath = shaco_optstr("packagepath", "./lib-lua/?.lso");
+
     lua_State *L = lua_newstate(shaco_lalloc, NULL);
     luaL_openlibs(L);
+    lua_packer(L, packagepath);
     lua_pushlightuserdata(L, ctx);
     lua_setfield(L, LUA_REGISTRYINDEX, "shaco_context");
     self->L = L;
@@ -53,10 +57,7 @@ lua_init(struct shaco_context *ctx, struct lua *self, const char *args) {
     const char *modpath = shaco_optstr("luamodpath", "./lua-mod/?.lua");
     lua_pushstring(L, modpath);
     lua_setglobal(L, "LUA_MODPATH");
-    const char *packpath = shaco_optstr("luapackpath", "./lib-lua/?.lso");
-    lua_pushstring(L, packpath);
-    lua_setglobal(L, "LUA_PACKPATH");
-
+    
     const char *loader = shaco_optstr("lualoader", "./lua-shaco/loader.lua");
     int r = luaL_loadfile(L, loader);
     if (r != LUA_OK) {

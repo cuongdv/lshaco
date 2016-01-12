@@ -22,7 +22,7 @@ LIBSHACO_SRC=\
 
 all_t=\
 	shaco \
-	tool/srcpack \
+	tool/luapacker \
 	lib-cmod/mod_lua.so \
 	lib-cmod/mod_harbor.so \
 	lib-l/shaco.so \
@@ -96,8 +96,8 @@ lib-cmod:
 lib-l:
 	mkdir $@
 
-lib-cmod/mod_lua.so: src-mod/mod_lua.c | lib-cmod
-	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO) $(ILUA) 
+lib-cmod/mod_lua.so: src-mod/mod_lua.c src-mod/luapacker.c | lib-cmod
+	gcc $(CFLAGS) $(SHARED) -o $@ $^ -Isrc-mod $(ISHACO) $(ILUA)
 
 lib-cmod/mod_harbor.so: src-mod/mod_harbor.c src-mod/socket_buffer.c 
 	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO)
@@ -138,9 +138,9 @@ lib-l/process.so: src-l/lprocess.c | lib-l
 lib-l/signal.so: src-l/lsignal.c | lib-l
 	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO) $(ILUA) 
 
-tool/srcpack: tool/srcpack.c \
-	3rd/lua/src/srcpack.c
-	gcc $(CFLAGS) -o $@ $^ $(ILUA) 
+tool/luapacker: tool/luapacker.c \
+	src-mod/luapacker.c
+	gcc $(CFLAGS) -o $@ $^ -Isrc-mod
 
 3rd: 
 	cd 3rd && make PLAT="$(PLAT)" && make install && make clean 
@@ -152,4 +152,5 @@ clean:
 	rm -f $(all_t) 
 	rm -rf lib-cmod
 	rm -rf lib-l
+	rm -rf lib-pack
 	rm -rf *.dSYM

@@ -393,7 +393,7 @@ function shaco.getenv(key)
 end
 
 function shaco.newservice(name)
-    return shaco.call('.launcher', 'lua', 'LAUNCH1', name)
+    return shaco.call('.launcher', 'lua', 'LAUNCH', name)
 end
 
 function shaco.uniqueservice(name)

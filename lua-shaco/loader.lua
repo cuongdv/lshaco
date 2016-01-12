@@ -33,6 +33,5 @@ end,
 
 package.path  = package.path .. ';' .. LUA_PATH
 package.cpath = package.cpath .. ';' .. LUA_CPATH
-package.packpath = LUA_PACKPATH
 
 main(select(2, table.unpack(args)))

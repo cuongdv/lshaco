@@ -3,8 +3,7 @@
 *.dSYM
 .*
 shaco
-tool/srcpack
-tool/*.sl
+tool/luapacker
 3rd/lua/src/liblua.a
 3rd/lua/src/lua
 3rd/lua/src/luac
@@ -12,3 +11,4 @@ tool/*.sl
 lib-l
 lib-cmod
 lib-3rd
+lib-package

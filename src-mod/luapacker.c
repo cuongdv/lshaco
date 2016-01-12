@@ -1,4 +1,4 @@
-#include "srcpack.h"
+#include "luapacker.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -75,7 +75,7 @@ sp_encrypt(char *buf, size_t sz, const char *key, size_t keylen) {
 char *
 sp_decrypt(char *buf, size_t sz, size_t *osz) {
     char keylen = buf[0];
-    if (keylen < 0) {
+    if (keylen <= 0) {
         return NULL;
     }
     char *key = &buf[1];
@@ -319,4 +319,8 @@ sp_pack(const char *pack, char **l, size_t n) {
 err:
     free(body);
     return 1;
+}
+
+void sp_free(void *p) {
+    free(p);
 }

@@ -36,33 +36,23 @@ def copydirs(path, tmp, files):
                 files.append(src)
                 assert(os.system("luac -o %s %s"%(tar, src)) == 0)
 
-def srclist(path, workdir, outfile, packname):
-    print ("[+]%s"%path)
-    files = list()
-    getfile(path, workdir, [".lua",".luac"], files, 0);
-    out = open(outfile, "w");
-    for f in files:
-        out.write(f)
-        out.write("\n")
-    out.close()
-    print "[=]%s"%outfile
-
 if __name__ == "__main__":
-    if len(sys.argv) < 4:
-        print "usage : %s path outdir workdir" % sys.argv[0]
+    if len(sys.argv) < 3:
+        print "usage : %s path(.lua) outdir(.lso)" % sys.argv[0]
         sys.exit(1)
-
+    toolpath = os.path.dirname(sys.argv[0])
     path = sys.argv[1].strip('/').strip('\\')
     packname = os.path.basename(path)
     outdir = sys.argv[2]
-    workdir = sys.argv[3]
     slfile = "./%s.sl"%packname
 
-    tmpdir = "__tmp_srcpack_"+packname
+    # luac file output directory
+    tmpdir = "__tmp_luapacker__"+packname
     if os.path.isdir(tmpdir):
         rmdirs(tmpdir)
 
-    files = list()
+    # luac file, lua file, ...
+    files = list() 
     copydirs(path, tmpdir, files)
     print ("[+]%s"%path)
     out = open(slfile, "w");
@@ -73,6 +63,8 @@ if __name__ == "__main__":
     print "[=]%s"%slfile
 
     lsofile = os.path.join(outdir, packname+".lso")
-    assert (os.system("./srcpack pack %s %s"%(lsofile, slfile)) == 0)
+    assert (os.system("./%s/luapacker pack %s %s"%
+        (toolpath, lsofile, slfile)) == 0)
 
     rmdirs(tmpdir)
+    os.system("rm %s"%slfile)

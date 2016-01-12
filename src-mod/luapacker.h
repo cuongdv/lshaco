@@ -1,3 +1,6 @@
+#ifndef __luapacker_h__
+#define __luapacker_h__
+
 #include <stdint.h>
 #include <stdio.h>
 
@@ -23,3 +26,7 @@ int sp_pack(const char *pack, char **list, size_t n);
 
 char *sp_encrypt(char *buf, size_t sz, const char *key, size_t keylen);
 char *sp_decrypt(char *buf, size_t sz, size_t *osz);
+
+void sp_free(void *p);
+
+#endif

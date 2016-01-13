@@ -42,7 +42,7 @@ lua_init(struct shaco_context *ctx, struct lua *self, const char *args) {
 
     lua_State *L = lua_newstate(shaco_lalloc, NULL);
     luaL_openlibs(L);
-    lua_packer(L, packagepath);
+    if (lua_packer(ctx, L, packagepath)) return 1;
     lua_pushlightuserdata(L, ctx);
     lua_setfield(L, LUA_REGISTRYINDEX, "shaco_context");
     self->L = L;

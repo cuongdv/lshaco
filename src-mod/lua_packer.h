@@ -3,6 +3,8 @@
 
 #include <stdio.h>
 
+#define LP_MALLOC   shaco_malloc
+#define LP_FREE     shaco_free
 #include "luapacker.h"
 
 #if !defined (LUA_PATH_SEP)
@@ -12,12 +14,6 @@
 #if !defined (LUA_PATH_MARK)
 #define LUA_PATH_MARK		"?"
 #endif
-
-static int _error(lua_State *L, int top, const char *str) {
-    lua_settop(L, top);
-    shaco_error(NULL, "%s", str);
-    return 1;
-}
 
 static const char *pushnexttemplate (lua_State *L, const char *path) {
     const char *l;
@@ -45,59 +41,54 @@ static struct sp_entry *search_package(lua_State *L,
         struct sp_entryv *v,
         const char *name,
         const char *path) {
+    struct sp_entry *entry;
+    const char *filename;
     while ((path = pushnexttemplate(L, path)) != NULL) {
-        const char *filename = luaL_gsub(L, lua_tostring(L, -1),
-                                     LUA_PATH_MARK, name);
-        lua_remove(L, -2); // remove path
-        struct sp_entry *entry = ispacked(v, filename); 
+        filename = luaL_gsub(L, lua_tostring(L, -1), LUA_PATH_MARK, name);
+        entry = ispacked(v, filename); 
+        lua_pop(L, 2);
         if (entry) return entry;
     }
     return NULL;  
 }
 
-static void * unpack_package(lua_State *L, 
+#define unpack_error(err) { \
+    lua_pushfstring(L, "\n\t" err LUA_QS, package); \
+    LP_FREE(p); \
+    sp_entryv_fini(&v); \
+    if (fp) fclose(fp); \
+    return NULL; \
+}
+
+static  void * unpack_package(lua_State *L, 
         const char *name, 
         const char *package,
         const char *lua_path, 
         void **body,
         size_t *size) {
-    FILE *fp = fopen(package, "r");
-    if (fp == NULL) {
-        lua_pushfstring(L, "\n\tno package" LUA_QS, package);
-        return NULL;
-    }
+    void *p  = NULL;
+    struct sp_entry *entry;
     struct sp_entryv v;
     sp_entryv_init(&v);
-    if (sp_lentryv(fp, &v)) {
-        fclose(fp);
-        lua_pushfstring(L, "\n\tillegal package" LUA_QS, package);
-        return NULL;
-    }
-    struct sp_entry *entry;
-    entry = search_package(L, &v, name, lua_path);
-    if (entry == NULL) {
-        sp_entryv_fini(&v);
-        fclose(fp);
-        lua_pushfstring(L, "\n\tno in package" LUA_QS, package);
-        return NULL;
-    }
-    void *p = shaco_malloc(entry->bodysz);
-    fseek(fp, entry->offset, SEEK_SET);
-    fread(p, entry->bodysz, 1, fp);
-    *body = sp_decrypt(p, entry->bodysz, size);
-    if (*body == NULL) {
-        shaco_free(p);
-        sp_entryv_fini(&v);
-        fclose(fp);
-        lua_pushfstring(L, "\n\tdecrypt fail package" LUA_QS, package);
-        return NULL;
-    } else { 
-        lua_pushstring(L, entry->name);
-        sp_entryv_fini(&v);
-        fclose(fp);
-        return p;
-    }
-}
+    FILE *fp;
+    if ((fp = fopen(package, "r")) == NULL)
+        unpack_error("no package");
+    if (sp_lentryv(fp, &v)) 
+        unpack_error("illegal package");
+    if ((entry = search_package(L, &v, name, lua_path)) == NULL) 
+        unpack_error("no in package");
+    if (fseek(fp, entry->offset, SEEK_SET)) 
+        unpack_error("seek error from package");
+    p = LP_MALLOC(entry->bodysz);
+    if (fread(p, entry->bodysz, 1, fp) != 1) 
+        unpack_error("read error from package");
+    if ((*body = sp_decrypt(p, entry->bodysz, size)) == NULL) 
+        unpack_error("decrypt error from package");
+    lua_pushstring(L, entry->name);
+    sp_entryv_fini(&v);
+    fclose(fp);
+    return p;
+} 
 
 static char *
 search_packagepath(lua_State *L, 
@@ -114,9 +105,12 @@ search_packagepath(lua_State *L,
         const char *package = lua_tostring(L,-1);
         char *p = unpack_package(L, name, package, lua_path, body, size);
         lua_remove(L, -2); // remove  path template
-        if (p) return p;  // filename
-        else luaL_addvalue(&msg);
+        if (p) {
+            lua_replace(L, -2); // filename -> name
+            return p;  // filename
+        } else luaL_addvalue(&msg);
     }
+    lua_pop(L, 1); // pop name
     luaL_pushresult(&msg); // error string
     return NULL;
 }
@@ -131,23 +125,21 @@ static int searcher_luapackage(lua_State *L) {
     lua_getfield(L, lua_upvalueindex(1), "path");
     const char *lua_path = lua_tostring(L, -1);
     if (lua_path == NULL)
-        luaL_error(L, "'pcakge.path' must be a string");
+        luaL_error(L, "'package.path' must be a string");
     void *p, *buff;
     size_t size;
     p = search_packagepath(L, name, package_path, lua_path, &buff, &size);
-    lua_replace(L, -3); // filename | error string -> packagepath
-    lua_pop(L, 1); // pop path
-    if (p == NULL) {
-        return 1;
-    }
+    lua_remove(L, -2);
+    lua_remove(L, -2);
+    if (p == NULL) return 1;
     const char *filename = lua_tostring(L, -1);
     int status = luaL_loadbuffer(L, buff, size, filename);
     if (status == LUA_OK) {
         lua_insert(L, -2); // buffer, filename
-        shaco_free(p);
+        LP_FREE(p);
         return 2;  /* return open function and file name */
     } else {
-        shaco_free(p);
+        LP_FREE(p);
         return luaL_error(L, "error loading module '%s' from file '%s':\n\t%s",
                 name, filename, lua_tostring(L, -1));
     }
@@ -195,7 +187,7 @@ static int loadfile(lua_State *L) {
             lua_pop(L,1);
             if (p == NULL) continue;
             status = luaL_loadbuffer(L, body, size, fname);
-            sp_free(p);
+            LP_FREE(p);
             return load_aux(L, status, env);
         }
         status = LUA_ERRERR;
@@ -205,13 +197,18 @@ static int loadfile(lua_State *L) {
     }
 }
 
-static int lua_packer(lua_State *L, const char *path) {
-    int top = lua_gettop(L);
+static int _error(struct shaco_context *ctx, lua_State *L, int n, const char *err) {
+    lua_pop(L, n);
+    shaco_error(ctx, "%s", err);
+    return 1;
+}
+
+static int lua_packer(struct shaco_context *ctx, lua_State *L, const char *path) {
     lua_getfield(L, LUA_REGISTRYINDEX, "_LOADED");
     if (lua_getfield(L, -1, "package") != LUA_TTABLE)
-        return _error(L, top, "package must be a table"); 
+        return _error(ctx, L, 2, "package must be a table"); 
     if (lua_getfield(L, -1, "searchers") != LUA_TTABLE)
-        return _error(L, top, "package.searchers must be a table"); 
+        return _error(ctx, L, 3, "package.searchers must be a table"); 
     lua_pushstring(L, path);
     lua_setfield(L, -3, "packagepath");
     size_t len = lua_rawlen(L, -1);
@@ -219,14 +216,13 @@ static int lua_packer(lua_State *L, const char *path) {
     lua_pushvalue(L, -2);
     lua_pushcclosure(L, searcher_luapackage, 1);
     lua_rawseti(L, -2, len+1);
-    lua_pop(L, 3); // pop package.searchers, package
+    lua_pop(L, 3); // pop all
 
     lua_pushglobaltable(L);
     lua_pushstring(L, path);
     lua_pushcclosure(L, loadfile, 1);
     lua_setfield(L, -2, "loadfile");
-
-    lua_settop(L, top);
+    lua_pop(L, 1);
     return 0;
 }
 

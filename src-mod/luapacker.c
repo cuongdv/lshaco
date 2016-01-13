@@ -109,8 +109,8 @@ sp_entryv_fini(struct sp_entryv *v) {
         return;
     int i;
     for (i=0;i<v->c;++i)
-        free((void*)v->v[i].name);
-    free(v->v);
+        LP_FREE((void*)v->v[i].name);
+    LP_FREE(v->v);
     v->v = NULL;
     v->c = 0;
 }
@@ -129,14 +129,14 @@ sp_lentryv(FILE *fp, struct sp_entryv *v) {
         return 1;
     } 
     v->c = nentry;
-    v->v = malloc(sizeof(v->v[0])*nentry);
+    v->v = LP_MALLOC(sizeof(v->v[0])*nentry);
     memset(v->v, 0, sizeof(v->v[0])*nentry);
     int offset = headsz+HEAD_OFFSET;
     uint32_t i;
     for (i=0;i<nentry;++i) {
         struct sp_entry *e = &v->v[i];
         sread(&e->nsz,1,fp);
-        char *name = malloc(e->nsz+1);
+        char *name = LP_MALLOC(e->nsz+1);
         sread(name,e->nsz,fp);
         name[e->nsz] = '\0';
         xor(name, e->nsz, hk,4);
@@ -147,7 +147,7 @@ sp_lentryv(FILE *fp, struct sp_entryv *v) {
     }
     return 0;
 err:
-    free(v);
+    LP_FREE(v);
     return 1;
 }
 
@@ -170,7 +170,7 @@ sp_lentry(FILE *fp, struct sp_entry *e) {
     if (headsz==0 || nentry==0) { 
         return 1;
     }
-    head = malloc(headsz);
+    head = LP_MALLOC(headsz);
     sread(head, headsz, fp);
   
     bool found = false;
@@ -197,10 +197,10 @@ sp_lentry(FILE *fp, struct sp_entry *e) {
         }
         pskip(p, sz, 8);
     }
-    free(head);
+    LP_FREE(head);
     return !found;
 err:
-    free(head);
+    LP_FREE(head);
     return 1;
 }
 
@@ -222,7 +222,7 @@ sp_unpack(const char *pack, const char *name, char **p, size_t *size) {
     if (r!=0) {
         return NULL;
     }
-    char *body = malloc(e.bodysz);
+    char *body = LP_MALLOC(e.bodysz);
     sread(body, e.bodysz, fp);
 
     //*p = body;*size=e.bodysz;
@@ -231,7 +231,7 @@ sp_unpack(const char *pack, const char *name, char **p, size_t *size) {
         goto err;
     return body;
 err:
-    free(body);
+    LP_FREE(body);
     return NULL;
 }
 
@@ -262,7 +262,7 @@ sp_pack(const char *pack, char **l, size_t n) {
     for (i=0;i<n;++i) {
         uint8_t len = enl[i].nsz;
         fwrite(&len, 1, 1, fp);
-        char *name = malloc(len);
+        char *name = LP_MALLOC(len);
         memcpy(name, enl[i].name, len);
         xor(name, len, hk, 4);
         fwrite(name, len, 1, fp);
@@ -282,7 +282,7 @@ sp_pack(const char *pack, char **l, size_t n) {
             continue;
         }
         fseek(cf,0,SEEK_SET);
-        body = malloc(size);
+        body = LP_MALLOC(size);
         sread(body, size, cf);
 
         size_t keylen = _randkey(key);
@@ -299,7 +299,7 @@ sp_pack(const char *pack, char **l, size_t n) {
         //assert(enc);
         //fwrite(enc,size,1,fp);
 
-        free(body);
+        LP_FREE(body);
         body = NULL;
         fclose(cf);
         enl[i].offset=offset;
@@ -317,10 +317,6 @@ sp_pack(const char *pack, char **l, size_t n) {
     fclose(fp);
     return 0;
 err:
-    free(body);
+    LP_FREE(body);
     return 1;
-}
-
-void sp_free(void *p) {
-    free(p);
 }

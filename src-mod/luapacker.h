@@ -4,6 +4,14 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#ifndef LP_MALLOC
+#define LP_MALLOC malloc
+#endif
+
+#ifndef LP_FREE
+#define LP_FREE free
+#endif
+
 struct sp_entry {
     const char *name;
     uint8_t nsz;
@@ -26,7 +34,5 @@ int sp_pack(const char *pack, char **list, size_t n);
 
 char *sp_encrypt(char *buf, size_t sz, const char *key, size_t keylen);
 char *sp_decrypt(char *buf, size_t sz, size_t *osz);
-
-void sp_free(void *p);
 
 #endif

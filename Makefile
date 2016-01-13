@@ -1,4 +1,4 @@
-.PHONY: all clean 3rd 3rduninstall 
+.PHONY: all clean 3rd 3rduninstall package
  #-Wpointer-arith -Winline
 
 #mod_src=$(wildcard src-mod/*.c)
@@ -148,9 +148,13 @@ tool/luapacker: tool/luapacker.c \
 3rduninstall:
 	cd 3rd && make uninstall
 
+package:
+	python tool/luapacker.py ./lua-shaco lib-package
+	python tool/luapacker.py ./lua-mod   lib-package
+	python tool/luapacker.py ./examples  lib-package
+
 clean:	
 	rm -f $(all_t) 
 	rm -rf lib-cmod
 	rm -rf lib-l
-	rm -rf lib-pack
 	rm -rf *.dSYM

@@ -1,40 +1,16 @@
-local tostring = tostring
-local type = type
-local pairs = pairs
-local srep = string.rep
-local tinsert = table.insert
-local tconcat = table.concat
-local sformat = string.format
-local sgsub = string.gsub
+local function tbl(t, name)
+    local tostring = tostring
+    local type = type
+    local pairs = pairs
+    local tinsert = table.insert
+    local tconcat = table.concat
+    local sformat = string.format
+    local sgsub = string.gsub
 
-local tbl = {}
-
-local function key(k)
-    if type(k) == "number" then
-        return "["..k.."]"
-    else
-        return tostring(k)
-    end
-end
-
-local function value(v)
-    if type(v) == "string" then
-        v = sgsub(v, '"', '\\"')
-        return '"'..v..'"'
-    else
-        return tostring(v)
-    end
-end
-
-local function fullkey(ns, k)
-    if type(k) == "number" then
-        return ns.."["..k.."]"
-    else
-        return ns.."."..tostring(k)
-    end
-end
-
-return function (t, name)
+    local function key(k)           return type(k)=="number" and "["..k.."]" or tostring(k) end
+    local function value(v)         return type(v)=="string" and '"'..sgsub(v,'"','\\"')..'"' or tostring(v) end
+    local function fullkey(ns, k)   return ns..(type(k)=="number" and "["..k.."]" or "."..tostring(k)) end
+    
     if type(name) ~= 'string' then
         name = tostring(t)
     end
@@ -55,8 +31,8 @@ return function (t, name)
                 end
 			end
 		end	
-        return key(name).."={\n"..tab2..
-            tconcat(fields, ",\n"..tab2).."\n"..tab.."}"
+        return sformat("%s={\n%s%s\n%s}", key(name), tab2, tconcat(fields, ",\n"..tab2), tab)
 	end	
 	return serialize(t, name, "", name)
 end
+return tbl

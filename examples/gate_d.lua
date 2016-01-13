@@ -14,7 +14,7 @@ function server.disconnect(id, err)
 end
 
 function server.message(id, data)
-    shaco.trace('message '..id, data)
+    --shaco.trace('message '..id, data)
     socket.send(id, string.pack('>s2', data))
 end
 

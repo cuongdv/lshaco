@@ -83,7 +83,7 @@ _unpack_one(const char *pack, const char *name) {
     }
     fwrite(dec, size, 1, fp);
     fclose(fp);
-    free(body);
+    LP_FREE(body);
     fprintf(stderr, "[=]%s\n",name);
     return 0;
 }

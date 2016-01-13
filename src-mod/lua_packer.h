@@ -196,8 +196,7 @@ static int loadfile(lua_State *L) {
             return load_aux(L, status, env);
         }
         status = LUA_ERRERR;
-        lua_pushfstring(L, "cannot open %s: no found in package %s", 
-            fname, lua_tostring(L, lua_upvalueindex(1)));
+        lua_pushfstring(L, "cannot load '%s': no found in package", fname);
         return load_aux(L, status, env);
     }
 }

@@ -1,3 +1,0 @@
-maxsocket=10
-luamodpath="./lua-mod/?.lua;./examples/?.lua"
-console=1

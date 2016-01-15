@@ -6,7 +6,8 @@ local spack = string.pack
 local nclient, nmsg = ...
 nclient = tonumber(nclient)
 nmsg = tonumber(nmsg)
-local temp = string.rep('0', 32)
+--local temp = string.rep('0', 1024)
+local temp = 'PING\r\n'
 local nclose = 0
 local nstat = 0
 local start_time

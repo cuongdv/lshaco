@@ -8,7 +8,7 @@ local sformat = string.format
 
 local server = {
     address = '127.0.0.1:8000',
-    worker = 1,
+    worker = 20,
 }
 
 local user_online = {}

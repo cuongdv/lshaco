@@ -6,7 +6,6 @@ Todo
 
 Bug
 ===
-1. mworker exit dump
 
 ###monitor###
 1. one-time monitor

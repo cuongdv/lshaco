@@ -9,8 +9,43 @@
 static lua_State *_signalL;
 static const char *_sigstr[] = {"SIG_DFL", "SIG_IGN", NULL};
 static void (*_sighandler[])(int) = {SIG_DFL, SIG_IGN};
-static volatile sig_atomic_t *_sig_tag;
 static int _sig_max;
+static volatile sig_atomic_t *_sig_tag;
+static struct {
+    int sig;
+    void (*handler)(int);
+} *_sig_old;
+static int _sig_old_cnt;
+static int _sig_old_cap;
+
+static void
+save_sig(int sig, void (*handler)(int)) {
+    int i;
+    for (i=0; i<_sig_old_cnt; ++i)
+        if (_sig_old[i].sig == sig) {
+            _sig_old[i].handler = handler;
+            return;
+        }
+    if (_sig_old_cnt == _sig_old_cap) {
+        if (_sig_old_cap == 0) _sig_old_cap = 1;
+        else _sig_old_cap  = _sig_old_cap*2;
+        _sig_old = shaco_realloc(_sig_old, sizeof(_sig_old[0])*_sig_old_cap);
+    }
+    _sig_old[_sig_old_cnt].sig = sig;
+    _sig_old[_sig_old_cnt].handler = handler;
+    _sig_old_cnt++;
+}
+
+static void
+restore_sig() {
+    if (_sig_old) {
+        int i;
+        for (i=0; i<_sig_old_cnt; ++i)
+            signal(_sig_old[i].sig, _sig_old[i].handler);
+        shaco_free(_sig_old);
+        _sig_old = NULL;
+    }
+}
 
 static void
 sig_chld(lua_State *L, int sig) {
@@ -99,22 +134,12 @@ sig_hook(lua_State *L, lua_Debug *ar) {
 
 static void
 sig_handler(int sig) {
-   // fprintf(stderr, "sig_handler 1----------------- %d\n", sig);
-    if (sig >= _sig_max) {
-        return; // should be no here
-    }
-   // fprintf(stderr, "sig_handler 2-----------------\n");
-    // notice: if the _sig_tag is free (if lua_State free), must return, or will dump
-    // this will happen at exit, then lua_State free (_sig_tag free first, then may
-    // receive signal, eg in calling malloc
-    if (_sig_tag == NULL) {
-        return; 
-    }
-    //fprintf(stderr, "sig_handler 3-----------------\n");
+    //if (sig >= _sig_max)
+    //    return;       // should be no here
+    //if (_sig_tag == NULL) 
+    //    return NULL;  // should be no here, see restore_sig
     _sig_tag[sig]++;
-    //lua_sethook(_signalL, sig_hook, LUA_MASKCALL | LUA_MASKRET | LUA_MASKCOUNT, 1);
-    lua_sethook(_signalL, sig_hook, LUA_MASKCOUNT, 1);
-    //fprintf(stderr, "sig_handler 4-----------------\n");
+    lua_sethook(_signalL, sig_hook, LUA_MASKCALL | LUA_MASKRET | LUA_MASKCOUNT, 1);
 }
 
 static int
@@ -179,13 +204,18 @@ lsignal(lua_State *L) {
         lua_pushcclosure(L, sig_handler_wrap, 2); 
     }
 
-    if (sa.sa_handler == sig_handler) {
+    if (handler == sig_handler) {
         lua_pushlightuserdata(L, &_signalL);
         lua_rawget(L, LUA_REGISTRYINDEX);
         lua_pushvalue(L,1);
         lua_pushvalue(L,2);
         lua_rawset(L, -3);
         lua_pop(L,1);
+
+        // sig_handler will invalid after this lib unmap (lua_State free)
+        // here save old signal handler to restore 
+        if (sa_old.sa_handler != sig_handler)
+            save_sig(sig, sa_old.sa_handler);
     }
     return 1;
 } 
@@ -216,17 +246,11 @@ lkill(lua_State *L) {
 }
 
 static int 
-_gc_sig(lua_State *L) {
-    //fprintf(stderr, "------------------gc_sig....\n");
-    _sig_tag = NULL;
-    //fprintf(stderr, "------------------gc_sig end\n");
-    return 0;
-}
-static int 
 _gc_signal(lua_State *L) {
-    //fprintf(stderr, "------------------gc_signal....\n");
+    // notice: no sig_handler, or this lib be free, and unmap lib then 
+    // sig_handler address to be invalid, after this receive signal...
+    restore_sig();
     _sig_tag = NULL;
-    //fprintf(stderr, "------------------gc_signal end\n");
     return 0;
 }
 
@@ -241,7 +265,7 @@ luaopen_signal_c(lua_State *L) {
         { NULL, NULL },
 	}; 
 	luaL_newlib(L, l);
-    lua_pushlightuserdata(L, &_signalL);
+    lua_pushlightuserdata(L, &_signalL); // store lua signal handler
     lua_newtable(L);
     lua_rawset(L, LUA_REGISTRYINDEX);
     _signalL = L;
@@ -352,21 +376,12 @@ luaopen_signal_c(lua_State *L) {
 #endif
     // to cache all sig
     int size = sizeof(_sig_tag[0])*_sig_max*2;
-    _sig_tag = lua_newuserdata(L, size);
+    _sig_tag = shaco_malloc(size);
     memset((void*)_sig_tag, 0, size);
-    lua_newtable(L);
-    lua_pushcfunction(L, _gc_sig);
-    lua_setfield(L, -2, "__gc");
-    lua_setmetatable(L, -2);
-
-    lua_pushboolean(L, 1);
-    lua_rawset(L, LUA_REGISTRYINDEX); // refrence, or free by gc
-
 
     lua_newtable(L);
     lua_pushcfunction(L, _gc_signal);
     lua_setfield(L, -2, "__gc");
     lua_setmetatable(L, -2);
-
 	return 1;
 }

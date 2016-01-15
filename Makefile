@@ -96,7 +96,7 @@ lib-cmod:
 lib-l:
 	mkdir $@
 
-lib-cmod/mod_lua.so: src-mod/mod_lua.c src-mod/luapacker.c | lib-cmod
+lib-cmod/mod_lua.so: src-mod/mod_lua.c | lib-cmod
 	gcc $(CFLAGS) $(SHARED) -o $@ $^ -Isrc-mod $(ISHACO) $(ILUA)
 
 lib-cmod/mod_harbor.so: src-mod/mod_harbor.c src-mod/socket_buffer.c 
@@ -138,8 +138,7 @@ lib-l/process.so: src-l/lprocess.c | lib-l
 lib-l/signal.so: src-l/lsignal.c | lib-l
 	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO) $(ILUA) 
 
-tool/luapacker: tool/luapacker.c \
-	src-mod/luapacker.c
+tool/luapacker: tool/luapacker.c
 	gcc $(CFLAGS) -o $@ $^ -Isrc-mod
 
 3rd: 

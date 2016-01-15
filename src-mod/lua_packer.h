@@ -104,7 +104,6 @@ search_packagepath(lua_State *L,
         void **body, size_t *size) {
     luaL_Buffer msg;  /* to build error message */
     luaL_buffinit(L, &msg);
-
     name = luaL_gsub(L, name, ".", LUA_DIRSEP);  /* replace it by 'dirsep' */
 
     while ((package_path = pushnexttemplate(L, package_path)) != NULL) {
@@ -181,24 +180,23 @@ static int loadfile(lua_State *L) {
     if (readable(fname)) {
         status = luaL_loadfilex(L, fname, mode);
         return load_aux(L, status, env);
-    } else {
-        const char *path, *package; 
-        char *p, *body;
-        size_t size;
-        path = lua_tostring(L, lua_upvalueindex(1));
-        while ((path = pushnexttemplate(L, path)) != NULL) {
-            package = lua_tostring(L,-1);
-            p = sp_unpack(package, fname, &body, &size);
-            lua_pop(L,1);
-            if (p == NULL) continue;
-            status = luaL_loadbuffer(L, body, size, fname);
-            LP_FREE(p);
-            return load_aux(L, status, env);
-        }
-        status = LUA_ERRERR;
-        lua_pushfstring(L, "cannot load '%s': no found in package", fname);
+    } 
+    const char *path, *package; 
+    char *p, *body;
+    size_t size;
+    path = lua_tostring(L, lua_upvalueindex(1));
+    while ((path = pushnexttemplate(L, path)) != NULL) {
+        package = lua_tostring(L,-1);
+        p = sp_unpack(package, fname, &body, &size);
+        lua_pop(L,1);
+        if (p == NULL) continue;
+        status = luaL_loadbuffer(L, body, size, fname);
+        LP_FREE(p);
         return load_aux(L, status, env);
     }
+    status = LUA_ERRERR;
+    lua_pushfstring(L, "cannot load '%s': no found in package", fname);
+    return load_aux(L, status, env);
 }
 
 static int lua_packer(struct shaco_context *ctx, lua_State *L, const char *path) {

@@ -71,6 +71,7 @@ event[0] = function(id, data, size)
         shaco.error(sformat('Socket %d read buffer too large %d', id, size))
         c_close(id, true)
         s.connected = false
+        s.buffer:clear() -- clear or read will call buffer pop
         wakeup(s)
         return
     end

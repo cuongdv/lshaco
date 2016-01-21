@@ -23,7 +23,7 @@ struct socket_buffer {
 };
 
 static int
-lfree(struct lua_State *L) {
+lclear(struct lua_State *L) {
     luaL_checktype(L, 1, LUA_TUSERDATA);
     struct socket_buffer *sb = lua_touserdata(L, 1);
     while (sb->head) {
@@ -180,35 +180,7 @@ readall(struct lua_State *L,
         return 1;
     }
 }
-/*
-static int
-readhead(struct lua_State *L, 
-         struct socket_buffer *sb, int n) {
-    assert(n > 0);
-    if (sb->size < n) {
-        lua_pushnil(L);
-        return 1;
-    }
-    uint32_t head = 0;
-    struct buffer_node *current = sb->head;
-    int offset = sb->offset;
-    int i=0, o;
-    while (current) {
-        for (o=offset; o<current->sz; ++o) {
-            head |= ((uint8_t*)current->p)[o]<<((i++)*8); 
-            if (i>=n) {
-                freebuffer(sb, current, o+1);
-                lua_pushinteger(L, head);
-                return 1;
-            }
-        }
-        current = current->next;
-        offset = 0;
-    }
-    lua_pushnil(L);
-    return 1;
-}
-*/
+
 static int
 readn(struct lua_State *L, 
       struct socket_buffer *sb, int n) {
@@ -317,74 +289,6 @@ ldetach(struct lua_State *L) {
     lua_pushinteger(L,buf_size);
     return 2;
 }
-//static void
-//pushpackp(struct lua_State *L, 
-//         struct socket_buffer *sb, int n,
-//         struct buffer_node *node, int end) {
-//    char *pack = malloc(n);
-//    char *p = pack;
-//    struct buffer_node *current = sb->head;
-//    int offset = sb->offset, diff;
-//    while (current != node) {
-//        diff = current->sz-offset;
-//        memcpy(p, current->p+offset, diff);
-//        p += diff;
-//        current = current->next;
-//        offset = 0;
-//    }
-//    diff = end-offset;
-//    memcpy(p, current->p+offset, diff);
-//    p += diff;
-//    assert(p-pack == n);
-//    lua_pushlightuserdata(L, pack);
-//    lua_pushinteger(L, n);
-//}
-
-//static int
-//readnp(struct lua_State *L, 
-//      struct socket_buffer *sb, int n) {
-//    if (n==0) {
-//        lua_pushlightuserdata(L, NULL);
-//        lua_pushinteger(L, 0);
-//        return 2;
-//    }
-//    if (sb->size < n) {
-//        lua_pushnil(L);
-//        return 1;
-//    }
-//    struct buffer_node *current = sb->head;
-//    int offset = sb->offset;
-//    int sz = 0;
-//    while (current) {
-//        sz += current->sz-offset;
-//        if (sz >= n) {
-//            int end = current->sz-(sz-n);
-//            pushpackp(L, sb, n, current, end);
-//            freebuffer(sb, current, end);
-//            return 2;
-//        }
-//        current = current->next;
-//        offset = 0;
-//    }
-//    lua_pushnil(L);
-//    return 1;
-//}
-
-//static int
-//lpopbytes(struct lua_State *L) {
-//    luaL_checktype(L, 1, LUA_TUSERDATA);
-//    struct socket_buffer *sb = lua_touserdata(L, 1); 
-//    uint32_t n = luaL_checkinteger(L, 2);
-//    return readnp(L, sb, n);
-//}
-//
-//static int
-//lfreebytes(struct lua_State *L) {
-//    luaL_checktype(L,1,LUA_TLIGHTUSERDATA);
-//    void *p = lua_touserdata(L,1);
-//    free(p);
-//    return 0;
-//}
 
 static void
 createmeta(struct lua_State *L) {
@@ -393,9 +297,8 @@ createmeta(struct lua_State *L) {
         {"pop", lpop},
         {"findsep", lfindsep},
         {"detach", ldetach},
-        //{"popbytes", lpopbytes},
-        //{"freebytes", lfreebytes },
-        {"__gc", lfree},
+        {"clear", lclear},
+        {"__gc", lclear},
         {NULL, NULL},
     };
     luaL_newmetatable(L, METANAME);
@@ -414,8 +317,7 @@ luaopen_socketbuffer_c(lua_State *L) {
         {"pop", lpop},
         {"findsep", lfindsep},
         {"detach", ldetach},
-        //{"popbytes", lpopbytes},
-        //{"freebytes", lfreebytes },
+        {"clear", lclear},
         {NULL, NULL},
     };
 	luaL_newlib(L, l);

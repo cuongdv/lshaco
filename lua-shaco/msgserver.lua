@@ -70,7 +70,7 @@ function msgserver.start(handler)
 
     function server.connect(id, addr)
         gateserver.openclient(id)
-        handshake[id] = '127.0.0.1' -- todo: get addr
+        handshake[id] = addr
     end
 
     function server.disconnect(id, err)

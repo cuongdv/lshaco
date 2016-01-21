@@ -2,7 +2,7 @@ local shaco = require "shaco"
 local c = require "socket.c"
 local socketbuffer = require "socketbuffer.c"
 local co_running = coroutine.running
-local string = string
+local sformat = string.format
 local sunpack = string.unpack
 local assert = assert
 local type = type
@@ -14,10 +14,8 @@ local c_connect = assert(c.connect)
 local c_listen = assert(c.listen)
 local c_close = assert(c.close)
 local c_bind = assert(c.bind)
---local c_read = assert(c.read)
 local c_send = assert(c.send)
 local c_sendfd = assert(c.sendfd)
---local c_readfd = assert(c.readfd)
 local c_unpack = assert(c.unpack)
 local c_readon = assert(c.readon)
 local c_readoff = assert(c.readoff)
@@ -46,24 +44,36 @@ end
 local function close(s, force)
     if s then
         local id = s.id
-        socket_pool[id] = nil
         if s.connected then
             c_close(id, force)
+            s.connected = false
+        end
+        if s.co then
+            wakeup(s)
+        else
+            socket_pool[id] = nil
         end
     end
 end
 
 local event = {}
 
--- LS_EREAD
+-- SOCKET_TYPE_READ
 event[0] = function(id, data, size)
     local s = socket_pool[id] 
     if s == nil then
-        shaco.error(string.format('Socket %d drop data size=%d', id, size))
+        shaco.error(sformat('Socket %d drop data size=%d', id, size))
         c_drop(data, size)
         return
     end
     size = s.buffer:push(data, size)
+    if s.rlimit and size > s.rlimit then
+        shaco.error(sformat('Socket %d read buffer too large %d', id, size))
+        c_close(id, true)
+        s.connected = false
+        wakeup(s)
+        return
+    end
     local format = s.read_format
     local rt = type(format)
     -- read by number, or socket.block
@@ -81,42 +91,37 @@ event[0] = function(id, data, size)
     end
 end
 
--- LS_EACCEPT
-event[1] = function(id, listenid) 
+-- SOCKET_TYPE_ACCEPT
+event[1] = function(id, listenid, addr) 
     local listen_s = socket_pool[listenid] 
-    listen_s.callback(id)
+    listen_s.callback(id, addr)
 end
 
--- LS_ECONNECT
+-- SOCKET_TYPE_CONNECT
 event[2] = function(id)
     local s = socket_pool[id]
-    if not s then
-        return
+    if s then
+        s.connected = true
+        wakeup(s)
     end
-    s.connected = true
-    wakeup(s)
 end
 
--- LS_ECONNERR
-event[3] = function(id, err)
+-- SOCKET_TYPE_CONNERR
+event[3] = function(id)
     local s = socket_pool[id]
-    if not s then
-        return
+    if s then
+        s.connected = false
+        wakeup(s) 
     end
-    s.connected = false
-    s.error = err
-    wakeup(s) 
 end
 
--- LS_ESOCKERR
-event[4] = function(id, err)
+-- SOCKET_TYPE_SOCKERR
+event[4] = function(id)
     local s = socket_pool[id]
-    if not s then
-        return
+    if s then
+        s.connected = false
+        wakeup(s)
     end
-    s.connected = false
-    s.error = err
-    wakeup(s)
 end
 
 shaco.register_protocol {
@@ -131,7 +136,7 @@ shaco.register_protocol {
 
 local function alloc(id, callback)
     local s = socket_pool[id]
-    assert(not s, 'id existed '..id)
+    assert(s == nil)
     s = { 
         id = id,
         connected = false,
@@ -139,7 +144,8 @@ local function alloc(id, callback)
         buffer = false,
         read_format = false,
         callback = callback,
-        error = "none",
+        rlimit = nil,
+        slimit = nil,
     }
     socket_pool[id] = s
     return s
@@ -152,9 +158,7 @@ end
 
 function socket.abandon(id)
     local s = socket_pool[id]
-    if s then
-        socket_pool[id] = nil
-    end
+    if s then socket_pool[id] = nil end
 end
 
 -- return the remain buffer data (p, sz)
@@ -166,14 +170,12 @@ function socket.detachbuffer(id)
 end
 
 function socket.listen(addr, callback)
-    local id, err = c_listen(addr)
+    local id = c_listen(addr)
     if id then
         local s = alloc(id, callback)
         s.connected = true
-        return id
-    else 
-        return id, err
     end
+    return id
 end
 
 function socket.connect(...)
@@ -186,54 +188,40 @@ function socket.connect(...)
                 return s.id
             else
                 socket_pool[id] = nil
-                return nil, s.error
+                return nil
             end
-        else return id end
-    else 
-        return nil, conning -- error
+        end
     end
+    return id
 end
 
 -- wrap a exist fd to socket
 function socket.bind(fd, protocol)
     if protocol == 'IPC' then
-        protocol = 2 -- see socket_define.h
+        protocol = 2 -- see socket.h
     else protocol = nil
     end
-    local id, err = c_bind(fd, protocol)
+    local id = c_bind(fd, protocol)
     if id then
         local s = alloc(id)
         s.connected = true
-        return id
-    else 
-        return nil, err
     end
+    return id
 end
 
 function socket.stdin()
-    local id, err = socket.bind(0)
+    local id = socket.bind(0)
     if id then
         socket.readon(id)
-        return id
-    else
-        return nil, err
     end
+    return id
 end
-
---function socket.shutdown(id)
---    local s = socket_pool[id]
---    if s then
---        close(s, false)
---    end
---end
 
 function socket.close(id, force)
     force = force or true
     local s = socket_pool[id]
-    if s then
-        close(s, force)
-    else
-        c_close(id, force)
+    if s then 
+        close(s, force) 
     end
 end
 
@@ -257,12 +245,11 @@ function socket.block(id)
     assert(s)
     s.read_format = 0
     suspend(s)
-    return s.connected, s.error
+    return s.connected
 end
 
 function socket.read(id, format)
     local s = socket_pool[id]
-    assert(s)
     format = format or false
     s.read_format = format
     local data = s.buffer:pop(format)
@@ -276,27 +263,28 @@ function socket.read(id, format)
             end
         end
         socket_pool[id] = nil
-        return nil, s.error
+        return false
     end
 end
 
 function socket.send(id, data, i, j)
     local s = socket_pool[id]
-    assert(s)
     if s.connected then
-        local ok, err = c_send(id, data, i, j)
-        if not ok then
-            s.connected = false
+        local size = c_send(id, data, i, j)
+        if size then
+            if s.slimit and size > s.slimit then
+                shaco.error(sformat('Socket %d send buffer too large %d', id, size))
+                c_close(id)
+                socket_pool[id] = nil
+            else return true end
+        else
             socket_pool[id] = nil
-            return nil, err
-        else return true 
         end
-    else
-        -- do not clear socket when connected is false,
-        -- do this only when reading
-        -- socket_pool[id] = nil
-        return nil, s.error
     end
+    -- do not clear socket when connected is false,
+    -- do this only when reading
+    -- socket_pool[id] = nil
+    return false
 end
 
 function socket.ipc_read(id, format)
@@ -304,63 +292,62 @@ function socket.ipc_read(id, format)
 end
 
 function socket.ipc_readfd(id, format)
-    local fd, err
+    local fd
     if format == nil then
-        fd, err = socket.read(id, 5) -- send fd only with one byte empty data
+        fd = socket.read(id, 5) -- send fd only with one byte empty data
         if fd then
             fd = sunpack('=i', fd)
             return fd
         end
     else
-        fd, err = socket.read(id, 4)
+        fd = socket.read(id, 4)
         if fd then
-            data, err = socket.read(id, format)
+            data = socket.read(id, format)
             if data then
                 fd = sunpack('=i', fd)
                 return fd, data
             end
         end
     end
-    return nil, err
+    return false
 end
 
 function socket.ipc_sendfd(id, fd, ...)
     local s = socket_pool[id]
-    assert(s)
     if s.connected then
-        local ok, err = c_sendfd(id, fd, ...)
-        if not ok then
-            s.connected = false
+        local size = c_sendfd(id, fd, ...)
+        if size then
+            return true
+        else
             socket_pool[id] = nil
-            return nil, err
-        else return true 
         end
-    else
-        -- do not clear socket when connected is false,
-        -- do this only when reading
-        -- socket_pool[id] = nil
-        return nil, s.error
     end
+    -- do not clear socket when connected is false,
+    -- do this only when reading
+    -- socket_pool[id] = nil
+    return false
 end
 
 function socket.ipc_send(id, data, i, j)
     local s = socket_pool[id]
-    assert(s)
     if s.connected then
-        local ok, err = c_sendfd(id, nil, data, i, j)
-        if not ok then
-            s.connected = false
+        local size = c_sendfd(id, nil, data, i, j)
+        if size then
+            return true
+        else
             socket_pool[id] = nil
-            return nil, err
-        else return true 
         end
-    else
-        -- do not clear socket when connected is false,
-        -- do this only when reading
-        -- socket_pool[id] = nil
-        return nil, s.error
     end
+    -- do not clear socket when connected is false,
+    -- do this only when reading
+    -- socket_pool[id] = nil
+    return false
+end
 
+function socket.limit(id, rlimit, slimit)
+    local s = socket_pool[id]
+    s.rlimit = rlimit
+    s.slimit = slimit
 end
 
 function socket.reinit()

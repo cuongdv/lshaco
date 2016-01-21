@@ -48,7 +48,6 @@ local function worker_handler(id)
 end
 
 local function master_handler(id, worker, ok, uid, server, secret)
-    socket.start(id)
     if not ok then
         if uid ~= nil then
             socket.send(id, '401 Unauthorized\n') -- error in handler_auth

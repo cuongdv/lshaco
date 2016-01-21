@@ -177,6 +177,7 @@ local function start_listen(conf)
     shaco.info('Listen on '..listen_addr)
     local listen_sock = assert(socket.listen(
         listen_addr, function(id)
+            socket.start(id)
             local ok, err = pcall(function()
                 local client_fd = socket.getfd(id)
                 shaco.trace(sformat('Sock %d, fd=%d accept', id, client_fd))

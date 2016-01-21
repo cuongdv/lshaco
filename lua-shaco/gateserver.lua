@@ -9,6 +9,8 @@ local assert = assert
 
 local connection = {}
 local listen_id = false
+local rlimit
+local slimit
 local maxclient = 0
 local client_number = 0
 local gateserver = {}
@@ -16,8 +18,7 @@ local gateserver = {}
 local disconnect
 
 function gateserver.openclient(id)
-    local c = connection[id]
-    if c then
+    if connection[id] then
         socket.readon(id)
     end
 end
@@ -27,9 +28,15 @@ function gateserver.closeclient(id)
 end
 
 function gateserver.send(id, data)
-    local ok, err = socket.send(id, data)
-    if not ok then
-        disconnect(id, err)
+    if connection[id] then
+        local size = socket.send(id, data)
+        if size then
+            if slimit and size > slimit then
+                shaco.error(sformat('Connection %d send buffer too large %d', id, size))
+                disconnect(id)
+            end
+        else disconnect(id, "socket error")
+        end
     end
 end
 
@@ -41,8 +48,7 @@ function gateserver.start(handler)
 
     -- local
     function disconnect(id, err) 
-        local c = connection[id]
-        if c then
+        if connection[id] then
             connection[id] = nil
             if not err then
                 socket.close(id)
@@ -54,7 +60,7 @@ function gateserver.start(handler)
 
     local SOCKET = {}
 
-    -- LS_EREAD
+    -- SOCKET_TYPE_READ
     SOCKET[0] = function(id, data, size)
         local c = connection[id]
         if not c then
@@ -77,6 +83,11 @@ function gateserver.start(handler)
             end
         end
         size = c.buffer:push(data, size)
+        if rlimit and size > rlimit then
+            shaco.error(sformat('Connection %d read buffer too large %d', id, size))
+            disconnect(id)
+            return
+        end
         while true do
             local pack = poppack(c)
             if pack then
@@ -84,25 +95,24 @@ function gateserver.start(handler)
                     disconnect(id)
                     break
                 end
-            else break
-            end
+            else break end
         end
     end
 
-    -- LS_EACCEPT
-    SOCKET[1] = function(id)
+    -- SOCKET_TYPE_ACCEPT
+    SOCKET[1] = function(id, listenid, addr)
         if client_number >= maxclient then
             socket.close(id)
             return
         end
         connection[id] = { buffer = socketbuffer_new(), head = false }
         client_number = client_number + 1
-        handler_connect(id)
+        handler_connect(id, addr)
     end
 
-    -- LS_ESOCKERR
-    SOCKET[4] = function(id, err)
-        disconnect(id, err)
+    -- SOCKET_TYPE_SOCKERR
+    SOCKET[4] = function(id)
+        disconnect(id, "socket error")
     end
 
     shaco.register_protocol {
@@ -118,12 +128,12 @@ function gateserver.start(handler)
     local CMD = {}
     
     function CMD.open(conf)
-        if listen_id then
-            return
-        end
+        assert(listen_id == false)
+        shaco.info('Listen on ' ..conf.address)
         listen_id = assert(socket.listen(conf.address))
         maxclient = conf.maxclient or 1024
-        shaco.info('listen on ' ..conf.address)
+        rlimit = conf.rlimit
+        slimit = conf.slimit
         if handler.open then
             handler.open(conf)
         end

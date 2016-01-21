@@ -4,12 +4,13 @@
 #mod_src=$(wildcard src-mod/*.c)
 #mod_so=$(patsubst %.c,%.so,$(notdir $(mod_src)))
 ILUA=-I3rd/lua/src
-ISHACO=-Isrc-shaco -I3rd/lsocket/src
+ISHACO=-Isrc-shaco 
 
 LIBSHACO_SRC=\
 	src-shaco/shaco.c \
 	src-shaco/shaco_env.c \
  	src-shaco/shaco_socket.c \
+	src-shaco/socket.c \
  	src-shaco/shaco_module.c \
  	src-shaco/shaco_timer.c \
 	src-shaco/shaco_context.c \
@@ -17,8 +18,7 @@ LIBSHACO_SRC=\
 	src-shaco/shaco_harbor.c \
 	src-shaco/shaco_msg_dispatcher.c \
  	src-shaco/shaco_log.c \
-	src-shaco/shaco_malloc.c \
-	3rd/lsocket/src/socket.c
+	src-shaco/shaco_malloc.c
 
 all_t=\
 	shaco \
@@ -108,8 +108,8 @@ lib-l/shaco.so: src-l/lshaco.c | lib-l
 lib-l/socket.so: src-l/lsocket.c | lib-l
 	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO) $(ILUA)
 
-lib-l/socketbuffer.so: 3rd/lsocket/src/lsocketbuffer.c | lib-l
-	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ILUA)
+lib-l/socketbuffer.so: src-l/lsocketbuffer.c | lib-l
+	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO) $(ILUA)
 
 lib-l/memory.so: src-l/lmemory.c | lib-l
 	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO) $(ILUA)

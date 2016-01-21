@@ -96,11 +96,11 @@ _index_slave(struct harbor *self, int slaveid) {
 }
 
 static int
-_sock_error(struct shaco_context *ctx, struct harbor *self, int sock, int err) {
+_sock_error(struct shaco_context *ctx, struct harbor *self, int sock, const char *err) {
     struct slave *s = _find_slave_bysock(self, sock);
     if (s) {
         int slaveid = s->id;
-        shaco_info(ctx, "Slave %02x exit: %s", slaveid, shaco_socket_error(err));
+        shaco_info(ctx, "Slave %02x exit: %s", slaveid, err);
         s->id = 0;
         s->sock = 0;
         sb_fini(&s->sb);
@@ -108,8 +108,7 @@ _sock_error(struct shaco_context *ctx, struct harbor *self, int sock, int err) {
         int n = sprintf(tmp, "D %d", slaveid);
         return shaco_send(ctx, self->slave_handle, 0, SHACO_TTEXT, tmp, n);
     } else {
-        shaco_info(ctx, "Unknown slave socket=%d error: %s", 
-                sock, shaco_socket_error(err));
+        shaco_info(ctx, "Unknown slave socket=%d error: %s", sock, err); 
         return 1;
     }
 }
@@ -122,7 +121,7 @@ _handle_package(struct shaco_context *ctx, struct harbor *self, struct slave *s)
             break;
         if (package.sz <= HEADSZ) {
             shaco_free(package.p);
-            _sock_error(ctx, self, s->sock, LS_ERR_MSG);
+            _sock_error(ctx, self, s->sock, "package head too small");
             break;
         }
         struct package_header header;
@@ -135,31 +134,22 @@ _handle_package(struct shaco_context *ctx, struct harbor *self, struct slave *s)
 }
 
 static int
-_sock_read(struct shaco_context *ctx, struct harbor *self, int sock) {
+_sock_read(struct shaco_context *ctx, struct harbor *self, int sock, void *data, int size) {
     struct slave *s = _find_slave_bysock(self, sock);
     if (s == NULL)
         return 1;
-    
-    void *data;
-    int data_size = shaco_socket_read(sock, &data);
-    if (data_size==0) 
-        return 0;
-    else if (data_size<0) {
-        _sock_error(ctx, self, sock, shaco_socket_lasterrno());
-        return 0;
-    } 
-    sb_push(&s->sb, data, data_size);
+    sb_push(&s->sb, data, size);
     _handle_package(ctx, self, s);
     return 0;
 }
 
 static int
-_dosock(struct shaco_context *ctx, struct harbor *self, struct socket_event *event){
+_dosock(struct shaco_context *ctx, struct harbor *self, struct socket_message *event){
     switch (event->type) {
-    case LS_EREAD:
-        return _sock_read(ctx, self, event->id);
-    case LS_ESOCKERR:
-        return _sock_error(ctx, self, event->id, event->err);
+    case SOCKET_TYPE_DATA:
+        return _sock_read(ctx, self, event->id, event->data, event->size);
+    case SOCKET_TYPE_SOCKERR:
+        return _sock_error(ctx, self, event->id, "socket error");
     default:
         shaco_error(ctx, "Invalid socket message type %d", event->type);
         return 1;
@@ -234,7 +224,7 @@ cb(struct shaco_context *ctx, void *ud, int source, int session, int type, const
     struct harbor *self = (struct harbor *)ud;
     switch (type) {
     case SHACO_TSOCKET: {
-        struct socket_event *event = (struct socket_event *)msg;
+        struct socket_message *event = (struct socket_message *)msg;
         assert(sizeof(*event)==sz);
         return _dosock(ctx, self, event);
         }

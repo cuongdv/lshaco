@@ -7,37 +7,27 @@
 
 static struct net* N = NULL;
 
-static inline void
-_dispatch_one(struct socket_event* event) {
-    int moduleid = event->udata;
-    if (event->type == LS_ECONN_THEN_READ) {
-        event->type = LS_ECONNECT;
-        shaco_handle_send(moduleid, 0, 0, SHACO_TSOCKET, event, sizeof(*event));
-        event->type = LS_EREAD; 
-    }
-    shaco_handle_send(moduleid, 0, 0, SHACO_TSOCKET, event, sizeof(*event));
-}
-
-int
+void
 shaco_socket_poll(int timeout) {
-    struct socket_event *events;
-    int n = socket_poll(N, timeout, &events);
-    int i;
-    for (i=0; i<n; ++i)
-        _dispatch_one(&events[i]);
-    return n;
+    int more = 1;
+    struct socket_message msg;
+    while (socket_poll(N, timeout, &msg, &more)) {
+        int handle = msg.ud;
+        shaco_handle_send(handle, 0, 0, SHACO_TSOCKET, &msg, sizeof(msg));
+        if (!more) break;
+    }
 }
 
 int 
 shaco_socket_psend(struct shaco_context *ctx, int id, void *data, int sz) {
     int n = socket_send(N, id, data, sz);
     if (n < 0) {
-        struct socket_event event;
-        event.id = id;
-        event.type = LS_ESOCKERR;
-        event.udata = shaco_context_handle(ctx);
-        event.err = socket_lasterrno(N);
-        _dispatch_one(&event);
+        int handle = shaco_context_handle(ctx);
+        struct socket_message msg;
+        msg.id = id;
+        msg.ud = handle;
+        msg.type = SOCKET_TYPE_SOCKERR;
+        shaco_handle_send(handle, 0, 0, SHACO_TSOCKET, &msg, sizeof(msg));
     }
     return n;
 }
@@ -72,13 +62,13 @@ shaco_socket_listen(struct shaco_context *ctx, const char *addr, int port) {
     return socket_listen(N, addr, port, shaco_context_handle(ctx)); 
 }
 int 
-shaco_socket_connect(struct shaco_context *ctx, const char* addr, int port) { 
-    return socket_connect(N, addr, port, 0, shaco_context_handle(ctx));
+shaco_socket_connect(struct shaco_context *ctx, const char* addr, int port, int *conning) { 
+    return socket_connect(N, addr, port, 0, shaco_context_handle(ctx), conning);
 }
 
 int 
 shaco_socket_blockconnect(struct shaco_context *ctx, const char *addr, int port) { 
-    return socket_connect(N, addr, port, 1, shaco_context_handle(ctx)); 
+    return socket_connect(N, addr, port, 1, shaco_context_handle(ctx), NULL); 
 }
 
 int
@@ -88,11 +78,6 @@ shaco_socket_start(struct shaco_context *ctx, int id) {
 
 int shaco_socket_close(int id, int force) { return socket_close(N, id, force); }
 int shaco_socket_enableread(int id, int read) { return socket_enableread(N, id, read); }
-int shaco_socket_read(int id, void **data) { return socket_read(N, id, data); }
 int shaco_socket_send(int id, void *data, int sz) { return socket_send(N, id, data, sz); }
 int shaco_socket_sendfd(int id, void *data, int sz, int fd) { return socket_sendfd(N, id, data, sz, fd); }
-int shaco_socket_address(int id, struct socket_addr *addr) { return socket_address(N, id, addr); }
-int shaco_socket_limit(int id, int slimit, int rlimit) { return socket_limit(N, id, slimit, rlimit); }
-int shaco_socket_lasterrno() { return socket_lasterrno(N); }
-const char *shaco_socket_error(int err) { return socket_error(N, err); }
 int shaco_socket_fd(int id) { return socket_fd(N, id); }

@@ -4,8 +4,8 @@ local socket = require "socket.c"
 
 local server = {}
 
-function server.connect(id)
-    shaco.trace('connect '..id)
+function server.connect(id, addr)
+    shaco.trace('connect '..id..' '..addr)
     gateserver.openclient(id)
 end
 

@@ -13,37 +13,29 @@
 
 static FILE *F;
 static int LEVEL = LOG_INFO;
-
-static const char* STR_LEVELS[LOG_MAX] = {
-    "DEBUG", "TRACE", "INFO", "WARNING", "ERROR", "EXIT", "PANIC",
-};
-
-static inline const char*
-_levelstr(int level) {
-    if (level >= 0 && level < LOG_MAX)
-        return STR_LEVELS[level];
-    return "";
-}
+static const char *STR_LEVELS = ".*#!";
 
 static int 
-_levelid(const char* level) {
-    int i;
-    for (i=LOG_DEBUG; i<LOG_MAX; ++i) {
-        if (strcasecmp(STR_LEVELS[i], level) == 0)
+_levelid(char level) {
+    const char *c = STR_LEVELS;
+    int i = 0;
+    while (c[i]) {
+        if (c[i] == level)
             return i;
+        i++;
     }
     return -1;
 }
 
-const char *
+char
 shaco_log_level() {
-    return _levelstr(LEVEL);
+    return STR_LEVELS[LEVEL];
 }
 
 int
 shaco_log_setlevel(const char* level) {
-    int id = _levelid(level);
-    if (id == -1)
+    int id = _levelid(level[0]);
+    if (id == -1) 
         return -1;
     else {
         LEVEL = id;
@@ -56,13 +48,10 @@ _color_begin(int level) {
     if (level == LOG_ERROR) {
         fprintf(F, "\x1b[31m");
         return 1;
-    } else if (level == LOG_WARNING) {
+    } else if (level == LOG_WARN) {
         fprintf(F, "\x1b[33m");
         return 1;
-    } else if (level == LOG_PANIC) {
-        fprintf(F, "\x1b[31;1m");
-        return 1;
-    }
+    } 
     return 0;
 }
 
@@ -79,7 +68,7 @@ _prefix(struct shaco_context *ctx, int level) {
     time_t sec = now / 1000;
     uint32_t msec = now % 1000;
     strftime(tmp, sizeof(tmp), "%y%m%d-%H:%M:%S.", localtime(&sec));
-    fprintf(F, "%d %s%03d %s [%02x] ", (int)getpid(), tmp, msec, _levelstr(level), ctx ? shaco_context_handle(ctx):0 );
+    fprintf(F, "%d %s%03d %c [%02x] ", (int)getpid(), tmp, msec, STR_LEVELS[level], ctx ? shaco_context_handle(ctx):0 );
 }
 
 static inline void
@@ -120,7 +109,7 @@ shaco_backtrace(struct shaco_context *ctx) {
     symbols = backtrace_symbols(addrs, n);
     if (symbols) {
         for (i=0; i<n; ++i) {
-            _log(ctx, LOG_PANIC, symbols[i]);
+            _log(ctx, LOG_ERROR, symbols[i]);
         }
         free(symbols);
     }
@@ -130,7 +119,7 @@ void
 shaco_exit(struct shaco_context *ctx, const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    _logv(ctx, LOG_PANIC, fmt, ap);
+    _logv(ctx, LOG_ERROR, fmt, ap);
     va_end(ap);
     exit(1);
 }
@@ -139,10 +128,10 @@ void
 shaco_panic(struct shaco_context *ctx, const char* fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    _logv(ctx, LOG_PANIC, fmt, ap);
+    _logv(ctx, LOG_ERROR, fmt, ap);
     va_end(ap);
 
-    _log(ctx, LOG_PANIC, "Panic detected at:");
+    _log(ctx, LOG_ERROR, "Panic detected at:");
     shaco_backtrace(ctx);
     abort();
 }

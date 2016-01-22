@@ -30,7 +30,7 @@ static size_t _used_memory = 0;
 
 static inline void
 _oom(size_t size) {
-    shaco_error(NULL,"Out of memory trying to malloc %zu bytes", size);
+    shaco_error(NULL, "Out of memory trying to malloc %zu bytes", size);
     shaco_panic(NULL, "Exit due to out of memory");
 }
 

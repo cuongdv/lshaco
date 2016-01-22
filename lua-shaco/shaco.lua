@@ -48,11 +48,10 @@ local shaco = {
 }
 
 -- log
-local LOG_DEBUG   =0
-local LOG_TRACE   =1
-local LOG_INFO    =2
-local LOG_WARNING =3
-local LOG_ERROR   =4
+local LOG_TRACE   =0
+local LOG_INFO    =1
+local LOG_WARN    =2
+local LOG_ERROR   =3
 
 local function log(level, ...) 
     local argv = {...}
@@ -64,10 +63,9 @@ local function log(level, ...)
 end
 
 shaco.error   = function(...) log(LOG_ERROR, ...) end
-shaco.warning = function(...) log(LOG_WARNING, ...) end
+shaco.warn    = function(...) log(LOG_WARN, ...) end
 shaco.info    = function(...) log(LOG_INFO, ...) end
 shaco.trace   = function(...) log(LOG_TRACE, ...) end
-shaco.debug   = function(...) log(LOG_DEBUG, ...) end
 
 shaco.now = assert(c.now)
 shaco.command = assert(c.command)

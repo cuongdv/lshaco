@@ -180,7 +180,8 @@ cmd_setenv(struct shaco_context *ctx, const char *param) {
 
 static const char *
 cmd_getloglevel(struct shaco_context *ctx, const char *param) {
-    return shaco_log_level();
+    sprintf(ctx->result, "%c", shaco_log_level());
+    return ctx->result;
 }
 
 static const char *

@@ -1,5 +1,5 @@
 maxsocket=100
-loglevel="trace"
+loglevel="."
 luamodpath="./lua-mod/?.lua;./examples/?.lua;./examples/login/?.lua"
 console=1
 slaveid=2

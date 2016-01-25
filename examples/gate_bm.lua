@@ -9,6 +9,7 @@ nmsg = tonumber(nmsg)
 --local temp = string.rep('0', 1024)
 local temp = 'PING\r\n'
 local nclose = 0
+local nerror = 0
 local nstat = 0
 local start_time
 
@@ -22,25 +23,33 @@ local function readpackage(id)
 end
 
 local function client(addr)
-    local id = assert(socket.connect(addr))
-    socket.readon(id)
-    for i=1, nmsg do
-        sendpackage(id, temp)
-        readpackage(id)
+    local id
+    local ok, err = pcall(function()
+        id = assert(socket.connect(addr))
+        socket.readon(id)
+        for i=1, nmsg do
+            sendpackage(id, temp)
+            readpackage(id)
 
-        nstat = nstat + 1
-        if nstat % 10000 == 0 then
-            local elapsed = (shaco.now()-start_time)/1000
-            io.stdout:write('qps: '..nstat/elapsed..'\r')
-            io.stdout:flush()
+            nstat = nstat + 1
+            if nstat % 10000 == 0 then
+                local elapsed = (shaco.now()-start_time)/1000
+                io.stdout:write('qps: '..nstat/elapsed..'\r')
+                io.stdout:flush()
+            end
         end
+    end)
+    if id then
+        socket.close(id)
     end
-    socket.close(id)
+    if not ok then
+        print (err)
+        nerror = nerror + 1
+    end
     nclose = nclose + 1
     if nclose >= nclient then
         local elapsed = (shaco.now()-start_time)/1000
-        shaco.info('qps: ', nstat/elapsed)
-        shaco.info('use time: '..elapsed)
+        shaco.info(string.format('error: %d, use time: %.2f, qps: %.2f', nerror, elapsed, nstat/elapsed))
     end
 end
 

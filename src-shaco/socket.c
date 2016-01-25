@@ -46,7 +46,6 @@ struct socket {
 struct net {
     struct np_state np;
     int max;
-    int err;
     struct np_event *events;
     int event_count;
     int event_index;
@@ -845,9 +844,9 @@ socket_connect(struct net *self, const char *addr, int port, int block, int ud, 
         break;
     }
     freeaddrinfo(result);
-    if (fd == -1) 
+    if (fd == -1)  {
         return -1;
-
+    }
     struct socket *s;
     s = _create_socket(self, fd, ud, SOCKET_PROTOCOL_TCP);
     if (s == NULL) {

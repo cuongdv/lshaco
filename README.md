@@ -6,6 +6,7 @@ Todo
 
 Bug
 ===
+1. coredump in shaco_log::_prefix::localtime
 
 ###monitor###
 1. one-time monitor

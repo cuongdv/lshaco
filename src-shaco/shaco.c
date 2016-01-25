@@ -80,7 +80,7 @@ shaco_init() {
     else
         shaco_log_open(NULL);
     shaco_log_setlevel(shaco_optstr("loglevel", ""));
-    shaco_module_init(shaco_optstr("cmodpath", "./lib-cmod"));
+    shaco_module_init(shaco_optstr("modpath", "./lib-mod"));
     shaco_handle_init();
     sig_handler_init();
     rlimit_check();

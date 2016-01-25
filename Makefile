@@ -23,8 +23,8 @@ LIBSHACO_SRC=\
 all_t=\
 	shaco \
 	tool/luapacker \
-	lib-cmod/mod_lua.so \
-	lib-cmod/mod_harbor.so \
+	lib-mod/mod_lua.so \
+	lib-mod/mod_harbor.so \
 	lib-l/shaco.so \
 	lib-l/socket.so \
 	lib-l/socketbuffer.so \
@@ -91,15 +91,15 @@ shaco: src-shaco/shaco_main.c $(LIBSHACO_SRC) $(LUA_A) $(JEMALLOC_A)
 #$(CRYPTO_A): 3rd/openssl/Makefile
 #	cd 3rd/openssl && make libcrypto.a
 
-lib-cmod:
+lib-mod:
 	mkdir $@
 lib-l:
 	mkdir $@
 
-lib-cmod/mod_lua.so: src-mod/mod_lua.c | lib-cmod
+lib-mod/mod_lua.so: src-mod/mod_lua.c | lib-mod
 	gcc $(CFLAGS) $(SHARED) -o $@ $^ -Isrc-mod $(ISHACO) $(ILUA)
 
-lib-cmod/mod_harbor.so: src-mod/mod_harbor.c src-mod/socket_buffer.c 
+lib-mod/mod_harbor.so: src-mod/mod_harbor.c src-mod/socket_buffer.c 
 	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO)
 
 lib-l/shaco.so: src-l/lshaco.c | lib-l
@@ -154,6 +154,6 @@ package:
 
 clean:	
 	rm -f $(all_t) 
-	rm -rf lib-cmod
+	rm -rf lib-mod
 	rm -rf lib-l
 	rm -rf *.dSYM

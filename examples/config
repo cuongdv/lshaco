@@ -1,4 +1,4 @@
-maxsocket=1024
+maxsocket=5000
 loglevel="."
 packagepath="./lib-package/lua-shaco.lso;./lib-package/examples.lso"
 luamodpath="./lua-mod/?.lua;./examples/?.lua;./examples/login/?.lua"

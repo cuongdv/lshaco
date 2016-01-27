@@ -26,6 +26,7 @@ local function client(addr)
     local id
     local ok, err = pcall(function()
         id = assert(socket.connect(addr))
+        shaco.sleep(10)
         socket.readon(id)
         for i=1, nmsg do
             sendpackage(id, temp)

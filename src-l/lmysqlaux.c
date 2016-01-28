@@ -45,8 +45,6 @@ lquote_string(lua_State* L) {
 
 int
 luaopen_mysqlaux_c(lua_State *L) {
-	luaL_checkversion(L);
-
 	luaL_Reg l[] = { 
         { "quote_string", lquote_string },
         { NULL, NULL },

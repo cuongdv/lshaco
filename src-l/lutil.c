@@ -139,8 +139,6 @@ lprintr(lua_State *L) {
 
 int
 luaopen_util_c(lua_State *L) {
-	luaL_checkversion(L);
-
 	luaL_Reg l[] = { 
         {"getenv", lgetenv},
         {"setenv", lsetenv},

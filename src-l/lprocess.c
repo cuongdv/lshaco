@@ -108,7 +108,6 @@ lgetpid(lua_State *L) {
 
 int
 luaopen_process_c(lua_State *L) {
-	luaL_checkversion(L);
     init();
 	luaL_Reg l[] = { 
         {"fork", lfork},
@@ -118,7 +117,5 @@ luaopen_process_c(lua_State *L) {
         { NULL, NULL },
 	}; 
 	luaL_newlib(L, l);
-
-
 	return 1;
 }

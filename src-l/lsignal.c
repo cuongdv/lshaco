@@ -257,7 +257,6 @@ _gc_signal(lua_State *L) {
 
 int
 luaopen_signal_c(lua_State *L) {
-	luaL_checkversion(L);
 	luaL_Reg l[] = { 
         {"signal", lsignal},
         {"raise", lraise},

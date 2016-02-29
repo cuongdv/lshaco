@@ -25,7 +25,7 @@ local shaco = {
 local __fork_queue = {}
 local __wakeup_map = {}
 local __wakeup_queue = {}
-
+local __wakeuping
 
 local function fix_um_dispatch(f)
     return function(session, source, ...)

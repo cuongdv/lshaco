@@ -1,4 +1,4 @@
-.PHONY: all clean cleanall 3rd 3rdclean 3rduninstall pack deploy patch
+.PHONY: all clean cleanall 3rd 3rdclean 3rduninstall pack deploy patch dist
  #-Wpointer-arith -Winline
 
 BIN_DIR=bin
@@ -178,6 +178,11 @@ pack:
 	python srcpack.py ../lua/$$one ../bin ../lua/$$one ; \
 	done
 	cd ..
+
+dist:
+	cp bin/shaco ~/server/trunk/bin
+	cp bin/*.so ~/server/trunk/bin
+	cp bin/*.lso ~/server/trunk/bin
 
 DEPLOY_PATH=~/server/trunk
 deploy:

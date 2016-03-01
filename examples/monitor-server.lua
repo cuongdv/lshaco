@@ -31,7 +31,7 @@ local function push_routine()
             if client_count > 0 then
                 local result = iostat()
                 if result then
-                    shaco.trace(result)
+                    --shaco.trace(result)
                     for id, c in pairs(clients) do
                         websocket.text(id, "#mon:"..result)
                     end
@@ -39,7 +39,7 @@ local function push_routine()
             end
         end)
         if not ok then
-            print(err)
+            shaco.error(err)
         end
         shaco.sleep(5000)
     end
@@ -55,11 +55,11 @@ local function read_routine(id)
             if not data and type=="close" then
                 break
             end
-            print (string.format("[data] %d:%s", id, data))
+            shaco.trace(string.format("[data] %d:%s", id, data))
         end
     end)
     if not ok then
-        print(err)
+        shaco.error(err)
     end
     socket.close(id)
     clients[id] = nil
@@ -70,33 +70,39 @@ shaco.start(function()
     local root = "./examples"
     local host = shaco.getenv("host") or "0.0.0.0:8080"
     local lid = assert(socket.listen(host, function(id, addr)
-        print (string.format("new connection [%d] %s", id, addr))
-        socket.start(id)
-        socket.readon(id)
-        local code, method, uri, head_t, body, version = http.read(id)
-        if code ~= 200 then
-            socket.close(id)
-            return
-        end
-        if method ~= "GET" then
-            socket.close(id)
-            return
-        end
-        if uri == "/" then -- default for main
-            uri = "/monitor-client.html"
-        end
-        if uri == "/echo" then -- tag websocket
-            websocket.handshake(id, code, method, uri, head_t, body, version)
-            read_routine(id)
-        elseif string.find(uri, "favicon") then
-            http.response(id, 200, nil, 
-                {["content-type"]="image/x-icon", connection="close"})
-            socket.close(id)
-        else
-            local f = io.open(root..uri)
-            local body = f and f:read("*a") or "not resouce"
-            http.response(id, 200, body, 
-                {["content-type"]="text/html; charset=utf8", connection="close"})
+        local ok, err = pcall(function()
+            shaco.trace(string.format("new connection [%d] %s", id, addr))
+            socket.start(id)
+            socket.readon(id)
+            local code, method, uri, head_t, body, version = http.read(id)
+            if code ~= 200 then
+                socket.close(id)
+                return
+            end
+            if method ~= "GET" then
+                socket.close(id)
+                return
+            end
+            if uri == "/" then -- default for main
+                uri = "/monitor-client.html"
+            end
+            if uri == "/echo" then -- tag websocket
+                websocket.handshake(id, code, method, uri, head_t, body, version)
+                read_routine(id)
+            elseif string.find(uri, "favicon") then
+                http.response(id, 200, nil, 
+                    {["content-type"]="image/x-icon", connection="close"})
+                socket.close(id)
+            else
+                local f = io.open(root..uri)
+                local body = f and f:read("*a") or "not resouce"
+                http.response(id, 200, body, 
+                    {["content-type"]="text/html; charset=utf8", connection="close"})
+                socket.close(id)
+            end
+        end)
+        if not ok then
+            shaco.error(err)
             socket.close(id)
         end
     end))

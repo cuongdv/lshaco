@@ -67,11 +67,9 @@ function websocket.connect(host, uri, headers)
 end
 
 local function encode(data, len, maskkey)
-    print ("decode all:", data, len, maskkey)
     local i=-1
     return string.gsub(data, ".", function(c)
         i=i+1
-        print ("decode i:", i, c)
         return string.char(string.byte(c) ~ string.byte(maskkey, i%4+1))
     end)
 end
@@ -104,7 +102,7 @@ local function read_frame(id)
     if maskkey then
         data = decode(data, len, maskkey)
     end
-    print (opcode, data, #data, fin)
+    --print (opcode, data, #data, fin)
     return opcode, data, fin
 end
 
@@ -176,7 +174,7 @@ function websocket.send(id, data, maskkey)
     send_frame(id, 0x82, data, maskkey)
 end
 
-function websocket.text(id, data, maskey)
+function websocket.text(id, data, maskkey)
     send_frame(id, 0x81, data, maskkey)
 end
 

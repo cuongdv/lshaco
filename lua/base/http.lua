@@ -242,19 +242,25 @@ function http.get(host, uri, headers)
 end
 
 function http.post(host, uri, headers, form)
-    headers = headers or {}
-    headers[#headers+1] = "content-type: application/x-www-form-urlencoded"
+    headers = headers or 
+    { ["content-type"] = "application/x-www-form-urlencoded" }
 
-    local body = {}
-    for k, v in pairs(form) do
-        if type(k) == "number" then
-            v = escape(v)
-            table.insert(body, v)
-        else
-            table.insert(body, string.format("%s=%s", escape(k), escape(v)))
+    local t = type(form)
+    if t == "table" then
+        local body = {}
+        for k, v in pairs(form) do
+            if type(k) == "number" then
+                v = escape(v)
+                table.insert(body, v)
+            else
+                table.insert(body, string.format("%s=%s", escape(k), escape(v)))
+            end
         end
+        form = table.concat(body, "&")
+    else
+        assert(t == "string", "invalid form data type "..t)
     end
-    return request(host, uri, headers, table.concat(body, "&"))
+    return request(host, uri, headers, form)
 end
 
 function http.read(id)

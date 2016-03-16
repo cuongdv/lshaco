@@ -310,7 +310,6 @@ createmeta(struct lua_State *L) {
 
 int
 luaopen_socketbuffer_c(lua_State *L) {
-	luaL_checkversion(L);
     luaL_Reg l[] = {
         {"new", lnew},
         {"push", lpush},

@@ -947,7 +947,6 @@ lrsa_new(lua_State *L) {
 
 int
 luaopen_crypt_c(lua_State *L) {
-	luaL_checkversion(L);
 	srandom(time(NULL));
 	luaL_Reg l[] = {
 		{ "hashkey", lhashkey },

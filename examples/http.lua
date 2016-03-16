@@ -5,7 +5,7 @@ local tbl = require "tbl"
 
 shaco.start(function()
     print ('get ...')
-    local code, body = http.get("www.baidu.com", "/")
+    local code, body = http.get("www.baidu.com", "/", {a=1, b=2})
     print (code)
     print(body)
 end)

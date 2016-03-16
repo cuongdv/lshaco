@@ -184,33 +184,43 @@ local function content(id, length, chunk)
 end
 
 local function request(host, uri, headers, form)
-    local request_line = "GET "..uri.." HTTP/1.1\r\n"
-    local ip, port = host:match("([^:]+):?(%d*)$")
-    port = tonumber(port) or 80
- 
-    local id = assert(socket.connect(ip, port))
-
     local strhead = ""
     if headers then
         for k, v in pairs(headers) do
             strhead = strhead..string.format("%s:%s\r\n", k,v)
         end
     end
-    local total
-    if not form then
-        total = string.format("%s%shost:%s\r\ncontent-length:0\r\n\r\n", 
-            request_line, strhead, ip)
+
+    local id, port
+    if type(host) == "number" then
+        id = host
+        assert(headers and (headers.host ~= nil))
     else
-        total = string.format("%s%shost:%s\r\ncontent-length:%d\r\n\r\n%s\r\n", 
-            request_line, strhead, ip, #form, form)
+        host, port = host:match("([^:]+):?(%d*)$")
+        port = tonumber(port) or 80
+        id = assert(socket.connect(host, port))
+
+        strhead = strhead .. "host:"..host.."\r\n"
     end
 
+    local request_line = "GET "..uri.." HTTP/1.1\r\n"
+
+    local total
+    if not form then
+        total = string.format("%s%scontent-length:0\r\n\r\n", 
+            request_line, strhead, host)
+    else
+        total = string.format("%s%scontent-length:%d\r\n\r\n%s\r\n", 
+            request_line, strhead, #form, form)
+    end
+
+    print (total)
     assert(socket.send(id, total))
     socket.readon(id)
 
     local status, chunk
     status, chunk = statusline(id)
-    local code = status:match("HTTP/%d+%.%d+%s+(%d%d%d)%s+.*$")
+    local code = tonumber(status:match("HTTP/%d+%.%d+%s+(%d%d%d)%s+.*$"))
 
     local head_t, tmp_t
     tmp_t, chunk = header(id, chunk)
@@ -234,10 +244,15 @@ local function request(host, uri, headers, form)
             error("Unsupport transfer-encoding")
         end
     else
-        assert(length, "Not content-length")
-        body = content(id, length, chunk)
+        if length then
+            --in websocket no this
+            --assert(length, "Not content-length")
+            body = content(id, length, chunk)
+        end
     end
-    socket.close(id)
+    if port then
+        socket.close(id)
+    end
     return code, body
 end
 
@@ -247,7 +262,7 @@ end
 
 function http.post(host, uri, headers, form)
     headers = headers or {}
-    headers[#headers+1] = "content-type: application/x-www-form-urlencoded"
+    headers['content-type'] = "application/x-www-form-urlencoded"
 
     local body = {}
     for k, v in pairs(form) do

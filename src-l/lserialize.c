@@ -803,7 +803,6 @@ deseristring(lua_State *L) {
 
 int
 luaopen_serialize_c(lua_State *L) {
-    luaL_checkversion(L);
 	luaL_Reg l[] = {
 		{ "pack", lpack },
 		{ "unpack", lunpack },

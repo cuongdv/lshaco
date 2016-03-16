@@ -66,7 +66,7 @@ _prefix(struct shaco_context *ctx, int level) {
     char tmp[64];
     uint64_t now = shaco_timer_now();
     time_t sec = now / 1000;
-    uint32_t msec = now % 1000; 
+    uint32_t msec = now % 1000;
     strftime(tmp, sizeof(tmp), "%y%m%d-%H:%M:%S.", localtime(&sec));
     fprintf(F, "%d %s%03u %c [%02x] ", (int)getpid(), tmp, msec, STR_LEVELS[level], ctx ? shaco_context_handle(ctx):0 );
 }

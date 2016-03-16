@@ -75,7 +75,6 @@ lrawmode_off(lua_State* L) {
 
 int
 luaopen_linenoise_c(lua_State *L) {
-    luaL_checkversion(L);
 	luaL_Reg l[] = { 
         { "rawmode_on", lrawmode_on},
         { "rawmode_off", lrawmode_off},

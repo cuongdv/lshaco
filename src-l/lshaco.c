@@ -160,20 +160,24 @@ luaopen_shaco_c(lua_State *L) {
 	luaL_Reg l[] = {
         { "command",        lcommand },
         { "log",            llog },
-        { "now",            lnow },
         { "send",           lsend },
         { "timer",          ltimer },
         { "callback",       lcallback },
         { "handle",         lhandle },
+        { NULL, NULL},
+	}; 
+    luaL_Reg l2[] = {
+        { "now",            lnow },
         { "tostring",       ltostring },
         { "topointstring",  ltopointstring },
         { NULL, NULL},
-	}; 
+    };
 	luaL_newlibtable(L, l);
 	lua_getfield(L, LUA_REGISTRYINDEX, "shaco_context");
 	struct shaco_context *ctx = lua_touserdata(L,-1);
 	if (ctx == NULL)
 		return luaL_error(L, "init shaco context first");
 	luaL_setfuncs(L,l,1);
+	luaL_setfuncs(L,l2,0);
 	return 1;
 }

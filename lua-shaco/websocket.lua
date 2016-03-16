@@ -1,6 +1,7 @@
 local http = require "http"
 local socket = require "socket"
 local crypt = require "crypt.c"
+local tbl = require "tbl"
 
 local websocket = {}
 
@@ -45,6 +46,26 @@ function websocket.handshake(id, code, method, uri, head_t, body, version)
     accept_response(id, accept(code, method, uri, head_t, body, version))
 end
 
+function websocket.connect(host, uri, headers)
+    local port
+    host, port = host:match("([^:]+):?(%d*)$")
+    port = tonumber(port) or 80
+    local id = assert(socket.connect(host, port))
+    local headers = headers or {}
+    headers['host'] = host
+    headers['upgrade'] = 'websocket'
+    headers['connection'] = 'upgrade'
+    headers['sec-websocket-key'] = 'test-websocket-key'
+    headers['sec-websocket-version'] = '13'
+    local code = http.get(id, uri, headers) -- skip check header ?
+    if code == 101 then
+        return id
+    else
+        socket.close(id)
+        return nil, code
+    end
+end
+
 local function encode(data, len, maskkey)
     local i=-1
     return string.gsub(data, ".", function(c)
@@ -78,7 +99,10 @@ local function read_frame(id)
         maskkey = assert(socket.read(id,4))
     end
     local data = assert(socket.read(id, len))
-    data = decode(data, len, maskkey)
+    if maskkey then
+        data = decode(data, len, maskkey)
+    end
+    --print (opcode, data, #data, fin)
     return opcode, data, fin
 end
 
@@ -87,7 +111,6 @@ function websocket.read(id)
     opcode, result, fin = read_frame(id)
     if opcode == 0x8 then
         websocket.close(id)
-        socket.shutdown(id) -- just not force close
         return nil, "close"
     elseif opcode == 0x9 then
         websocket.pong(id, result)
@@ -95,7 +118,7 @@ function websocket.read(id)
     elseif opcode == 0xa then
         return result, "pong"
     end
-    while not fin do
+    while fin ~= 1 do
         opcode, data, fin = read_frame(id)
         result = result .. data
     end
@@ -144,10 +167,14 @@ function websocket.close(id, code, reason, maskkey)
         end
     end
     send_frame(id, 0x88, data, maskkey)
-    socket.shutdown(id) -- shutdown
+    socket.close(id, false) -- just not force close
 end
 
 function websocket.send(id, data, maskkey)
+    send_frame(id, 0x82, data, maskkey)
+end
+
+function websocket.text(id, data, maskkey)
     send_frame(id, 0x81, data, maskkey)
 end
 

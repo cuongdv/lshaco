@@ -1,6 +1,10 @@
 local shaco = require "shaco"
-local socket = require "socket"
-local tbl = require "tbl"
+local socket = require "httpsocket"
+local assert = assert
+local tonumber = tonumber
+local pairs = pairs
+local string = string
+local table = table
 
 local CHUNK_LIMIT=64*1024
 
@@ -82,7 +86,7 @@ local function parse_header(line_t, head_t)
     return head_t
 end
 
-local function chunksize(id, chunk)
+local function chunksize(chunk, read)
     while true do 
         local i = chunk:find("\r\n",1,true)
         if i then
@@ -92,51 +96,72 @@ local function chunksize(id, chunk)
         if #chunk > 128 then
             error("Too large chunksize body")
         end
-        chunk = chunk..assert(socket.read(id, "*a"))
+        chunk = chunk..read("*a")
     end
 end
 
-local function crlf(id, chunk)
-    if #chunk >=2 then
-        if chunk:find("^\r\n") then
-            return chunk:sub(3)
-        end
-    else
-        chunk = chunk..assert(socket.read(id, 2-#chunk))
-        if chunk == "\r\n" then
-            return ""
-        end
+local function crlf(chunk, read)
+    --if #chunk >=2 then
+    --    if chunk:find("^\r\n") then
+    --        return chunk:sub(3)
+    --    end
+    --else
+    --    chunk = chunk..assert(socket.read(id, 2-#chunk))
+    --    if chunk == "\r\n" then
+    --        return ""
+    --    end
+    --end
+    while #chunk < 2 do
+        chunk = chunk..read('*a')
+    end
+    if chunk:find("^\r\n") then
+        return chunk:sub(3)
     end
 end
 
-local function chunkbody(id, chunk)
+local function chunkbody(chunk, read)
     local chunk_t = {}
     local length = 0
     local size
     while true do
-        size, chunk = chunksize(id, chunk)
+        size, chunk = chunksize(chunk, read)
         if size == 0 then break end
         if length+size > CHUNK_LIMIT then
             error("Too large chunkbody")
         end
-        if #chunk >= size then
-            table.insert(chunk_t, chunk:sub(1,size))
-            chunk = chunk:sub(size+1)
-            chunk = crlf(id, chunk)
-        else
-            chunk = chunk..assert(socket.read(id, size-#chunk))
-            table.insert(chunk_t, chunk)
-            chunk = crlf(id, "")
+        --if #chunk >= size then
+        --    table.insert(chunk_t, chunk:sub(1,size))
+        --    chunk = chunk:sub(size+1)
+        --    chunk = crlf(id, chunk, read)
+        --    if not chunk then
+        --        error("Invalid chunkbody")
+        --    end
+        --else
+        --    chunk = chunk..assert(socket.read(id, size-#chunk))
+        --    table.insert(chunk_t, chunk)
+        --    chunk = crlf(id, "", read)
+        --    if not chunk then
+        --        error("Invalid chunkbody")
+        --    end
+        --end
+        while #chunk < size do
+            chunk = chunk .. read('*a')
+        end
+        table.insert(chunk_t, chunk:sub(1,size))
+        chunk = chunk:sub(size+1)
+        chunk = crlf(chunk, read)
+        if not chunk then
+            error("Invalid chunkbody")
         end
         length = length + size
     end
     return table.concat(chunk_t), chunk
 end
 
-local function statusline(id)
+local function statusline(read)
     local chunk = ""
     while true do
-        chunk = chunk..assert(socket.read(id, "*a"))
+        chunk = chunk..read('*a')
         local i = chunk:find("\r\n",1,true)
         if i then
             return chunk:sub(1,i), chunk:sub(i+2)
@@ -147,7 +172,7 @@ local function statusline(id)
     end
 end
 
-local function header(id, chunk)
+local function header(chunk, read)
     local l = 0
     local lines = {}
     while true do
@@ -163,53 +188,76 @@ local function header(id, chunk)
             if l+#chunk > CHUNK_LIMIT then
                 error "Too large header size"
             end
-            chunk = chunk..assert(socket.read(id, "*a"))
+            chunk = chunk..read('*a')
         end
     end
 end
 
-local function content(id, length, chunk)
+local function content(length, chunk, read)
     if length > CHUNK_LIMIT then
         error "Too large content"
     end
-    if length > #chunk then
-        return chunk..assert(socket.read(id, length-#chunk))
-    else
-        return chunk
+    --if length > #chunk then
+    --    return chunk..assert(socket.read(id, length-#chunk))
+    --else
+    --    return chunk
+    --end
+    while #chunk < length do
+        chunk = chunk .. read('*a')
     end
+    return chunk
 end
 
-local function request(host, uri, headers, form)
-    local request_line = "GET "..uri.." HTTP/1.1\r\n"
-    local ip, port = host:match("([^:]+):?(%d*)$")
-    port = tonumber(port) or 80
- 
-    local id = assert(socket.connect(ip, port))
+local function format_form(form)
+    if type(form) ~= "string" then
+        local body = {}
+        for k, v in pairs(form) do
+            if type(k) == "number" then
+                v = escape(v)
+                table.insert(body, v)
+            else
+                table.insert(body, string.format("%s=%s", escape(k), escape(v)))
+            end
+        end
+        form = table.concat(body, "&")
+    end
+    return form
+end
 
-    local strhead = ""
+local function request(host, uri, headers, form, read, send)
+    if form then
+        headers = headers or 
+        { ["content-type"] = "application/x-www-form-urlencoded" }
+        form = format_form(form)
+    end
+
+    local strhead = "host:"..host.."\r\n"
     if headers then
         for k, v in pairs(headers) do
             strhead = strhead..string.format("%s:%s\r\n", k,v)
         end
     end
+
+    local request_line = "GET "..uri.." HTTP/1.1\r\n"
+
     local total
     if not form then
-        total = string.format("%s%shost:%s\r\ncontent-length:0\r\n\r\n", 
-            request_line, strhead, ip)
+        total = string.format("%s%scontent-length:0\r\n\r\n", 
+            request_line, strhead, host)
     else
-        total = string.format("%s%shost:%s\r\ncontent-length:%d\r\n\r\n%s\r\n", 
-            request_line, strhead, ip, #form, form)
+        total = string.format("%s%scontent-length:%d\r\n\r\n%s\r\n", 
+            request_line, strhead, #form, form)
     end
 
-    assert(socket.send(id, total))
-    socket.readenable(id, true)
+    --print (total)
+    send(total)
 
     local status, chunk
-    status, chunk = statusline(id)
-    local code = status:match("HTTP/%d+%.%d+%s+(%d%d%d)%s+.*$")
+    status, chunk = statusline(read)
+    local code = tonumber(status:match("HTTP/%d+%.%d+%s+(%d%d%d)%s+.*$"))
 
     local head_t, tmp_t
-    tmp_t, chunk = header(id, chunk)
+    tmp_t, chunk = header(chunk, read)
     head_t = parse_header(tmp_t, {})
 
     local length = head_t["content-length"]
@@ -221,51 +269,65 @@ local function request(host, uri, headers, form)
     if mode then
         if mode == "identity" then
             assert(length, "Not content-length")
-            body = content(id, length, chunk) 
+            body = content(length, chunk, read) 
         elseif mode == "chunked" then
-            body, chunk = chunkbody(id, chunk)
-            tmp_t, chunk = header(id, chunk)
+            body, chunk = chunkbody(chunk, read)
+            tmp_t, chunk = header(chunk, read)
             head_t = parse_header(tmp_t, head_t)
         else
             error("Unsupport transfer-encoding")
         end
     else
-        assert(length, "Not content-length")
-        body = content(id, length, chunk)
+        if length then
+            --in websocket no this
+            --assert(length, "Not content-length")
+            body = content(length, chunk, read)
+        end
     end
-    socket.close(id)
     return code, body
 end
 
+http.request = request
+
 function http.get(host, uri, headers)
-    return request(host, uri, headers)
+    local host, port = host:match("([^:]+):?(%d*)$")
+    port = tonumber(port) or 80
+    local id = assert(socket.connect(host, port))
+    socket.readon(id)
+    local code, body
+    local ok, err = pcall(function()
+        code, body = request(host, uri, headers, nil,
+            socket.reader(id),
+            socket.sender(id))
+        end)
+    socket.close(id)
+    if not ok then
+        error(err)
+    end
+    return code, body
 end
 
 function http.post(host, uri, headers, form)
-    headers = headers or 
-    { ["content-type"] = "application/x-www-form-urlencoded" }
-
-    local t = type(form)
-    if t == "table" then
-        local body = {}
-        for k, v in pairs(form) do
-            if type(k) == "number" then
-                v = escape(v)
-                table.insert(body, v)
-            else
-                table.insert(body, string.format("%s=%s", escape(k), escape(v)))
-            end
-        end
-        form = table.concat(body, "&")
-    else
-        assert(t == "string", "invalid form data type "..t)
+    local host, port = host:match("([^:]+):?(%d*)$")
+    port = tonumber(port) or 80
+    local id = assert(socket.connect(host, port))
+    socket.readon(id)
+    local code, body
+    local ok, err = pcall(function()
+        code, body = request(host, uri, headers, form,
+            socket.reader(id),
+            socket.sender(id))
+        end)
+    socket.close(id)
+    if not ok then
+        error(err)
     end
-    return request(host, uri, headers, form)
+    return code, body
 end
 
-function http.read(id)
+function http.read(read)
     local head_t, chunk
-    head_t, chunk = header(id, "")
+    head_t, chunk = header("", read)
     if #head_t == 0 then
         return 400 -- Bad Request
     end
@@ -291,49 +353,49 @@ function http.read(id)
             if not length then
                 return 411
             end
-            body = content(id, length, chunk) 
+            body = content(length, chunk, read) 
         elseif mode == "chunked" then
-            body = chunkbody(id, chunk)
+            body = chunkbody(chunk, read)
         else
             return 501
         end
     else
         if length then
-            body = content(id, length, chunk) 
+            body = content(length, chunk, read) 
         end
     end
     return 200, method, uri, head_t, body, version
 end
 
-function http.response(id, code, body, head_t)
+function http.response(code, body, head_t, send)
     local status_line = string.format("HTTP/1.1 %03d %s\r\n", code, strcode[code] or "")
-    assert(socket.send(id, status_line))
+    send(status_line)
     if head_t then
         for k, v in pairs(head_t) do
-            assert(socket.send(id, string.format("%s: %s\r\n", k,v)))
+            send(string.format("%s: %s\r\n", k,v))
         end
     end
     local t = type(body)
     if t == "string" then
-        assert(socket.send(id, string.format("content-length: %d\r\n\r\n", #body)))
-        assert(socket.send(id, body))
+        send(string.format("content-length: %d\r\n\r\n", #body))
+        send(body)
     elseif t == "function" then
-        assert(socket.send(id, string.format("transfer-encoding: chunked\r\n")))
+        send(string.format("transfer-encoding: chunked\r\n"))
         while true do
             local chunk = body()
             if chunk then
-                assert(socket.send(id, "\r\n%x\r\n", #chunk))
-                assert(socket.send(id, chunk))
+                send("\r\n%x\r\n", #chunk)
+                send(chunk)
             else
-                assert(socket.send(id, "\r\n0\r\n\r\n"))
+                send("\r\n0\r\n\r\n")
                 break
             end
         end
     elseif t == "nil" then
         if unneed_body(code) then
-            assert(socket.send(id, "\r\n")) 
+            send("\r\n")
         else
-            assert(socket.send(id, string.format("content-length: 0\r\n\r\n"))) 
+            send(string.format("content-length: 0\r\n\r\n"))
         end
     else
         error("Invalid body type: "..t)

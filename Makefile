@@ -48,6 +48,7 @@ all_t=\
 	$(BIN_DIR)/crypt.so \
 	$(BIN_DIR)/mysqlaux.so \
 	$(BIN_DIR)/md5.so \
+	$(BIN_DIR)/ssl.so \
 	$(mod_so)
 
 PLATS=linux macosx
@@ -152,6 +153,10 @@ $(BIN_DIR)/mysqlaux.so: lshaco/lmysqlaux.c
 $(BIN_DIR)/md5.so: 3rd/lua-md5/md5lib.c 3rd/lua-md5/md5.c 3rd/lua-md5/compat-5.2.c
 	@rm -f $@
 	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ILUA) -I3rd/lua-md5
+
+$(BIN_DIR)/ssl.so: lshaco/lssl.c 
+	@rm -f $@
+	gcc $(CFLAGS) $(SHARED) -lssl -o $@ $^ $(ISHACO) $(ILUA) 
 
 $(BIN_DIR)/shaco: main/shaco.c $(LIBSHACO_SRC) $(LUA_A) $(JEMALLOC_A)
 	gcc $(CFLAGS) $(EXPORT) -o $@ $^ $(ISHACO) $(ILUA) $(IJEMALLOC) $(LDLIB) -lpthread

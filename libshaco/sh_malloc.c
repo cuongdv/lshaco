@@ -126,14 +126,16 @@ sh_memory_used() {
     return _used_memory;
 }
 
+#ifdef HAVE_MALLOC
 static void
 write_cb(void *opaque, const char *buf) {
     FILE *f = opaque;
     fwrite(buf, strlen(buf), 1, f);
 }
-
+#endif
 void
 sh_memory_stat() {
+#ifdef HAVE_MALLOC
     FILE *f = fopen("./memory.stat", "w");
     if (f == NULL) {
         je_malloc_stats_print(0,0,0);
@@ -141,4 +143,5 @@ sh_memory_stat() {
         je_malloc_stats_print(write_cb, f, 0);
         fclose(f);
     }
+#endif
 }

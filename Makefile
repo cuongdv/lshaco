@@ -64,7 +64,7 @@ undefined:
 	@echo "Please do 'make PLATFORM' where PLATFORM is one of this:"
 	@echo "    $(PLATS)"
 
-CFLAGS=-g -Wall -Werror -DUSE_SHACO_MALLOC -DHAVE_MALLOC $(CFLAG)
+CFLAGS=-g -Wall -Werror -DUSE_SHACO_MALLOC -DDHAVE_MALLOC $(CFLAG)
 
 linux: SHARED:=-fPIC -shared
 linux: EXPORT:=-Wl,-E
@@ -158,7 +158,7 @@ $(BIN_DIR)/ssl.so: lshaco/lssl.c
 	@rm -f $@
 	gcc $(CFLAGS) $(SHARED) -lssl -o $@ $^ $(ISHACO) $(ILUA) 
 
-$(BIN_DIR)/shaco: main/shaco.c $(LIBSHACO_SRC) $(LUA_A) $(JEMALLOC_A)
+$(BIN_DIR)/shaco: main/shaco.c $(LIBSHACO_SRC) $(LUA_A) #$(JEMALLOC_A)
 	gcc $(CFLAGS) $(EXPORT) -o $@ $^ $(ISHACO) $(ILUA) $(IJEMALLOC) $(LDLIB) -lpthread
 
 $(BIN_DIR)/test: main/test.c
@@ -204,6 +204,7 @@ clean:
 cleanall: clean
 	cd 3rd/lua && make clean
 	cd 3rd/jemalloc && make clean
+	rm -rf 3rdlib
 	rm -rf cscope.* tags
 	rm -rf bin/*.lso
 	rm -rf tool/*.sl

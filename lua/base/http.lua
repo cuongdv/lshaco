@@ -1,5 +1,6 @@
 local shaco = require "shaco"
-local socket = require "httpsocket"
+local socket = require "socket"
+local httpsocket = require "httpsocket"
 local assert = assert
 local tonumber = tonumber
 local pairs = pairs
@@ -293,12 +294,12 @@ function http.get(host, uri, headers)
     local host, port = host:match("([^:]+):?(%d*)$")
     port = tonumber(port) or 80
     local id = assert(socket.connect(host, port))
-    socket.readon(id)
+    socket.readenable(id, true)
     local code, body
     local ok, err = pcall(function()
         code, body = request(host, uri, headers, nil,
-            socket.reader(id),
-            socket.sender(id))
+            httpsocket.reader(id),
+            httpsocket.sender(id))
         end)
     socket.close(id)
     if not ok then
@@ -311,12 +312,12 @@ function http.post(host, uri, headers, form)
     local host, port = host:match("([^:]+):?(%d*)$")
     port = tonumber(port) or 80
     local id = assert(socket.connect(host, port))
-    socket.readon(id)
+    socket.readenable(id, true)
     local code, body
     local ok, err = pcall(function()
         code, body = request(host, uri, headers, form,
-            socket.reader(id),
-            socket.sender(id))
+            httpsocket.reader(id),
+            httpsocket.sender(id))
         end)
     socket.close(id)
     if not ok then

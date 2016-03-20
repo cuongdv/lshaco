@@ -110,7 +110,7 @@ function shaco.uniquemodule(name, active, eventcb)
 end
 
 shaco.broadcast = c.broadcast
-shaco.sendraw = c.sendraw
+shaco.sendraw = c.send
 
 function shaco.send(dest, msg, sz)
     return c.send(0, nil, dest, shaco.PTYPE_UM, msg, sz)

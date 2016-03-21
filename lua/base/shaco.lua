@@ -3,6 +3,7 @@ local socket = require "socket.c"
 local memory = require "memory.c"
 local serialize = require "serialize.c"
 local util = require "util.c"
+local traceback = debug.traceback
 local ipairs = ipairs
 local tostring = tostring
 local sfmt = string.format
@@ -32,9 +33,14 @@ local function fix_um_dispatch(f)
         local co = coroutine.create(
             function(session, source, ...)
                 --shaco.sleep(0)
-                assert(xpcall(f, debug.traceback, session, source, ...))
+                assert(xpcall(f, traceback, session, source, ...))
             end)
-        assert(coroutine.resume(co, session, source, ...))
+        --assert(coroutine.resume(co, session, source, ...))
+        local ok, err = xpcall(coroutine.resume, traceback, co, session, source, ...)
+        if not ok then
+            print (err)
+            error(err)
+        end
     end
 end
 
@@ -141,31 +147,77 @@ function shaco.call(dest, name, v)
 end
 
 local function dispatch_wakeup()
+    local err
     if not __wakeuping then
         while #__wakeup_queue > 0 do
             local co = table.remove(__wakeup_queue, 1)
             __wakeup_map[co] = nil
             __wakeuping = co
-            assert(coroutine.resume(co))
+            local ok, rerr = xpcall(coroutine.resume, traceback, co)
+    if not ok then
+        print (rerr)
+    end
+            if not ok then
+                if not err then
+                    err = rerr
+                else
+                    err = err..'\n'..rerr
+                end
+            end
             __wakeuping = nil
         end
     end
+    return err
 end
 
 local function dispatch_task()
-    dispatch_wakeup()
+    local err = dispatch_wakeup()
     while #__fork_queue > 0 do
         local co = table.remove(__fork_queue, 1)
-        assert(coroutine.resume(co))
-        dispatch_wakeup()
+        local ok, rerr = xpcall(coroutine.resume, traceback, co)
+    if not ok then
+        print (rerr)
     end
+        if not ok then
+            if not err then
+                err = rerr
+            else
+                err = err..'\n'..rerr
+            end
+        end
+        local derr = dispatch_wakeup()
+        if derr then
+            if not err then
+                err = derr
+            else
+                err = err..'\n'..derr
+            end
+        end
+    end
+    return err
 end
 
 local function dispatchcb(session, source, ptype, msg, sz)
     local p = proto[ptype]
     assert(p and p.dispatch, string.format("invaid proto type %d", ptype))
-    p.dispatch(session, source, p.unpack(msg, sz))
-    dispatch_task()
+    --p.dispatch(session, source, p.unpack(msg, sz))
+    local ok, err = xpcall(p.dispatch, traceback, session, source, p.unpack(msg, sz))
+    if not ok then
+        print (err)
+    end
+    local derr = dispatch_task()
+    if derr then
+        if ok then
+            ok = false
+            err = derr
+        else
+            err = err..'\n'..derr
+        end
+    end
+    if not ok then
+        print (err)
+        error(err)
+    end
 end
 
 function shaco.fork(f, ...)
@@ -278,14 +330,19 @@ shaco.register_protocol {
     unpack = function() end,
     dispatch = function(session,_)
         if session == 0 then
-            local ok, err = xpcall(__timeout_func, debug.traceback)
+            local ok, err = xpcall(__timeout_func, traceback)
             if not ok then
                 shaco.error(err)
             end
             c.timer(0, __timeout_interval)
         else
             local co = time_map[session]
-            assert(coroutine.resume(co, session))
+            --assert(coroutine.resume(co, session))
+            local ok, err = xpcall(coroutine.resume, traceback, co, session)
+            if not ok then
+                print (err)
+                error(err)
+            end
         end
     end
 }
@@ -303,7 +360,11 @@ shaco.register_protocol {
     unpack = function(...) return ... end,
     dispatch = function(session,_,msg,sz) 
         local co = session_map[session]
-        assert(coroutine.resume(co, session, msg, sz))
+        local ok, err = xpcall(coroutine.resume, traceback, co, session, msg, sz)
+        if not ok then
+            print (err)
+            error(err)
+        end
     end
 }
 
@@ -337,7 +398,11 @@ end
 function shaco.start(f)
     c.main(dispatchcb)
     shaco.fork(f)
-    dispatch_task()
+    local err = dispatch_task()
+    if err then
+        print (err)
+        error(err)
+    end
 end
 
 return shaco

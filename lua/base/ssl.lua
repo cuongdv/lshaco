@@ -32,7 +32,7 @@ function ssl.request(id, host, uri, headers, form)
     handshake(id, s)
     --print ("handshake ok")
     
-    return http.request(host, uri, headers, form, 
+    return http.request("POST", host, uri, headers, form, 
             sslsocket.reader(id, s),
             sslsocket.sender(id, s))
 

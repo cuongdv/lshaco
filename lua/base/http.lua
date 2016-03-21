@@ -163,6 +163,7 @@ local function statusline(read)
     local chunk = ""
     while true do
         chunk = chunk..read('*a')
+        shaco.trace("http statusline start read!")
         local i = chunk:find("\r\n",1,true)
         if i then
             return chunk:sub(1,i), chunk:sub(i+2)
@@ -225,7 +226,7 @@ local function format_form(form)
     return form
 end
 
-local function request(host, uri, headers, form, read, send)
+local function request(method, host, uri, headers, form, read, send)
     if form then
         headers = headers or 
         { ["content-type"] = "application/x-www-form-urlencoded" }
@@ -239,7 +240,7 @@ local function request(host, uri, headers, form, read, send)
         end
     end
 
-    local request_line = "GET "..uri.." HTTP/1.1\r\n"
+    local request_line = method.." "..uri.." HTTP/1.1\r\n"
 
     local total
     if not form then
@@ -250,12 +251,13 @@ local function request(host, uri, headers, form, read, send)
             request_line, strhead, #form, form)
     end
 
-    --print (total)
     send(total)
+    shaco.trace("http request send:", total)
 
     local status, chunk
     status, chunk = statusline(read)
     local code = tonumber(status:match("HTTP/%d+%.%d+%s+(%d%d%d)%s+.*$"))
+    shaco.trace("http read code:", code)
 
     local head_t, tmp_t
     tmp_t, chunk = header(chunk, read)
@@ -267,13 +269,17 @@ local function request(host, uri, headers, form, read, send)
     end
     local body
     local mode = head_t["transfer-encoding"]
+    shaco.trace("http read header:", tostring(length), tostring(mode))
     if mode then
         if mode == "identity" then
             assert(length, "Not content-length")
             body = content(length, chunk, read) 
+            shaco.trace("http content read by mode identity")
         elseif mode == "chunked" then
             body, chunk = chunkbody(chunk, read)
+            shaco.trace("http content read by mode chunked")
             tmp_t, chunk = header(chunk, read)
+            shaco.trace("http content read by mode chunked, header")
             head_t = parse_header(tmp_t, head_t)
         else
             error("Unsupport transfer-encoding")
@@ -283,8 +289,10 @@ local function request(host, uri, headers, form, read, send)
             --in websocket no this
             --assert(length, "Not content-length")
             body = content(length, chunk, read)
+            shaco.trace("http content read by mode none")
         end
     end
+    shaco.trace("http read over!")
     return code, body
 end
 
@@ -297,7 +305,7 @@ function http.get(host, uri, headers)
     socket.readenable(id, true)
     local code, body
     local ok, err = pcall(function()
-        code, body = request(host, uri, headers, nil,
+        code, body = request("GET", host, uri, headers, nil,
             httpsocket.reader(id),
             httpsocket.sender(id))
         end)
@@ -315,7 +323,7 @@ function http.post(host, uri, headers, form)
     socket.readenable(id, true)
     local code, body
     local ok, err = pcall(function()
-        code, body = request(host, uri, headers, form,
+        code, body = request("POST", host, uri, headers, form,
             httpsocket.reader(id),
             httpsocket.sender(id))
         end)

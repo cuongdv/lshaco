@@ -147,6 +147,9 @@ function gateserver.start(handler)
     end
 
     shaco.start(function()
+        if handler.init then
+            handler.init()
+        end
         shaco.dispatch('lua', function(source, session, cmd, ...)
             local f = CMD[cmd]
             if f then

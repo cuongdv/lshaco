@@ -406,7 +406,8 @@ function shaco.queryservice(name)
 end
 
 function shaco.register(name, handle)
-    shaco.call('.service', 'lua', 'REG', name..' '..handle or shaco.handle())
+    handle = handle or shaco.handle()
+    shaco.call('.service', 'lua', 'REG', name..' '..handle)
 end
 
 return shaco

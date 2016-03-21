@@ -6,13 +6,13 @@
 
 #ifdef USE_SHACO_MALLOC
 
-void *sh_malloc(size_t size);
-void *sh_realloc(void *ptr, size_t size);
-void  sh_free(void *ptr);
+void *shaco_malloc(size_t size);
+void *shaco_realloc(void *ptr, size_t size);
+void  shaco_free(void *ptr);
 
-#define _pbcM_malloc    sh_malloc
-#define _pbcM_free      sh_free
-#define _pbcM_realloc   sh_realloc
+#define _pbcM_malloc    shaco_malloc
+#define _pbcM_free      shaco_free
+#define _pbcM_realloc   shaco_realloc
 
 #else
 void * _pbcM_malloc(size_t sz);

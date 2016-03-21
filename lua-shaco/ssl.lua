@@ -1,15 +1,11 @@
-local socket = require "socket"
 local core = require "ssl.c"
+local socket = require "socket"
+local http = require "http"
+local sslsocket = require "sslsocket"
 
 local ssl = {}
 
-function ssl.connect()
-    local s = core.new()
-    s:connect()
-    return s
-end
-
-function ssl.handshake(id, s)
+local function handshake(id, s)
     local ok, want = s:handshake()
     while not ok do
         if want == "read" then
@@ -28,6 +24,18 @@ function ssl.handshake(id, s)
         end
         ok, want = s:handshake()
     end
+end
+
+function ssl.request(id, host, uri, headers, form)
+    local s = core.new()
+    s:connect()
+    handshake(id, s)
+    --print ("handshake ok")
+    
+    return http.request("GET", host, uri, headers, form, 
+            sslsocket.reader(id, s),
+            sslsocket.sender(id, s))
+
 end
 
 return ssl

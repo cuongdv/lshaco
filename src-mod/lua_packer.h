@@ -172,19 +172,16 @@ static int readable (const char *filename) {
     return 1;
 }
 
-static int loadfile(lua_State *L) {
+static int lua_loadfile(lua_State *L, const char *fname, const char *path, 
+        const char *mode, int env) {
     int status;
-    const char *fname = luaL_optstring(L, 1, NULL);
-    const char *mode = luaL_optstring(L, 2, NULL);
-    int env = (!lua_isnone(L, 3) ? 3 : 0);  /* 'env' index or 0 if no 'env' */
     if (readable(fname)) {
         status = luaL_loadfilex(L, fname, mode);
-        return load_aux(L, status, env);
+        return status;
     } 
-    const char *path, *package; 
+    const char *package; 
     char *p, *body;
     size_t size;
-    path = lua_tostring(L, lua_upvalueindex(1));
     while ((path = pushnexttemplate(L, path)) != NULL) {
         package = lua_tostring(L,-1);
         p = sp_unpack(package, fname, &body, &size);
@@ -192,10 +189,20 @@ static int loadfile(lua_State *L) {
         if (p == NULL) continue;
         status = luaL_loadbuffer(L, body, size, fname);
         LP_FREE(p);
-        return load_aux(L, status, env);
+        return status;
     }
     status = LUA_ERRERR;
     lua_pushfstring(L, "cannot load '%s': no found in package", fname);
+    return status;
+}
+
+static int loadfile(lua_State *L) {
+    int status;
+    const char *fname = luaL_optstring(L, 1, NULL);
+    const char *mode = luaL_optstring(L, 2, NULL);
+    int env = (!lua_isnone(L, 3) ? 3 : 0);  /* 'env' index or 0 if no 'env' */
+    const char *path = lua_tostring(L, lua_upvalueindex(1));
+    status = lua_loadfile(L, fname, path, mode, env);
     return load_aux(L, status, env);
 }
 
@@ -210,7 +217,17 @@ static int lua_packer(struct shaco_context *ctx, lua_State *L, const char *path)
     size_t len = lua_rawlen(L, -1);
     lua_pushvalue(L, -2);
     lua_pushcclosure(L, searcher_luapackage, 1);
-    lua_rawseti(L, -2, len+1);
+    //lua_rawseti(L, -2, len+1); // -1 searcher_luapackage, -2 searchers
+    int i;
+    for (i=0; i<len; ++i) {
+        lua_rawgeti(L, -2-i, i+1);
+        if (i==0) {
+            lua_insert(L, -2); // searcher_luapackage after searcher_lua
+        }
+    }
+    for (i=0; i<len+1; ++i) {
+        lua_rawseti(L, -2-len+i, len+1-i);
+    }
     lua_pop(L, 3); // pop all
 
     lua_pushglobaltable(L);

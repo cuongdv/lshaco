@@ -59,7 +59,7 @@ lua_init(struct shaco_context *ctx, struct lua *self, const char *args) {
     lua_setglobal(L, "LUA_MODPATH");
     
     const char *loader = shaco_optstr("lualoader", "./lua-shaco/loader.lua");
-    int r = luaL_loadfile(L, loader);
+    int r = lua_loadfile(L, loader, packagepath, NULL, 0);
     if (r != LUA_OK) {
         shaco_error(ctx, "%s", lua_tostring(L, -1));
         lua_pop(L, 2);

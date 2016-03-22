@@ -1,4 +1,4 @@
-.PHONY: all clean 3rd 3rduninstall package
+.PHONY: all clean 3rd 3rduninstall package cleanall
  #-Wpointer-arith -Winline
 
 #mod_src=$(wildcard src-mod/*.c)
@@ -167,3 +167,7 @@ clean:
 	rm -rf lib-mod
 	rm -rf lib-l
 	rm -rf *.dSYM
+
+cleanall: clean
+	cd 3rd/lua && make clean
+	cd 3rd/jemalloc && make clean

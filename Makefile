@@ -156,6 +156,12 @@ package:
 	python tool/luapacker.py ./lua-mod   lib-package
 	python tool/luapacker.py ./examples  lib-package
 
+server:
+	cp shaco ~/code/server/bin
+	cp -r lib-3rd/* ~/code/server/bin
+	cp -r lib-l/* ~/code/server/bin
+	cp -r lib-mod ~/code/server/bin
+
 clean:	
 	rm -f $(all_t) 
 	rm -rf lib-mod

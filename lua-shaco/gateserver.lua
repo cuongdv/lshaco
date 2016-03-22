@@ -32,7 +32,7 @@ function gateserver.send(id, data)
     if connection[id] then
         local size = socket.send(id, data)
         if size then
-            if slimit and size > slimit then
+            if size > slimit then
                 shaco.error(sformat('Connection %d send buffer too large %d', id, size))
                 disconnect(id, true, "sendbuffer")
             end
@@ -86,7 +86,7 @@ function gateserver.start(handle)
             end
         end
         size = c.buffer:push(data, size)
-        if rlimit and size > rlimit then
+        if size > rlimit then
             shaco.error(sformat('Connection %d read buffer too large %d', id, size))
             disconnect(id, true, "readbuffer")
             return
@@ -138,8 +138,10 @@ function gateserver.start(handle)
         shaco.info('Listen on ' ..conf.address)
         listen_id = assert(socket.listen(conf.address))
         maxclient = conf.maxclient or 1024
-        rlimit = conf.rlimit
-        slimit = conf.slimit
+        rlimit = conf.rlimit or 64*1024
+        slimit = conf.slimit or 64*1024
+        assert(rlimit > 0, "Invalid rlimit")
+        assert(slimit > 0, "Invalid slimit")
         if handle.open then
             handle.open(conf)
         end

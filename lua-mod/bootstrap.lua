@@ -19,5 +19,8 @@ shaco.start(function()
     handle = assert(shaco.uniqueservice('service'))
     shaco.command('REG', 'service '..handle)
 
-    pcall(shaco.uniqueservice(shaco.getenv('start') or 'main'))
+    local main = shaco.getenv('start')
+    if main then
+        pcall(shaco.uniqueservice(main))
+    end
 end)

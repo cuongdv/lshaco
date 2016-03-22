@@ -15,6 +15,7 @@ local maxclient = 0
 local client_number = 0
 local gateserver = {}
 
+local handle_reject
 local disconnect
 
 function gateserver.openclient(id)
@@ -24,7 +25,7 @@ function gateserver.openclient(id)
 end
 
 function gateserver.closeclient(id)
-    disconnect(id)
+    disconnect(id, true)
 end
 
 function gateserver.send(id, data)
@@ -33,28 +34,29 @@ function gateserver.send(id, data)
         if size then
             if slimit and size > slimit then
                 shaco.error(sformat('Connection %d send buffer too large %d', id, size))
-                disconnect(id)
+                disconnect(id, true, "sendbuffer")
             end
-        else disconnect(id, "socket error")
+        else disconnect(id, false, "socket")
         end
     end
 end
 
-function gateserver.start(handler)
-    local handler_connect = assert(handler.connect)
-    local handler_disconnect = assert(handler.disconnect)
-    local handler_message = assert(handler.message)
-    local handler_command = handler.command
+function gateserver.start(handle)
+    local handle_connect = assert(handle.connect)
+    local handle_disconnect = assert(handle.disconnect)
+    local handle_message = assert(handle.message)
+    local handle_reject = handle.reject
+    local handle_command = handle.command
 
     -- local
-    function disconnect(id, err) 
+    function disconnect(id, close, err) 
         if connection[id] then
             connection[id] = nil
-            if not err then
+            if close then
                 socket.close(id)
             end
             client_number = client_number - 1
-            handler_disconnect(id, err)
+            handle_disconnect(id, err)
         end
     end
 
@@ -74,7 +76,8 @@ function gateserver.start(handler)
                 if head == nil then
                     return
                 end
-                c.head = sunpack('>I2', head)
+                --c.head = sunpack('>I2', head)
+                c.head = sunpack('<I2', head)
             end
             local pack = c.buffer:pop(c.head)
             if pack then
@@ -85,14 +88,14 @@ function gateserver.start(handler)
         size = c.buffer:push(data, size)
         if rlimit and size > rlimit then
             shaco.error(sformat('Connection %d read buffer too large %d', id, size))
-            disconnect(id)
+            disconnect(id, true, "readbuffer")
             return
         end
         while true do
             local pack = poppack(c)
             if pack then
-                if handler_message(id, pack) then
-                    disconnect(id)
+                if handle_message(id, pack) then
+                    disconnect(id, true, "message")
                     break
                 end
             else break end
@@ -102,17 +105,20 @@ function gateserver.start(handler)
     -- SOCKET_TYPE_ACCEPT
     SOCKET[1] = function(id, listenid, addr)
         if client_number >= maxclient then
+            if handle_reject then
+                handle_reject(id, addr)
+            end
             socket.close(id)
             return
         end
         connection[id] = { buffer = socketbuffer_new(), head = false }
         client_number = client_number + 1
-        handler_connect(id, addr)
+        handle_connect(id, addr)
     end
 
     -- SOCKET_TYPE_SOCKERR
     SOCKET[4] = function(id)
-        disconnect(id, "socket error")
+        disconnect(id, false, "socket")
     end
 
     shaco.register_protocol {
@@ -134,8 +140,8 @@ function gateserver.start(handler)
         maxclient = conf.maxclient or 1024
         rlimit = conf.rlimit
         slimit = conf.slimit
-        if handler.open then
-            handler.open(conf)
+        if handle.open then
+            handle.open(conf)
         end
     end
 
@@ -147,15 +153,15 @@ function gateserver.start(handler)
     end
 
     shaco.start(function()
-        if handler.init then
-            handler.init()
+        if handle.init then
+            handle.init()
         end
         shaco.dispatch('lua', function(source, session, cmd, ...)
             local f = CMD[cmd]
             if f then
                 shaco.ret(shaco.pack(f(...)))
             else
-                shaco.ret(shaco.pack(handler_command(cmd, ...)))
+                shaco.ret(shaco.pack(handle_command(cmd, ...)))
             end
         end)
     end)

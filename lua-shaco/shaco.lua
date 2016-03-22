@@ -45,6 +45,7 @@ local shaco = {
     TTIME = 8,
     --TREMOTE = 9,
     TERROR = 10,
+    UM = 20,
 }
 
 -- log
@@ -410,4 +411,18 @@ function shaco.register(name, handle)
     shaco.call('.service', 'lua', 'REG', name..' '..handle)
 end
 
+function shaco.sendum(dest, ...)
+    return shaco.send(dest, "um", ...)
+end
+
+shaco.register_protocol {
+    id = shaco.UM,
+    name = "um",
+    pack = shaco.pack,
+    unpack = shaco.unpack
+}
+
+function shaco.callum(dest, ...)
+    return shaco.call(dest, "um", ...)
+end
 return shaco

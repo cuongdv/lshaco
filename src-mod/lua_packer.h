@@ -221,8 +221,8 @@ static int lua_packer(struct shaco_context *ctx, lua_State *L, const char *path)
     int i;
     for (i=0; i<len; ++i) {
         lua_rawgeti(L, -2-i, i+1);
-        if (i==0) {
-            lua_insert(L, -2); // searcher_luapackage after searcher_lua
+        if (i<=1) {
+            lua_insert(L, -2); // searcher_luapackage after searcher_Lua
         }
     }
     for (i=0; i<len+1; ++i) {

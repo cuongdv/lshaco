@@ -1,4 +1,5 @@
 local shaco = require "shaco"
+local tbl = require "tbl"
 local table = table
 local string = string
 local assert = assert
@@ -21,6 +22,11 @@ function command.help(response)
     for k,v in pairs(command) do
         response('* '..k)
     end
+end
+
+command[":"] = function(response, name, ...)
+    local handle = shaco.queryservice(name)
+    shaco.call(handle, "lua", ...)
 end
 
 function command.start(response, name, ...)
@@ -82,16 +88,39 @@ function command.unload(response, name)
 end
 
 local function handle_private(response, cmdline)
-    local args = {}
-    for w in string.gmatch(cmdline, '[^%s]+') do
-        table.insert(args, w)
-    end
-    if #args > 0 then
-        local func = command[args[1]]
-        if func then
-            func(response, select(2, table.unpack(args)))
+    if string.byte(cmdline,1)==58 then --':' mod
+        local pos = string.find(cmdline, ' ', 2, true)
+        assert(pos and pos > 2, "Invalid command")
+        local name = string.sub(cmdline, 2, pos-1)
+        local cmd, param
+        local pos2 = string.find(cmdline, ' ', pos+1, true)
+        if pos2 then
+            assert(pos2 > pos+1, "Invalid command")
+            cmd = string.sub(cmdline, pos+1, pos2-1)
+            param = string.sub(cmdline, pos2+1)
         else
-            response("Unknown command command "..args[1])
+            cmd = string.sub(cmdline, pos+1)
+        end
+        local handle = assert(tonumber(shaco.command('QUERY', name)), "Invalid service")
+        --local handle = shaco.queryservice(name) -- will block
+        local value = shaco.call(handle, "lua", cmd, param)
+        if type(value) == "table" then
+            response(tbl(value, "result"))
+        else
+            response(tostring(value))
+        end
+    else
+        local args = {}
+        for w in string.gmatch(cmdline, '[^%s]+') do
+            table.insert(args, w)
+        end
+        if #args > 0 then
+            local func = command[args[1]]
+            if func then
+                func(response, select(2, table.unpack(args)))
+            else
+                response("Unknown command command "..args[1])
+            end
         end
     end
 end
@@ -105,7 +134,7 @@ function commandline.loop(read, response)
             if cmdline == nil then
                 loop = false
             elseif #cmdline > 0 then
-                if string.byte(cmdline,1)==58 then --':'
+                if string.byte(cmdline,1)==43 then --'+' expand
                     local name, cmdline = string.match(cmdline, ':([%w%_]+)[ ]+(.+)')
                     if name and cmdline then
                         local h = _expand[name]
@@ -122,6 +151,7 @@ function commandline.loop(read, response)
         end, debug.traceback)
         if not ok then
             shaco.error(err)
+            response(err)
         end
     end
 end

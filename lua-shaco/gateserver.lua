@@ -154,6 +154,17 @@ function gateserver.start(handle)
         end
     end
 
+    function CMD.maxclient(n)
+        if n then
+            maxclient = tonumber(n)
+        end
+        return maxclient
+    end
+
+    function CMD.count()
+        return client_number
+    end
+
     shaco.start(function()
         if handle.init then
             handle.init()

@@ -70,8 +70,9 @@ shaco_msg_dispatch() {
     while (true) {
         struct message *m = shaco_msg_pop();
         if (m) {
+            const void *msg = m->msg;
             shaco_handle_send(m->dest, m->source, m->session, m->type, m->msg, m->sz);
-            shaco_free((void*)m->msg);
+            shaco_free((void*)msg);
             if (Q->head == tail)
                 break;
         } else break;

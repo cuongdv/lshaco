@@ -52,7 +52,7 @@ undefined:
 	@echo "Please do 'make PLATFORM' where PLATFORM is one of this:"
 	@echo "    $(PLATS)"
 
-CFLAGS=-g -Wall -Werror -DDHAVE_MALLOC -DUSE_SHACO_MALLOC $(CFLAG)
+CFLAGS=-g -Wall -Werror -DHAVE_MALLOC -DUSE_SHACO_MALLOC $(CFLAG)
 
 linux: SHARED:=-fPIC -shared
 linux: EXPORT:=-Wl,-E
@@ -84,7 +84,7 @@ $(JEMALLOC_A): 3rd/jemalloc/Makefile
 3rd/jemalloc/Makefile:
 	cd 3rd/jemalloc && ./autogen.sh --with-jemalloc-prefix=je_ --enable-cc-silence --disable-valgrind
 
-shaco: src-shaco/shaco_main.c $(LIBSHACO_SRC) $(LUA_A) #$(JEMALLOC_A)
+shaco: src-shaco/shaco_main.c $(LIBSHACO_SRC) $(LUA_A) $(JEMALLOC_A)
 	gcc $(CFLAGS) $(EXPORT) -o $@ $^ $(ISHACO) $(ILUA) $(IJEMALLOC) $(LDLIB) -lpthread
 
 # openssl

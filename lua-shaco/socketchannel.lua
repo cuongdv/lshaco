@@ -141,7 +141,7 @@ function socketchannel.create(opts)
 end
 
 function socketchannel:connect()
-    connect(self)
+    return connect(self)
 end
 
 function socketchannel:close()

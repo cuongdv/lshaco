@@ -366,8 +366,13 @@ function mysql.connect(opts)
         __channel = channel,
         __row_reader = opts.compact and read_row_compat or read_row,
     }, mysql)
-    channel:connect()
-    return self
+    local ok, err = channel:connect()
+    if ok then
+        return self
+    else
+        return nil, err or 
+            string.format("mysql connect fail %s:%s", opts.host, opts.port)
+    end
 end
 
 function mysql:close()

@@ -173,7 +173,7 @@ function gateserver.start(handle)
             local f = CMD[cmd]
             if f then
                 shaco.ret(shaco.pack(f(...)))
-            else
+            elseif handle_command then
                 shaco.ret(shaco.pack(handle_command(cmd, ...)))
             end
         end)

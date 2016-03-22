@@ -134,6 +134,9 @@ function commandline.loop(read, response)
             if cmdline == nil then
                 loop = false
             elseif #cmdline > 0 then
+                -- 过滤非法字符，例如telnet是\r\n的，\r会带到这里
+                cmdline = string.match(cmdline, "([:_%w ]+)") 
+                assert(cmdline, "Invalid command")
                 if string.byte(cmdline,1)==43 then --'+' expand
                     local name, cmdline = string.match(cmdline, ':([%w%_]+)[ ]+(.+)')
                     if name and cmdline then
@@ -151,7 +154,7 @@ function commandline.loop(read, response)
         end, debug.traceback)
         if not ok then
             shaco.error(err)
-            response(err)
+            response("Catch error")
         end
     end
 end

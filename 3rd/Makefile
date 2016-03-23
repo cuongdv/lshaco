@@ -16,7 +16,6 @@ install :
 	@mkdir -p ../lib-3rd && \
 	 cp pbc/libpbc.so \
 		pbc/protobuf.so \
-		pbc/binding/lua53/protobuf.lua \
 		lpeg/lpeg.so \
 		luafilesystem/src/lfs.so \
 		lua-snapshot/snapshot.so \

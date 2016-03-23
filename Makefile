@@ -52,7 +52,7 @@ undefined:
 	@echo "Please do 'make PLATFORM' where PLATFORM is one of this:"
 	@echo "    $(PLATS)"
 
-CFLAGS=-g -Wall -Werror -DHAVE_MALLOC -DUSE_SHACO_MALLOC $(CFLAG)
+CFLAGS=-g -Wall -Werror -DDHAVE_MALLOC -DUSE_SHACO_MALLOC $(CFLAG)
 
 linux: SHARED:=-fPIC -shared
 linux: EXPORT:=-Wl,-E
@@ -84,8 +84,10 @@ $(JEMALLOC_A): 3rd/jemalloc/Makefile
 3rd/jemalloc/Makefile:
 	cd 3rd/jemalloc && ./autogen.sh --with-jemalloc-prefix=je_ --enable-cc-silence --disable-valgrind
 
-shaco: src-shaco/shaco_main.c $(LIBSHACO_SRC) $(LUA_A) $(JEMALLOC_A)
-	gcc $(CFLAGS) $(EXPORT) -o $@ $^ $(ISHACO) $(ILUA) $(IJEMALLOC) $(LDLIB) -lpthread
+#shaco: src-shaco/shaco_main.c $(LIBSHACO_SRC) $(LUA_A) $(JEMALLOC_A)
+#	gcc $(CFLAGS) $(EXPORT) -o $@ $^ $(ISHACO) $(ILUA) $(IJEMALLOC) $(LDLIB) -lpthread
+shaco: src-shaco/shaco_main.c $(LIBSHACO_SRC) $(LUA_A) 
+	gcc $(CFLAGS) $(EXPORT) -o $@ $^ $(ISHACO) $(ILUA) $(LDLIB) -lpthread
 
 # openssl
 #CRYPTO_A=3rd/openssl/libcrypto.a
@@ -152,15 +154,17 @@ tool/luapacker: tool/luapacker.c
 	cd 3rd && make uninstall
 
 package:
+	mkdir -pv lib-package
 	python tool/luapacker.py ./lua-shaco lib-package
 	python tool/luapacker.py ./lua-mod   lib-package
 	python tool/luapacker.py ./examples  lib-package
 
 server:
-	cp shaco ~/code/server/bin
-	cp -r lib-3rd/* ~/code/server/bin
-	cp -r lib-l/* ~/code/server/bin
-	cp -r lib-mod ~/code/server/bin
+	cp shaco ~/server/bin
+	cp -r lib-3rd/* ~/server/bin
+	cp -r lib-l/* ~/server/bin
+	cp -r lib-mod/* ~/server/bin
+	cp -r lib-package/* ~/server/bin
 
 clean:	
 	rm -f $(all_t) 
@@ -171,3 +175,5 @@ clean:
 cleanall: clean
 	cd 3rd/lua && make clean
 	cd 3rd/jemalloc && make clean
+	rm -rf lib-3rd
+	rm -rf lib-package

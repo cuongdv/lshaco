@@ -319,7 +319,9 @@ end
 function http.post(host, uri, headers, form)
     local host, port = host:match("([^:]+):?(%d*)$")
     port = tonumber(port) or 80
+    shaco.trace("http post:"..host..":"..port)
     local id = assert(socket.connect(host, port))
+    shaco.trace("http post:"..host..":"..port.." ok")
     socket.readon(id)
     local code, body
     local ok, err = pcall(function()

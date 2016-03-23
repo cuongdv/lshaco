@@ -5,7 +5,7 @@
 #include <assert.h>
 #include <lstate.h>
 #include "shaco.h"
-
+static int _TRACE=0;
 static int                                        
 _traceback(lua_State *L) {                        
     const char *msg = lua_tostring(L, 1);
@@ -91,6 +91,7 @@ ltimer(lua_State *L) {
 static int
 _cb(struct shaco_context *ctx, void *ud, int source, int session, int type, const void *msg, int sz) {
     lua_State *L = ud;
+    _TRACE = lua_gettop(L);
     lua_pushcfunction(L, _traceback);
     int trace = lua_gettop(L);
     lua_rawgetp(L, LUA_REGISTRYINDEX, _cb);

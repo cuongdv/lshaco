@@ -120,5 +120,6 @@ main(int argc, char* argv[]) {
     shaco_init();
     shaco_start();
     shaco_fini();
+    shaco_free(shaco_arg);
     return 0;
 }

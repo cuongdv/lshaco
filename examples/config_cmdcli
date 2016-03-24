@@ -1,0 +1,8 @@
+maxsocket=2
+loglevel="!"
+
+packagepath="lua-shaco.lso;lua-mod.lso"
+luamodpath="./lua-shaco/?.lua;./lua-mod/?.lua"
+start="cmdcli"
+
+--host="127.0.0.1:"..cmdport

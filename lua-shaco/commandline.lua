@@ -24,11 +24,6 @@ function command.help(response)
     end
 end
 
-command[":"] = function(response, name, ...)
-    local handle = shaco.queryservice(name)
-    shaco.call(handle, "lua", ...)
-end
-
 function command.start(response, name, ...)
     assert(name, 'no name')
     local args = {...}
@@ -119,7 +114,7 @@ local function handle_private(response, cmdline)
             if func then
                 func(response, select(2, table.unpack(args)))
             else
-                response("Unknown command command "..args[1])
+                response("Unknown command "..args[1])
             end
         end
     end

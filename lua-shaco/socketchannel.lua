@@ -43,12 +43,12 @@ local function dispatch(self)
                 else
                     close(self)
                     shaco.wakeup(co)
-                    wakeup_all(self, err or "return error")
+                    wakeup_all(self, err or "Return error")
                 end
             else
                 close(self)
                 shaco.wakeup(co)
-                wakeup_all(self, data or "raise error")
+                wakeup_all(self, data or "Raise error")
             end
         else
             local ok, err = socket.block(self._id)
@@ -103,7 +103,7 @@ local function connect(self)
             shaco.fork(dispatch, self)
             return true
         else
-            return nil, err
+            return nil, err or "Connect fail"
         end
     end
 end
@@ -162,7 +162,7 @@ function socketchannel:request(req, response)
     if not ok then
         close(self)
         wakeup_all(self, err)
-        return nil, err
+        return nil, err or "Send error"
     end
     local co = corunning()
     tinsert(self._response_func, response)

@@ -4,8 +4,16 @@ local socketchannel = require "socketchannel"
 local crypt = require "crypt.c"
 local mysqlaux = require "mysqlaux.c"
 local tbl = require "tbl"
-local string = string
-local table = table
+local assert = assert
+local sbyte = string.byte
+local ssub = string.sub
+local sgsub = string.gsub
+local schar = string.char
+local sunpack = string.unpack
+local spack = string.pack
+local sformat = string.format
+local sfind = string.find
+local srep = string.rep
 
 local CLIENT_PLUGIN_AUTH = 0x00080000
 local CLIENT_SECURE_CONNECTION = 0x00008000
@@ -24,34 +32,34 @@ local function native_password(s, key)
     local t1 = crypt.sha1(s)
     local t2 = crypt.sha1(key..crypt.sha1(t1))
     local i = 0
-    return string.gsub(t1, ".", function(c) 
+    return sgsub(t1, ".", function(c) 
         i=i+1
-        return string.char(string.byte(c)~string.byte(t2,i))
+        return schar(sbyte(c)~sbyte(t2,i))
     end)
 end
 
 local function extract_int1(s, pos)
-    return string.byte(s, pos), pos+1
+    return sbyte(s, pos), pos+1
 end
 
 local function extract_int2(s, pos)
-    return string.unpack("<I2",s,pos), pos+2
+    return sunpack("<I2",s,pos), pos+2
 end
 
 local function extract_int3(s, pos)
-    return string.unpack("<I3",s,pos), pos+3
+    return sunpack("<I3",s,pos), pos+3
 end
 
 local function extract_int4(s, pos)
-    return string.unpack("<I4",s,pos), pos+4
+    return sunpack("<I4",s,pos), pos+4
 end
 
 local function extract_int8(s, pos)
-    return string.unpack("<I8",s,pos), pos+8
+    return sunpack("<I8",s,pos), pos+8
 end
 
 local function lenenc_int(s, pos)
-    local b1 = string.byte(s, pos)
+    local b1 = sbyte(s, pos)
     if b1 < 0xfb then
         return b1, pos+1
     elseif b1 == 0xfc then
@@ -63,28 +71,28 @@ local function lenenc_int(s, pos)
     elseif b1 == 0xfb then
         return nil, pos+1 -- NULL is sent as 0xfb in ResultRow coloum
     else
-        error("lenenc_int error")
+        error("Lenenc_int error")
     end
 end
 
 local function string_null(s, pos)
-    local p2 = string.find(s, "\0", pos, true)
+    local p2 = sfind(s, "\0", pos, true)
     assert(p2)
-    return string.sub(s,pos,p2-1), p2+1
+    return ssub(s,pos,p2-1), p2+1
 end
 
 local function string_eof(s, pos)
-    return string.sub(s,pos)
+    return ssub(s,pos)
 end
 
 local function string_len(s, pos, len)
-    return string.sub(s,pos,pos+len-1), pos+len
+    return ssub(s,pos,pos+len-1), pos+len
 end
 
 local function string_lenenc(s, pos)
     local len, pos = lenenc_int(s,pos)
     if len then
-        return string.sub(s, pos, pos+len-1), pos+len
+        return ssub(s, pos, pos+len-1), pos+len
     else
         return nil, pos
     end
@@ -92,12 +100,12 @@ end
 
 local function rpacket(s, order)
     local l = #s
-    return string.pack("<I3B", l, order)..s
+    return spack("<I3B", l, order)..s
 end
 
 local function read_header(id)
     local s = assert(socket.read(id,4))
-    return extract_int3(s,1), string.byte(s,4)
+    return extract_int3(s,1), sbyte(s,4)
 end
 
 local function read_packet(id)
@@ -106,10 +114,10 @@ local function read_packet(id)
     return assert(socket.read(id, payload_length))
 end
 
-local function read_ok_packet(id, s, pack)
-    local pos = 2
-    pack.__type = "OK"
+local function read_ok_packet(id, s)
+    local pack = { type="OK" }
     if #s > 1 then -- #s==1 in if row is empty in read one row
+        local pos = 2
         pack.effected_rows, pos = lenenc_int(s, pos)
         pack.last_insert_id, pos = lenenc_int(s, pos)
         pack.status_flag, pos = extract_int2(s, pos)
@@ -128,39 +136,38 @@ local function read_ok_packet(id, s, pack)
     return pack
 end
 
-local function read_err_packet(id, s, pack)
-    pack.__type = "ERR"
+local function read_err_packet(id, s)
+    local pack = {type="ERR"}
     pack.err_code = extract_int2(s,2)
-    assert(string.byte(s,4)==35) -- '#'
-    pack.sql_state = string.sub(s,5,9)
-    pack.message = string.sub(s,10)
+    assert(sbyte(s,4)==35) -- '#'
+    pack.sql_state = ssub(s,5,9)
+    pack.message = ssub(s,10)
     return pack
 end
 
-local function read_eof_packet(id, s, pack)
-    pack.__type = "EOF"
+local function read_eof_packet(id, s)
+    local pack = {}
     pack.warnings = extract_int2(s,2)
     pack.status_flag = extract_int2(s,4)
-    return pack 
+    return pack
 end
 
 local function read_generic_response(id, special_response, ...)
-    local pack = {}
     local payload_length, sequence_id = read_header(id)
     assert(payload_length > 0)
     local s = assert(socket.read(id, payload_length))
-    local header = string.byte(s,1)
+    local header = sbyte(s,1)
     if header == 0x00 then
-        return read_ok_packet(id,s,pack)
+        return read_ok_packet(id,s)
     elseif header == 0xff then
-        return read_err_packet(id,s,pack)
+        return read_err_packet(id,s)
     elseif header == 0xfe then
-        return read_eof_packet(id,s,pack)
+        return "EOF"--, read_eof_packet(id,s)
     else
         if special_response then
-            return special_response(id,s,pack, ...)
+            return special_response(id,s, ...)
         else
-            error("unknow generic response "..string.format("%0x",header))
+            error("Unknow generic response "..sformat("%0x",header))
         end
     end
 end
@@ -182,8 +189,8 @@ local function read_column(id)
     column.type, pos = extract_int1(s,pos)
     column.flags, pos = extract_int2(s,pos)
     column.decimals, pos = extract_int1(s,pos)
-    assert(string.byte(s,pos)==0)
-    assert(string.byte(s,pos+1)==0)
+    assert(sbyte(s,pos)==0)
+    assert(sbyte(s,pos+1)==0)
     pos=pos+2
     --if command was COM_FIELD_LIST {
         --lenenc_int     length of default-values
@@ -193,52 +200,54 @@ local function read_column(id)
 end
 
 local function read_row_compact(id, s, pack, columns)
+    local pack = {}
     local pos, v
     pos = 1
-    for i=1,#columns do
+    for i=1, #columns do
         v, pos = string_lenenc(s,pos)
-        table.insert(pack, v)
+        pack[#pack+1] = v
     end
     return pack
 end
 
-local function read_row(id, s, pack, columns)
+local function read_row(id, s, columns)
+    local pack = {}
     local pos, v
     pos = 1
-    for i=1,#columns do
+    for _, c in ipairs(columns) do
         v, pos = string_lenenc(s,pos)
-        pack[columns[i].name] = v
+        pack[c.name] = v
     end
     return pack
 end
 
-local function read_resultset(id, s, pack, self)
+local function read_resultset(id, s, self)
     local column_count, pos = lenenc_int(s, 1)
     -- column definition
     local columns = {}
     for i=1,column_count do
-        table.insert(columns, read_column(id))
+        columns[#columns+1] = read_column(id)
     end
     -- eof
-    local gres = read_generic_response(id)
-    assert(gres.__type == "EOF")
+    assert(read_generic_response(id) == "EOF")
     -- row
     local rows = {}
+    local result
     while true do
-        gres = read_generic_response(id, self.__row_reader, columns)
-        if gres.__type == nil then
-            table.insert(rows, gres)
-        elseif gres.__type == 'EOF' then
+        result = read_generic_response(id, self.__row_reader, columns)
+        if result == "EOF" then
             break
+        elseif result.type == nil then
+            rows[#rows+1] = result
         end
     end
-    if gres.__type == "EOF" or
-       gres.__type == "OK" then
+    if result == "EOF" or
+       result.type == "OK" then
         return rows
-    elseif gres.__type == "ERR" then
-        return nil, gres.message
+    elseif result.type == "ERR" then
+        return result
     else
-        return nil, "unknown resultset response"
+        return {type="ERR", err_code=-1, message="Unknown resultset response"}
     end
 end
 
@@ -295,7 +304,7 @@ local function handshake_response(id, handshake, user, passwd, db)
     if handshake.auth_plugin_name then
         if handshake.auth_plugin_name ~= "mysql_native_password" and
            handshake.auth_plugin_name ~= "mysql_old_password" then
-            error("unsupport auth plugin "..handshake.auth_plugin_name)
+            error("Unsupport auth plugin "..handshake.auth_plugin_name)
         end
     else
         if (handshake.capability & CLIENT_PROTOCOL_41) ~= 0 and
@@ -320,27 +329,30 @@ local function handshake_response(id, handshake, user, passwd, db)
         db = ""
     end
     passwd = passwd or ""
-    passwd = native_password(passwd, string.sub(handshake.auth_plugin_data,1,20))
+    passwd = native_password(passwd, ssub(handshake.auth_plugin_data,1,20))
     local s =
-    string.pack("<I4",capability)..
-    string.char(0,0,0,1)..
-    string.char(33)..
-    string.rep("\0",23)..
+    spack("<I4",capability)..
+    schar(0,0,0,1)..
+    schar(33)..
+    srep("\0",23)..
     user.."\0"..
-    string.char(#passwd)..
+    schar(#passwd)..
     passwd..
     db..
     auth_plugin_name.."\0"
     assert(socket.send(id, rpacket(s, handshake.sequence_id+1)))
 end
 
-local function check_response(response)
-    if response.__type == "OK" then
+local function check_response(result, err)
+    if not result then
+        return nil, err
+    end
+    if result.type == "OK" then
         return true
-    elseif response.__type == "ERR" then
-        return false, response.message
+    elseif result.type == "ERR" then
+        return false, result.message
     else
-        error("unknow response "..response.__type)
+        error("Unknow response "..t)
     end
 end
 
@@ -351,8 +363,8 @@ local function login_auth(user, passwd, db)
     return function(id)
         local handshake = read_handshake(id)
         handshake_response(id, handshake, user, passwd, db)
-        local response = read_generic_response(id)
-        assert(check_response(response))
+        local result, err = read_generic_response(id)
+        assert(check_response(result, err))
     end
 end
 
@@ -364,14 +376,14 @@ function mysql.connect(opts)
     }
     local self = setmetatable({
         __channel = channel,
-        __row_reader = opts.compact and read_row_compat or read_row,
+        __row_reader = opts.compact and read_row_compact or read_row,
     }, mysql)
     local ok, err = channel:connect()
     if ok then
         return self
     else
         return nil, err or 
-            string.format("mysql connect fail %s:%s", opts.host, opts.port)
+            sformat("mysql connect fail %s:%s", opts.host, opts.port)
     end
 end
 
@@ -380,44 +392,41 @@ function mysql:close()
 end
 
 function mysql:ping()
-    local response = self.__channel:request(rpacket(string.char(0x0e), 0), 
+    local response, err = self.__channel:request(rpacket(schar(0x0e), 0), 
         function(id)
             return read_generic_response(id)
         end)
-    assert(response.__type == "OK")
+    return check_response(response, err) 
 end
 
 function mysql:use(db)
-    local response = self.__channel:request(rpacket(string.char(0x02)..db.."\0", 0),
+    local response, err = self.__channel:request(rpacket(schar(0x02)..db.."\0", 0),
         function(id)
             return read_generic_response(id)
         end)
-    return check_response(response)
+    return check_response(response, err)
 end
 
 function mysql:execute(sql)
-    local response = self.__channel:request(rpacket(string.char(0x03)..sql, 0),
+    return self.__channel:request(rpacket(schar(0x03)..sql, 0),
         function(id)
             return read_generic_response(id, read_resultset, self)
         end)
-    return response
 end
 
 function mysql:statistics()
-    local response = self.__channel:request(rpacket(string.char(0x09), 0),
+    return self.__channel:request(rpacket(schar(0x09), 0),
         function(id)
             return read_generic_response(id, 
-                function(id, s, pack) return s end)
+                function(id, s) return s end)
         end)
-    return response
 end
 
 function mysql:processinfo()
-    local response = self.__channel:request(rpacket(string.char(0x0a), 0),
+    return self.__channel:request(rpacket(schar(0x0a), 0),
         function(id)
             return read_generic_response(id, read_resultset, self)
         end)
-    return response
 end
 
 mysql.escape_string = mysqlaux.quote_string

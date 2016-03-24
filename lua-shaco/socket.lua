@@ -192,8 +192,8 @@ function socket.connect(...)
                 return nil
             end
         end
+        return id
     end
-    return id
 end
 
 -- wrap a exist fd to socket

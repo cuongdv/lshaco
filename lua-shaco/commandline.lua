@@ -110,21 +110,15 @@ end
 
 local function handle_private(response, cmdline)
     if string.byte(cmdline,1)==58 then --':' mod
-        local pos = string.find(cmdline, ' ', 2, true)
-        assert(pos and pos > 2, "Invalid command")
-        local name = string.sub(cmdline, 2, pos-1)
-        local cmd, param
-        local pos2 = string.find(cmdline, ' ', pos+1, true)
-        if pos2 then
-            assert(pos2 > pos+1, "Invalid command")
-            cmd = string.sub(cmdline, pos+1, pos2-1)
-            param = string.sub(cmdline, pos2+1)
-        else
-            cmd = string.sub(cmdline, pos+1)
+        cmdline = string.sub(cmdline, 2)
+        local args = {}
+        for w in string.gmatch(cmdline, "[^%s]+") do
+            args[#args+1] = w
         end
-        local handle = assert(tonumber(shaco.command('QUERY', name)), "Invalid service")
+        assert(#args >= 2, "Invalid command")
+        local handle = assert(tonumber(shaco.command('QUERY', args[1])), "Invalid service")
         --local handle = shaco.queryservice(name) -- will block
-        local value = shaco.call(handle, "lua", cmd, param)
+        local value = shaco.call(handle, "lua", args[2], select(3, table.unpack(args)))
         if type(value) == "table" then
             response(tbl(value, "result"))
         else

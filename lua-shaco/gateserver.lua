@@ -105,11 +105,11 @@ function gateserver.start(handle)
     -- SOCKET_TYPE_ACCEPT
     SOCKET[1] = function(id, listenid, addr)
         if client_number >= maxclient then
-            if handle_reject then
-                handle_reject(id, addr)
+            if not handle_reject or
+                handle_reject(id, addr) then
+                socket.close(id)
+                return
             end
-            socket.close(id)
-            return
         end
         connection[id] = { buffer = socketbuffer_new(), head = false }
         client_number = client_number + 1

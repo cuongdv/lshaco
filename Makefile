@@ -159,7 +159,7 @@ package:
 	python tool/luapacker.py ./lua-mod   lib-package
 	python tool/luapacker.py ./examples  lib-package
 
-server:
+server: package
 	cp shaco ~/server/bin
 	cp -r lib-3rd/* ~/server/bin
 	cp -r lib-l/* ~/server/bin

@@ -2,6 +2,7 @@ local shaco = require "shaco"
 local tbl = require "tbl"
 local table = table
 local string = string
+local sformat = string.format
 local assert = assert
 local select = select
 local pairs = pairs
@@ -22,6 +23,31 @@ function command.help(response)
     for k,v in pairs(command) do
         response('* '..k)
     end
+end
+
+function command.time(response)
+    local starttime = tonumber(shaco.command("STARTTIME")) // 1000
+    local now = shaco.now() // 1000
+    local elapsed = now - starttime
+    starttime = os.date("%y%m%d-%H:%M:%S", starttime)
+    now = os.date("%y%m%d-%H:%M:%S", now)
+
+    local day, hour, min, sec
+    day = elapsed // 86400
+    elapsed = elapsed % 86400
+    hour = elapsed // 3600
+    elapsed = elapsed % 3600
+    min = elapsed // 60
+    sec = elapsed % 60
+
+    response(sformat("%dd%dh%dm%ss [%s ~ %s]", day, hour, min, sec, starttime, now))
+end
+
+function command.loglevel(response, level)
+    if level then
+        shaco.command("SETLOGLEVEL", level)
+    end
+    response(shaco.command("GETLOGLEVEL"))
 end
 
 function command.start(response, name, ...)
@@ -130,7 +156,7 @@ function commandline.loop(read, response)
                 loop = false
             elseif #cmdline > 0 then
                 -- 过滤非法字符，例如telnet是\r\n的，\r会带到这里
-                cmdline = string.match(cmdline, "([:_%w ]+)") 
+                cmdline = string.match(cmdline, "([%g ]+)") 
                 assert(cmdline, "Invalid command")
                 if string.byte(cmdline,1)==43 then --'+' expand
                     local name, cmdline = string.match(cmdline, ':([%w%_]+)[ ]+(.+)')

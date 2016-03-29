@@ -14,9 +14,11 @@ shaco.start(function()
         local reader = function()
             local id = assert(socket.stdin())
             return function()
-                return linenoise.read(function()
-                    return socket.read(id, 1)
-                end)
+                return linenoise.read(0,
+                    function() return socket.read(id, 1) end,
+                    --todo why this do not work ?
+                    --function() return socket.read(id, "\n") end)
+                    function() return io.stdin:read("l") end)
             end
         end
         local response = function(...)

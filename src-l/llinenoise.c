@@ -19,6 +19,15 @@ _atexit_restore(void) {
     _rawmod_off(STDIN_FILENO);
 }
 
+static int
+lisatty(lua_State *L) {
+    if (!isatty(STDIN_FILENO))
+        lua_pushboolean(L, 1);
+    else
+        lua_pushboolean(L, 0);
+    return 1;
+}
+
 static int 
 _rawmod_on(int fd) {
     if (!isatty(STDIN_FILENO)) 
@@ -76,6 +85,7 @@ lrawmode_off(lua_State* L) {
 int
 luaopen_linenoise_c(lua_State *L) {
 	luaL_Reg l[] = { 
+        { "isatty", lisatty},
         { "rawmode_on", lrawmode_on},
         { "rawmode_off", lrawmode_off},
         { NULL, NULL },

@@ -11,9 +11,10 @@ print([[
 shaco.start(function()
     local history_file = ".cmdcli.history"
     local host = shaco.getenv("host") or "127.0.0.1:18001"
-    local single_command = shaco.getenv("command")
+    local exit_delay = tonumber(shaco.getenv("exit_delay")) or 10
     local stdin = assert(socket.stdin())
     local sockid
+    local last_send_time = 0
 
     local function Error(s) io.stderr:write("\x1b[31m"..s.."\x1b[0m") end
     local function Warn(s)  io.stderr:write("\x1b[33m"..s.."\x1b[0m") end
@@ -55,9 +56,11 @@ shaco.start(function()
     local function interact()
         linenoise.loadhistory(history_file) 
         while true do
-            local s = linenoise.read(function()
-                return socket.read(stdin, 1)
-            end)
+            local s = linenoise.read(0,
+                function() return socket.read(stdin, 1) end,
+                --todo why this do not work ?
+                --function() return socket.read(stdin, "\n") end)
+                function() return io.stdin:read("l") end)
             if s == nil then
                 break
             end
@@ -68,17 +71,18 @@ shaco.start(function()
                 end
                 if sockid then
                     socket.send(sockid, s..'\n')
+                    last_send_time = shaco.now()
                 end
             end
         end
         linenoise.savehistory(history_file)
+        local sleep_time = exit_delay - (shaco.now() - last_send_time)
+        if sleep_time > 0 then
+            shaco.sleep(sleep_time)
+        end
+        shaco.abort()
     end
     
-    if single_command then
-        Error("Not support now\n")
-    else
-        shaco.fork(reader)
-        interact()
-    end
-    os.exit(1)
+    shaco.fork(reader)
+    interact()
 end)

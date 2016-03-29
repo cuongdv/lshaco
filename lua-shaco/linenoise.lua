@@ -177,12 +177,12 @@ local function key_ctrl_w()
     end
 end
 
-local function key_esc(read)
-    local c1 = assert(read())
-    local c2 = assert(read())
+local function key_esc(getc)
+    local c1 = assert(getc())
+    local c2 = assert(getc())
     if c1=='[' then
         if c2>='0' and c2<='9' then
-            local c3 = assert(read())
+            local c3 = assert(getc())
             if c3=='~' then
                 if c2=='3' then
                     key_delete()
@@ -230,32 +230,38 @@ local control = {
     [27] = key_esc,         --ESC
 }
 
-function linenoise.read(read)
-    local res
-    local ok, info = pcall(function()
-        clear_line()
-        assert(c.rawmode_on(0))
-        while true do
-            local c = assert(read())
-            local b = string.byte(c)
-            local func = control[b]
-            if func then
-                res = func(read)
-                if res ~= nil then
-                    break
+function linenoise.read(fd, getc, gets)
+    local ok, err
+    if c.isatty() then -- Not a tty: read from file / pipe
+        ok, err = pcall(gets)
+    else
+        ok, err = pcall(function()
+            local res
+            clear_line()
+            assert(c.rawmode_on(fd))
+            while true do
+                local c = assert(getc())
+                local b = string.byte(c)
+                local func = control[b]
+                if func then
+                    res = func(getc)
+                    if res ~= nil then
+                        break
+                    end
+                else
+                    append_char(c)
+                    refresh()
                 end
-            else
-                append_char(c)
-                refresh()
             end
-        end
-    end)
-    c.rawmode_off(0)
+            return res and _line or nil
+        end)
+        c.rawmode_off(fd)
+    end
     if not ok then
-        print('\x1b[31m'..info..'\x1b[0m')
+        print('\x1b[31m'..err..'\x1b[0m')
         return ""
     else
-        return res and _line or nil
+        return err
     end
 end
 

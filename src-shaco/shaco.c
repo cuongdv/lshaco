@@ -20,12 +20,18 @@
 
 static bool RUN = false;
 static char STOP_INFO[32];
+static bool REOPENING = false;
 
 static void 
 _sigtermhandler(int sig) {
     // do not call sh_warning, is no signal safe
     shaco_stop("received sigterm");
 } 
+
+static void
+_sigreopen(int sig) {
+    REOPENING = true;
+}
 
 static void
 sig_handler_init() {
@@ -35,6 +41,12 @@ sig_handler_init() {
     act.sa_handler = _sigtermhandler;
     sigaction(SIGINT, &act, NULL);
     sigaction(SIGTERM, &act, NULL);
+
+    struct sigaction act2;
+    sigemptyset(&act2.sa_mask);
+    act2.sa_flags = 0;
+    act2.sa_handler = _sigreopen;
+    sigaction(SIGUSR1, &act2, NULL);
 }
 
 static void
@@ -66,6 +78,15 @@ daemonize(int noclose) {
             dup2(fd, STDERR_FILENO);
             if (fd > STDERR_FILENO) close(fd);
         }
+    }
+}
+
+static void
+reopenlog() {
+    int daemon = shaco_optint("daemon", 0);
+    if (daemon) {
+        shaco_log_close();
+        shaco_log_open(shaco_optstr("logfile", "./shaco.log"));
     }
 }
 
@@ -118,6 +139,10 @@ shaco_start() {
         shaco_socket_poll(timeout);
         shaco_timer_trigger();
         shaco_msg_dispatch();
+        if (REOPENING) {
+            reopenlog();
+            REOPENING = false;
+        }
     }
     shaco_info(NULL, "Shaco stop (%s)", STOP_INFO);
 }

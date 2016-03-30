@@ -1,5 +1,6 @@
 #!/bin/bash
 
+PWD=$(dirname "$0")
 SERVERS="game"
 VLOGDIR=$HOME/vallog
 
@@ -28,10 +29,9 @@ ls() {
     else
         error "node count [${n} != ${NSERVER}] FAIL"
     fi
-    #ps -u ${USER} u |grep commandd |grep lua
 }
 startone() {
-    cd bin
+    cd $PWD/bin
     if [ $MEMCHECK -eq 0 ]
     then
         info "start ${1}"
@@ -90,7 +90,7 @@ startcn() {
 }
 
 startch() {
-    cd bin && ./shaco config_test --luamod ch --logdir $HOME/log --id 7000 --daemon 1 
+    cd bin && ./shaco config_test --luamod ch --logdir $HOME/log --id 7000 --daemon 1
 }
 startall() {
     for S in $SERVERS;do
@@ -129,6 +129,31 @@ stop() {
         stopone $one 0.1
     done
 }
+
+lived() {
+    	pgrep -u${USER} -f "./shaco config_game" > /dev/null 2>&1
+	if [ $? -ne 0 ]
+	then
+		echo "shaco is down, start ..."
+		start game
+	fi
+}
+
+mysqllived() {
+	pgrep -x "mysqld" > /dev/null 2>&1
+	if [ $? -ne 0 ]
+	then
+		echo "mysqld is down, start ..."
+		service mysqld start
+	fi
+}
+
+resolveip() {
+    cd $PWD/bin
+    ./shaco config_test --start "resolveip" > /dev/null 2>&1
+    cd ..
+}
+
 stopcmdd() {
     stopone commandd 0.1 
 }
@@ -148,12 +173,11 @@ deploy() {
     rm -rf $PAK.tar
     expect ssh.exp $IP $PORT $USER $PASSWORD $KEY \
     "[ -f bin/config_self ] && mv bin/config_self bin/config_self.bak;
-     tar -xf $PAK.tar;
+     tar -mxf $PAK.tar;
      [ -f bin/config_self.bak ] && mv bin/config_self.bak bin/config_self"
 }
 
 #tar -xf $PAK.tar && rm -rf $PAK.tar;
-
 pulldeploy() {
 cd bin && ./shaco config_test --luamod cc --command "cd .. && svn up && make && ./shaco-foot deploy"
 cd ..
@@ -188,12 +212,15 @@ done
 
 count
 case "$CMD" in
-restartall)     stopall;startall;;
+restartall)     stop "game";start "game";;
 restart)        stop "$@";start "$@";;
 startall)       startall;;
 start)          start "$@";;
 stopall)        stopall;;
 stop)           stop "$@";;
+lived)		    lived;;
+mysqllived)	    mysqllived;;
+resolveip)      resolveip;;
 startcmdd)      startcmdd;;
 stopcmdd)       stopcmdd;;
 startcn)        startcn;;

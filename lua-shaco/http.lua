@@ -227,17 +227,20 @@ local function format_form(form)
 end
 
 local function request(method, host, uri, headers, form, read, send)
+    headers = headers or {}
+    if not headers["host"] then
+        headers["host"] = host
+    end
     if form then
-        headers = headers or 
-        { ["content-type"] = "application/x-www-form-urlencoded" }
+        if not headers["content-type"] then
+            headers["content-type"] = "application/x-www-form-urlencoded"
+        end
         form = format_form(form)
     end
 
-    local strhead = "host:"..host.."\r\n"
-    if headers then
-        for k, v in pairs(headers) do
-            strhead = strhead..string.format("%s:%s\r\n", k,v)
-        end
+    local strhead = ""
+    for k, v in pairs(headers) do
+        strhead = strhead..string.format("%s:%s\r\n", k,v)
     end
 
     local request_line = method.." "..uri.." HTTP/1.1\r\n"
@@ -245,7 +248,7 @@ local function request(method, host, uri, headers, form, read, send)
     local total
     if not form then
         total = string.format("%s%scontent-length:0\r\n\r\n", 
-            request_line, strhead, host)
+            request_line, strhead)
     else
         total = string.format("%s%scontent-length:%d\r\n\r\n%s\r\n", 
             request_line, strhead, #form, form)

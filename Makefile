@@ -160,11 +160,28 @@ package:
 	python tool/luapacker.py ./examples  lib-package
 
 server: package
+	mkdir -pv ~/server && mkdir -pv ~/server/bin
 	cp shaco ~/server/bin
 	cp -r lib-3rd/* ~/server/bin
 	cp -r lib-l/* ~/server/bin
 	cp -r lib-mod/* ~/server/bin
 	cp -r lib-package/* ~/server/bin
+
+dist:
+	rm -rf lshaco.tgz
+	tar -zcf lshaco.tgz \
+	Makefile \
+	shaco-foot \
+	tool \
+	src-shaco \
+	src-mod \
+	src-l \
+	lua-shaco \
+	lua-mod \
+	examples \
+	3rd
+	scp lshaco.tgz qzsource:
+	ssh qzsource "mkdir -pv lshaco && tar -mzxf lshaco.tgz -C lshaco && cd lshaco && make cleanall && make && make 3rd && make server"
 
 clean:	
 	rm -f $(all_t) 

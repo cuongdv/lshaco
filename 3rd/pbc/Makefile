@@ -5,6 +5,7 @@ ifeq ($(PLAT),macosx)
 	SHARED:=-fPIC -dynamiclib -Wl,-undefined,dynamic_lookup
 else
 	SHARED:=-fPIC -shared
+	LDFLAGS:=-Wl,-rpath=.
 endif
 
 AR = ar rc

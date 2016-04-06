@@ -52,7 +52,7 @@ sig_handler_init() {
 static void
 rlimit_check() {
     struct rlimit l;
-    int max = shaco_optint("maxsocket", 0) + 1024;
+    int max = shaco_optint("maxsocket", 0) + 32;
     if (getrlimit(RLIMIT_NOFILE, &l) == -1) {
         shaco_exit(NULL, "getrlimit nofile fail: %s", strerror(errno));
     }

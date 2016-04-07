@@ -163,7 +163,7 @@ local function statusline(read)
     local chunk = ""
     while true do
         chunk = chunk..read()
-        shaco.trace("http statusline start read!")
+        shaco.trace("http statusline start read")
         local i = chunk:find("\r\n",1,true)
         if i then
             return chunk:sub(1,i), chunk:sub(i+2)
@@ -255,7 +255,6 @@ local function request(method, host, uri, headers, form, read, send)
     end
 
     send(total)
-    shaco.trace("http request send:", total)
 
     local status, chunk
     status, chunk = statusline(read)
@@ -295,7 +294,7 @@ local function request(method, host, uri, headers, form, read, send)
             shaco.trace("http content read by mode none")
         end
     end
-    shaco.trace("http read over!")
+    shaco.trace("http read over")
     return code, body
 end
 

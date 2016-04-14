@@ -1,5 +1,6 @@
-maxsocket=5000
+maxsocket=128
 loglevel="."
-packagepath="./lib-package/lua-shaco.lso;./lib-package/examples.lso"
+luacpath="./lib-l/?.so;./lib-3rd/?.so"
+--packagepath="./lib-package/lua-shaco.lso;./lib-package/examples.lso"
 luamodpath="./lua-mod/?.lua;./examples/?.lua;./examples/login/?.lua"
 console=1

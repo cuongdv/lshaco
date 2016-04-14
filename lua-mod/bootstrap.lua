@@ -21,6 +21,10 @@ shaco.start(function()
 
     local main = shaco.getenv('start')
     if main then
-        pcall(shaco.uniqueservice(main))
+        if not pcall(function() 
+                assert(shaco.uniqueservice(main))
+            end) then
+            os.exit(1)
+        end
     end
 end)

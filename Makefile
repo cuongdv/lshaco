@@ -35,7 +35,8 @@ all_t=\
 	lib-l/process.so \
 	lib-l/signal.so \
 	lib-l/md5.so \
-	lib-l/ssl.so #\
+	lib-l/ssl.so \
+	lib-l/protobuf.so
 #	lib-l/memory.so \
 #	lib-l/util.so \
 
@@ -52,7 +53,8 @@ undefined:
 	@echo "Please do 'make PLATFORM' where PLATFORM is one of this:"
 	@echo "    $(PLATS)"
 
-CFLAGS=-g -Wall -Werror -DDHAVE_MALLOC -DUSE_SHACO_MALLOC $(CFLAG)
+SHACO_MALLOC_FLAG=-DUSE_SHACO_MALLOC
+CFLAGS=-g -Wall -Werror -DDHAVE_MALLOC $(SHACO_MALLOC_FLAG) $(CFLAG)
 
 linux: SHARED:=-fPIC -shared
 linux: EXPORT:=-Wl,-E
@@ -70,9 +72,13 @@ all: $(all_t)
 
 # lua
 LUA_A=3rd/lua/src/liblua.a
-
 $(LUA_A):
 	cd 3rd/lua && make $(PLAT)
+
+# pbc
+PBC_A=3rd/pbc/build/libpbc.a
+$(PBC_A):
+	cd 3rd/pbc && make lib CFLAGS="$(SHACO_MALLOC_FLAG)"
 
 # jemalloc
 IJEMALLOC=-I3rd/jemalloc/include/jemalloc
@@ -144,6 +150,9 @@ lib-l/signal.so: src-l/lsignal.c | lib-l
 lib-l/ssl.so: src-l/lssl.c | lib-l
 	gcc $(CFLAGS) $(SHARED) -lssl -o $@ $^ $(ISHACO) $(ILUA) 
 
+lib-l/protobuf.so: 3rd/pbc/binding/lua53/pbc-lua53.c $(PBC_A)
+	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO) $(ILUA) -I3rd/pbc
+
 tool/luapacker: tool/luapacker.c
 	gcc $(CFLAGS) -o $@ $^ -Isrc-mod
 
@@ -192,5 +201,6 @@ clean:
 cleanall: clean
 	cd 3rd/lua && make clean
 	cd 3rd/jemalloc && make clean
+	cd 3rd/pbc && make clean
 	rm -rf lib-3rd
 	rm -rf lib-package

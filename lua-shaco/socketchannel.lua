@@ -1,5 +1,6 @@
 local shaco = require "shaco"
 local socket = require "socket"
+local socket_error = socket.error
 local corunning = coroutine.running
 local tinsert = table.insert
 local tremove = table.remove
@@ -7,83 +8,80 @@ local tremove = table.remove
 local socketchannel = {}
 socketchannel.__index = socketchannel
 
-local function close(self)
-    if self._id then
-        socket.close(self._id)
-        self._id = false
+local function close_channel(self)
+    if self.__id then
+        socket.close(self.__id)
+        self.__id = false
     end
 end
 
 local function wakeup_all(self, err)
-    self._error = err
-    for i=1, #self._response_func do
-        self._response_func[i] = nil
+    for i=1, #self.__response_func do
+        self.__response_func[i] = nil
     end
-    for i=1, #self._response_co do
-        local co = self._response_co[i]
-        self._response_co[i] = nil
+    for i=1, #self.__response_co do
+        local co = self.__response_co[i]
+        self.__response_co[i] = nil
+        self.__result[co] = false
+        self.__result_data[co] = err
         shaco.wakeup(co)
     end
 end
 
 local function pop_response(self)
-    return tremove(self._response_func, 1), 
-           tremove(self._response_co, 1)
+    return tremove(self.__response_func, 1), 
+           tremove(self.__response_co, 1)
 end
 
 local function dispatch(self)
-    while self._id do
+    while self.__id do
         local func, co = pop_response(self)
         if func then
-            local ok, data, err = pcall(func, self._id)
+            local ok, result_ok, result_data = pcall(func, self.__id)
             if ok then
-                if data then
-                    self._result_data[co] = data
-                    shaco.wakeup(co)
-                else
-                    close(self)
-                    shaco.wakeup(co)
-                    wakeup_all(self, err or "Return error")
-                end
-            else
-                close(self)
+                self.__result[co] = result_ok
+                self.__result_data[co] = result_data
                 shaco.wakeup(co)
-                wakeup_all(self, data or "Raise error")
+            else
+                close_channel(self)
+                self.__result[co] = false
+                self.__result_data[co] = result_ok
+                shaco.wakeup(co)
+                wakeup_all(self, result_ok)
             end
         else
-            local ok, err = socket.block(self._id)
+            local ok = socket.block(self.__id)
             if not ok then
-                close(self)
-                wakeup_all(self, err)
+                close_channel(self)
+                wakeup_all(self, socket_error)
             end
         end
     end
 end
 
 local function connect(self)
-    if self._id then
+    if self.__id then
         return true
     end
     local co = corunning()
-    if #self._connecting > 0 then
-        tinsert(self._connecting, co)
+    if #self.__connecting > 0 then
+        tinsert(self.__connecting, co)
         shaco.wait()
         return true
     else
-        if self._reconn_times == 0 then
+        if self.__reconn_times == 0 then
             return nil, 'No reconnect times' 
-        elseif self._reconn_times > 0 then
-            self._reconn_times = self._reconn_times - 1
+        elseif self.__reconn_times > 0 then
+            self.__reconn_times = self.__reconn_times - 1
         end
-        self._error = nil
-        self._connecting[1] = co
-        local id, err = socket.connect(self._host, self._port)
-        self._connecting[1] = nil
+        self.__connecting[1] = co
+        local id, err = socket.connect(self.__host, self.__port)
+        self.__connecting[1] = nil
         local ok
         if id then
             socket.readon(id)
-            if self._auth then
-                ok, err = pcall(self._auth, id)
+            if self.__auth then
+                ok, err = pcall(self.__auth, id)
                 if not ok then
                     socket.close(id)
                 end
@@ -93,17 +91,17 @@ local function connect(self)
         else
             ok = false
         end
-        for i=2, #self._connecting do
-            local co = self._connecting[i]
+        for i=2, #self.__connecting do
+            local co = self.__connecting[i]
             shaco.wakeup(co)
-            self._connecting[i] = nil
+            self.__connecting[i] = nil
         end
         if ok then
-            self._id = id 
+            self.__id = id 
             shaco.fork(dispatch, self)
             return true
         else
-            return nil, err or "Connect fail"
+            return nil, err 
         end
     end
 end
@@ -122,19 +120,19 @@ function socketchannel.create(opts)
         end
     end
     local self = setmetatable({
-        _host = host,
-        _port = port,
-        _id = id or false,
-        _auth = opts.auth,
-        _connecting = {},
-        _response_func = {},
-        _response_co = {},
-        _result_data = {},
-        _error = false,
-        _reconn_times = opts.reconn_times or -1, -- -1 for always reconnect
+        __host = host,
+        __port = port,
+        __id = id or false,
+        __auth = opts.auth,
+        __connecting = {},
+        __response_func = {},
+        __response_co = {},
+        __result = {},
+        __result_data = {},
+        __reconn_times = opts.reconn_times or -1, -- -1 for always reconnect
     }, socketchannel)
-    if self._id then
-        self._reconn_times = 0
+    if self.__id then
+        self.__reconn_times = 0
         shaco.fork(dispatch, self)
     end
     return self
@@ -145,38 +143,36 @@ function socketchannel:connect()
 end
 
 function socketchannel:close()
-    close(self)
+    close_channel(self)
 end
 
 function socketchannel:request(req, response)
-    local ok, err = connect(self)
-    if not ok then
-        return nil, err
-    end
+    assert(connect(self))
     local ok, err
     if type(req) == 'function' then
-        ok, err = pcall(req, self._id)
+        ok, err = pcall(req, self.__id)
     else
-        ok, err = socket.send(self._id, req)
+        ok, err = socket.send(self.__id, req)
     end
     if not ok then
-        close(self)
-        wakeup_all(self, err)
-        return nil, err or "Send error"
+        close_channel(self)
+        wakeup_all(self, err or socket_error)
+        return error(err)
     end
     local co = corunning()
-    tinsert(self._response_func, response)
-    tinsert(self._response_co, co)
+    tinsert(self.__response_func, response)
+    tinsert(self.__response_co, co)
 
     shaco.wait()
 
-    if self._error then
-        return nil, self._error
-    else
-        local r = self._result_data[co]
-        self._result_data[co] = nil
-        return r 
+    local ok = self.__result[co]
+    local data = self.__result_data[co]
+    self.__result[co] = nil
+    self.__result_data[co] = nil
+    if not ok then
+        error(data)
     end
+    return data
 end
 
 return socketchannel

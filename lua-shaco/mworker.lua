@@ -197,7 +197,7 @@ local function start_listen(conf)
                     master_handler(id, slave.name, shaco.unpackstring(ret))
                 end
                 response(channel:request(
-                    function(id) return assert(socket.ipc_sendfd(id, client_fd)) end,
+                    function(id) return true, assert(socket.ipc_sendfd(id, client_fd)) end,
                     function(id)
                         local head = assert(socket.ipc_read(id, 2))
                         head = sunpack('I2', head)

@@ -10,7 +10,7 @@ local function channel(sc, n, times)
     t1 = shaco.now()
     for i=1,times do
         assert(sc:request(data.."\n", function(id)
-            return assert(socket.read(id, "\n"))
+            return true, assert(socket.read(id, "\n"))
         end) == data)
     end
     t2 = shaco.now()

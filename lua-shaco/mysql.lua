@@ -3,7 +3,6 @@ local socket = require "socket"
 local socketchannel = require "socketchannel"
 local crypt = require "crypt.c"
 local mysqlaux = require "mysqlaux.c"
-local tbl = require "tbl"
 local assert = assert
 local sbyte = string.byte
 local ssub = string.sub
@@ -343,10 +342,7 @@ local function handshake_response(id, handshake, user, passwd, db)
     assert(socket.send(id, rpacket(s, handshake.sequence_id+1)))
 end
 
-local function check_response(result, err)
-    if not result then
-        return nil, err
-    end
+local function check_response(result)
     if result.type == "OK" then
         return true
     elseif result.type == "ERR" then
@@ -363,8 +359,8 @@ local function login_auth(user, passwd, db)
     return function(id)
         local handshake = read_handshake(id)
         handshake_response(id, handshake, user, passwd, db)
-        local result, err = read_generic_response(id)
-        assert(check_response(result, err))
+        local result = read_generic_response(id)
+        assert(check_response(result))
     end
 end
 
@@ -379,12 +375,10 @@ function mysql.connect(opts)
         __row_reader = opts.compact and read_row_compact or read_row,
     }, mysql)
     local ok, err = channel:connect()
-    if ok then
-        return self
-    else
-        return nil, err or 
-            sformat("mysql connect fail %s:%s", opts.host, opts.port)
+    if not ok then
+        error(sformat("mysql connect %s:%s fail %s", opts.host, opts.port, err))
     end
+    return self
 end
 
 function mysql:close()
@@ -392,32 +386,32 @@ function mysql:close()
 end
 
 function mysql:ping()
-    local response, err = self.__channel:request(rpacket(schar(0x0e), 0), 
+    local response = self.__channel:request(rpacket(schar(0x0e), 0), 
         function(id)
-            return read_generic_response(id)
+            return true, read_generic_response(id)
         end)
-    return check_response(response, err) 
+    return check_response(response) 
 end
 
 function mysql:use(db)
-    local response, err = self.__channel:request(rpacket(schar(0x02)..db.."\0", 0),
+    local response = self.__channel:request(rpacket(schar(0x02)..db.."\0", 0),
         function(id)
-            return read_generic_response(id)
+            return true, read_generic_response(id)
         end)
-    return check_response(response, err)
+    return check_response(response)
 end
 
 function mysql:execute(sql)
     return self.__channel:request(rpacket(schar(0x03)..sql, 0),
         function(id)
-            return read_generic_response(id, read_resultset, self)
+            return true, read_generic_response(id, read_resultset, self)
         end)
 end
 
 function mysql:statistics()
     return self.__channel:request(rpacket(schar(0x09), 0),
         function(id)
-            return read_generic_response(id, 
+            return true, read_generic_response(id, 
                 function(id, s) return s end)
         end)
 end
@@ -425,7 +419,7 @@ end
 function mysql:processinfo()
     return self.__channel:request(rpacket(schar(0x0a), 0),
         function(id)
-            return read_generic_response(id, read_resultset, self)
+            return true, read_generic_response(id, read_resultset, self)
         end)
 end
 

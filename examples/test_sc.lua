@@ -8,7 +8,7 @@ local function test(sc, n, times)
         local resp = sc:request(
             string.format('%d:%d\n', n, i), 
             function(id)
-                return assert(socket.read(id, "\n"))
+                return true, assert(socket.read(id, "\n"))
             end)
         print(string.format("[%d] read %s", n, resp))
     end 

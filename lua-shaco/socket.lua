@@ -10,6 +10,8 @@ local tonumber = tonumber
 
 local socket = {}
 
+local __error = setmetatable({}, { __tostring = function() return "[Error: socket]" end })
+
 local c_connect = assert(c.connect)
 local c_listen = assert(c.listen)
 local c_close = assert(c.close)
@@ -24,6 +26,7 @@ local socketbuffer_new = assert(socketbuffer.new)
 socket.getfd = assert(c.getfd)
 socket.pair = assert(c.pair)
 socket.closefd = assert(c.closefd)
+socket.error = assert(__error)
 
 local socket_pool = {}
 
@@ -189,7 +192,7 @@ function socket.connect(...)
                 return s.id
             else
                 socket_pool[id] = nil
-                return nil
+                return
             end
         end
         return id
@@ -264,7 +267,7 @@ function socket.read(id, format)
             end
         end
         socket_pool[id] = nil
-        return false
+        return false, __error
     end
 end
 
@@ -285,7 +288,7 @@ function socket.send(id, data, i, j)
     -- do not clear socket when connected is false,
     -- do this only when reading
     -- socket_pool[id] = nil
-    return false
+    return false, __error
 end
 
 function socket.ipc_read(id, format)
@@ -310,7 +313,7 @@ function socket.ipc_readfd(id, format)
             end
         end
     end
-    return false
+    return false, __error
 end
 
 function socket.ipc_sendfd(id, fd, ...)
@@ -326,7 +329,7 @@ function socket.ipc_sendfd(id, fd, ...)
     -- do not clear socket when connected is false,
     -- do this only when reading
     -- socket_pool[id] = nil
-    return false
+    return false, __error
 end
 
 function socket.ipc_send(id, data, i, j)
@@ -342,7 +345,7 @@ function socket.ipc_send(id, data, i, j)
     -- do not clear socket when connected is false,
     -- do this only when reading
     -- socket_pool[id] = nil
-    return false
+    return false, __error
 end
 
 function socket.limit(id, rlimit, slimit)

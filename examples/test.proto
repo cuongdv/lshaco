@@ -1,0 +1,18 @@
+
+message mail_item {
+    optional uint32 itemid=1;
+    optional string itemname=2;
+}
+
+message mail_data {
+    optional uint32 mailid=1;
+    optional string mailtype=2;
+    repeated mail_item itemlist=3;
+}
+
+message mail_list {
+	repeated mail_data data=1;
+    optional uint32 count=2;
+    optional uint32 count2=3;
+}
+

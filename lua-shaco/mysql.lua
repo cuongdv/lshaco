@@ -1,5 +1,4 @@
 local shaco = require "shaco"
-local socket = require "socket"
 local socketchannel = require "socketchannel"
 local crypt = require "crypt.c"
 local mysqlaux = require "mysqlaux.c"
@@ -102,18 +101,18 @@ local function rpacket(s, order)
     return spack("<I3B", l, order)..s
 end
 
-local function read_header(id)
-    local s = assert(socket.read(id,4))
+local function read_header(channel)
+    local s = channel:read(4)
     return extract_int3(s,1), sbyte(s,4)
 end
 
-local function read_packet(id)
-    local payload_length, sequence_id = read_header(id)
+local function read_packet(channel)
+    local payload_length, sequence_id = read_header(channel)
     assert(payload_length > 0)
-    return assert(socket.read(id, payload_length))
+    return channel:read(payload_length)
 end
 
-local function read_ok_packet(id, s)
+local function read_ok_packet(channel, s)
     local pack = { type="OK" }
     if #s > 1 then -- #s==1 in if row is empty in read one row
         local pos = 2
@@ -135,7 +134,7 @@ local function read_ok_packet(id, s)
     return pack
 end
 
-local function read_err_packet(id, s)
+local function read_err_packet(channel, s)
     local pack = {type="ERR"}
     pack.err_code = extract_int2(s,2)
     assert(sbyte(s,4)==35) -- '#'
@@ -144,35 +143,35 @@ local function read_err_packet(id, s)
     return pack
 end
 
-local function read_eof_packet(id, s)
+local function read_eof_packet(channel, s)
     local pack = {}
     pack.warnings = extract_int2(s,2)
     pack.status_flag = extract_int2(s,4)
     return pack
 end
 
-local function read_generic_response(id, special_response, ...)
-    local payload_length, sequence_id = read_header(id)
+local function read_generic_response(channel, special_response, ...)
+    local payload_length, sequence_id = read_header(channel)
     assert(payload_length > 0)
-    local s = assert(socket.read(id, payload_length))
+    local s = channel:read(payload_length)
     local header = sbyte(s,1)
     if header == 0x00 then
-        return read_ok_packet(id,s)
+        return read_ok_packet(channel,s)
     elseif header == 0xff then
-        return read_err_packet(id,s)
+        return read_err_packet(channel,s)
     elseif header == 0xfe then
-        return "EOF"--, read_eof_packet(id,s)
+        return "EOF"--, read_eof_packet(channel,s)
     else
         if special_response then
-            return special_response(id,s, ...)
+            return special_response(channel,s, ...)
         else
             error("Unknow generic response "..sformat("%0x",header))
         end
     end
 end
 
-local function read_column(id)
-    local s = read_packet(id)
+local function read_column(channel)
+    local s = read_packet(channel)
     local column = {}
     local pos = 1
     column.catalog, pos = string_lenenc(s,pos)
@@ -198,7 +197,7 @@ local function read_column(id)
     return column
 end
 
-local function read_row_compact(id, s, pack, columns)
+local function read_row_compact(channel, s, pack, columns)
     local pack = {}
     local pos, v
     pos = 1
@@ -209,7 +208,7 @@ local function read_row_compact(id, s, pack, columns)
     return pack
 end
 
-local function read_row(id, s, columns)
+local function read_row(channel, s, columns)
     local pack = {}
     local pos, v
     pos = 1
@@ -220,20 +219,20 @@ local function read_row(id, s, columns)
     return pack
 end
 
-local function read_resultset(id, s, self)
+local function read_resultset(channel, s, self)
     local column_count, pos = lenenc_int(s, 1)
     -- column definition
     local columns = {}
     for i=1,column_count do
-        columns[#columns+1] = read_column(id)
+        columns[#columns+1] = read_column(channel)
     end
     -- eof
-    assert(read_generic_response(id) == "EOF")
+    assert(read_generic_response(channel) == "EOF")
     -- row
     local rows = {}
     local result
     while true do
-        result = read_generic_response(id, self.__row_reader, columns)
+        result = read_generic_response(channel, self.__row_reader, columns)
         if result == "EOF" then
             break
         elseif result.type == nil then
@@ -250,11 +249,11 @@ local function read_resultset(id, s, self)
     end
 end
 
-local function read_handshake(id)
+local function read_handshake(channel)
     -- Initial Handshake Packet
     local pack = {}
-    pack.payload_length, pack.sequence_id = read_header(id)
-    local s = assert(socket.read(id, pack.payload_length))
+    pack.payload_length, pack.sequence_id = read_header(channel)
+    local s = channel:read(pack.payload_length)
     -- Protocol::HandshakeV10
     local pos = 1
     pack.protocol_version, pos = extract_int1(s,pos)
@@ -295,10 +294,10 @@ local function read_handshake(id)
         -- todo check this
         --error("the mysql server unsupport 41")
     --end
-    return pack
+    return true, pack
 end
 
-local function handshake_response(id, handshake, user, passwd, db)
+local function handshake_response(channel, handshake, user, passwd, db)
     local auth_plugin_name = handshake.auth_plugin_name
     if handshake.auth_plugin_name then
         if handshake.auth_plugin_name ~= "mysql_native_password" and
@@ -339,14 +338,14 @@ local function handshake_response(id, handshake, user, passwd, db)
     passwd..
     db..
     auth_plugin_name.."\0"
-    assert(socket.send(id, rpacket(s, handshake.sequence_id+1)))
+    channel:request(rpacket(s, handshake.sequence_id+1))
 end
 
 local function check_response(result)
     if result.type == "OK" then
         return true
     elseif result.type == "ERR" then
-        return false, result.message
+        error(result.message)
     else
         error("Unknow response "..t)
     end
@@ -356,11 +355,13 @@ local mysql = {}
 mysql.__index = mysql
 
 local function login_auth(user, passwd, db)
-    return function(id)
-        local handshake = read_handshake(id)
-        handshake_response(id, handshake, user, passwd, db)
-        local result = read_generic_response(id)
-        assert(check_response(result))
+    return function(channel)
+        local handshake = channel:response(read_handshake)
+        handshake_response(channel, handshake, user, passwd, db)
+        local result = channel:response(function(channel)
+            return true, read_generic_response(channel)
+        end)
+        check_response(result)
     end
 end
 
@@ -376,7 +377,7 @@ function mysql.connect(opts)
     }, mysql)
     local ok, err = channel:connect()
     if not ok then
-        error(sformat("mysql connect %s:%s fail %s", opts.host, opts.port, err))
+        error(sformat("Mysql connect %s:%s fail %s", opts.host, opts.port, err))
     end
     return self
 end
@@ -387,39 +388,39 @@ end
 
 function mysql:ping()
     local response = self.__channel:request(rpacket(schar(0x0e), 0), 
-        function(id)
-            return true, read_generic_response(id)
+        function(channel)
+            return true, read_generic_response(channel)
         end)
     return check_response(response) 
 end
 
 function mysql:use(db)
     local response = self.__channel:request(rpacket(schar(0x02)..db.."\0", 0),
-        function(id)
-            return true, read_generic_response(id)
+        function(channel)
+            return true, read_generic_response(channel)
         end)
     return check_response(response)
 end
 
 function mysql:execute(sql)
     return self.__channel:request(rpacket(schar(0x03)..sql, 0),
-        function(id)
-            return true, read_generic_response(id, read_resultset, self)
+        function(channel)
+            return true, read_generic_response(channel, read_resultset, self)
         end)
 end
 
 function mysql:statistics()
     return self.__channel:request(rpacket(schar(0x09), 0),
-        function(id)
-            return true, read_generic_response(id, 
-                function(id, s) return s end)
+        function(channel)
+            return true, read_generic_response(channel, 
+                function(channel, s) return s end)
         end)
 end
 
 function mysql:processinfo()
     return self.__channel:request(rpacket(schar(0x0a), 0),
-        function(id)
-            return true, read_generic_response(id, read_resultset, self)
+        function(channel)
+            return true, read_generic_response(channel, read_resultset, self)
         end)
 end
 

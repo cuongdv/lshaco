@@ -24,7 +24,7 @@ shaco.start(function()
         if not pcall(function() 
                 assert(shaco.uniqueservice(main))
             end) then
-            os.exit(1)
+            shaco.abort()
         end
     end
 end)

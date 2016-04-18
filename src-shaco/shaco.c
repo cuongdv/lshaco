@@ -120,9 +120,9 @@ shaco_init() {
 void
 shaco_fini() {
     shaco_msg_dispatcher_fini();
-    shaco_socket_fini();
     shaco_handle_fini();
     shaco_module_fini();
+    shaco_socket_fini();
     shaco_log_close();
     shaco_timer_fini();
     shaco_env_fini();

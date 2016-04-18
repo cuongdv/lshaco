@@ -198,10 +198,10 @@ local function start_listen(conf)
                 end
                 response(channel:request(
                     function(id) return true, assert(socket.ipc_sendfd(id, client_fd)) end,
-                    function(id)
-                        local head = assert(socket.ipc_read(id, 2))
+                    function(channel)
+                        local head = channel:ipc_read(2)
                         head = sunpack('I2', head)
-                        return assert(socket.ipc_read(id, head))
+                        return channel:ipc_read(head)
                     end))
             end)
             socket.close(id)

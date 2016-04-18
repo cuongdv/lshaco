@@ -12,6 +12,7 @@ local function close_channel(self)
     if self.__id then
         socket.close(self.__id)
         self.__id = false
+        self.__open = false
     end
 end
 
@@ -37,7 +38,7 @@ local function dispatch(self)
     while self.__id do
         local func, co = pop_response(self)
         if func then
-            local ok, result_ok, result_data = pcall(func, self.__id)
+            local ok, result_ok, result_data = pcall(func, self)
             if ok then
                 self.__result[co] = result_ok
                 self.__result_data[co] = result_data
@@ -60,8 +61,12 @@ local function dispatch(self)
 end
 
 local function connect(self)
-    if self.__id then
+    if self.__open then
         return true
+    else
+        if self.__auth_co == coroutine.running() then
+            return true -- authing
+        end
     end
     local co = corunning()
     if #self.__connecting > 0 then
@@ -76,29 +81,33 @@ local function connect(self)
         end
         self.__connecting[1] = co
         local id, err = socket.connect(self.__host, self.__port)
-        self.__connecting[1] = nil
         local ok
         if id then
+            self.__id = id
             socket.readon(id)
+            shaco.fork(dispatch, self)
             if self.__auth then
-                ok, err = pcall(self.__auth, id)
+                self.__auth_co = coroutine.running()
+                ok, err = pcall(self.__auth, self)
                 if not ok then
                     socket.close(id)
+                    self.__id = false
                 end
+                self.__auth_co = false
             else
                 ok = true
             end
         else
             ok = false
         end
+        self.__connecting[1] = nil
         for i=2, #self.__connecting do
             local co = self.__connecting[i]
             shaco.wakeup(co)
             self.__connecting[i] = nil
         end
         if ok then
-            self.__id = id 
-            shaco.fork(dispatch, self)
+            self.__open = true
             return true
         else
             return nil, err 
@@ -124,6 +133,7 @@ function socketchannel.create(opts)
         __port = port,
         __id = id or false,
         __auth = opts.auth,
+        __auth_co = false,
         __connecting = {},
         __response_func = {},
         __response_co = {},
@@ -146,6 +156,23 @@ function socketchannel:close()
     close_channel(self)
 end
 
+local function wait_response(self, response)
+    local co = corunning()
+    tinsert(self.__response_func, response)
+    tinsert(self.__response_co, co)
+    
+    shaco.wait()
+
+    local ok = self.__result[co]
+    local data = self.__result_data[co]
+    self.__result[co] = nil
+    self.__result_data[co] = nil
+    if not ok then
+        error(data)
+    end
+    return data
+end
+
 function socketchannel:request(req, response)
     assert(connect(self))
     local ok, err
@@ -159,20 +186,26 @@ function socketchannel:request(req, response)
         wakeup_all(self, err or socket_error)
         return error(err)
     end
-    local co = corunning()
-    tinsert(self.__response_func, response)
-    tinsert(self.__response_co, co)
-
-    shaco.wait()
-
-    local ok = self.__result[co]
-    local data = self.__result_data[co]
-    self.__result[co] = nil
-    self.__result_data[co] = nil
-    if not ok then
-        error(data)
+    
+    if response == nil then
+        return
     end
-    return data
+    return wait_response(self, response)
 end
+
+function socketchannel:response(response)
+    assert(connect(self))
+    return wait_response(self, response)
+end
+
+local function wrap_socket_function(f)
+    return function(self, ...)
+        return assert(f(self.__id, ...))
+    end
+end
+
+socketchannel.read = wrap_socket_function(socket.read)
+socketchannel.ipc_read = wrap_socket_function(socket.ipc_read)
+socketchannel.ipc_readfd = wrap_socket_function(socket.ipc_readfd)
 
 return socketchannel

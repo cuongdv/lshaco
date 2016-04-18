@@ -8,7 +8,8 @@
 static int _TRACE=0;
 static int                                        
 _traceback(lua_State *L) {                        
-    const char *msg = lua_tostring(L, 1);
+    //const char *msg = lua_tostring(L, 1);
+    const char *msg = luaL_tolstring(L, 1, NULL);
     if (msg)
         luaL_traceback(L, L, msg, 1);
     else 

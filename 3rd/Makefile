@@ -1,5 +1,4 @@
 SUBDIRS := \
-	pbc \
 	lpeg \
 	luafilesystem \
 	lua-snapshot \
@@ -14,9 +13,7 @@ $(SUBDIRS) :
 
 install :
 	@mkdir -p ../lib-3rd && \
-	 cp pbc/libpbc.so \
-		pbc/protobuf.so \
-		lpeg/lpeg.so \
+	 cp lpeg/lpeg.so \
 		luafilesystem/src/lfs.so \
 		lua-snapshot/snapshot.so \
 		lua-cjson/cjson.so \

@@ -95,8 +95,8 @@ function msgserver.start(handler)
             error('404 Not Found')
         end
         version = tonumber(version)
-        if version < u.version then
-            error('403 Forbidden')
+        if version <= u.version then
+            error('403 Version Expired')
         end
         hmac = base64decode(hmac)
         local token = username..':'..version
@@ -107,7 +107,7 @@ function msgserver.start(handler)
 
         u.sock = id
         u.addr = addr
-        u.version = u.version + 1
+        u.version = version
         connection[id] = u
     end
 

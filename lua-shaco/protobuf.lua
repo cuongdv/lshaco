@@ -7,7 +7,6 @@ local assert = assert
 local pairs = pairs
 local ipairs = ipairs
 local string = string
-local print = print
 local io = io
 local tinsert = table.insert
 local rawget = rawget
@@ -149,10 +148,11 @@ _reader[3] = function(msg) return _reader.bool end
 _reader[4] = function(msg) return _reader.string end
 _reader[5] = function(msg) return _reader.string end
 _reader[6] = function(msg)
-	local message = _reader.message
-	return	function(self,key)
-			return message(self, key, msg)
-		end
+    return function(self, key) return false end
+	--local message = _reader.message
+	--return	function(self,key)
+	--		return message(self, key, msg)
+	--	end
 end
 _reader[7] = _reader[1]
 _reader[8] = _reader[1]
@@ -166,10 +166,11 @@ _reader[128+3] = function(msg) return _reader.bool_repeated end
 _reader[128+4] = function(msg) return _reader.string_repeated end
 _reader[128+5] = function(msg) return _reader.string_repeated end
 _reader[128+6] = function(msg)
-	local message = _reader.message_repeated
-	return	function(self,key)
-			return message(self, key, msg)
-		end
+    return function(self, key) return false end
+	--local message = _reader.message_repeated
+	--return	function(self,key)
+	--		return message(self, key, msg)
+	--	end
 end
 _reader[128+7] = _reader[128+1]
 _reader[128+8] = _reader[128+1]

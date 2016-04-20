@@ -9,14 +9,14 @@ static int _rawmode = 0;
 static struct termios _orig_termios;
 
 static void 
-_rawmod_off(int fd) {
-    if (_rawmode && tcsetattr(fd,TCSAFLUSH,&_orig_termios) != -1)
+_rawmod_off() {
+    if (_rawmode && tcsetattr(0,TCSAFLUSH,&_orig_termios) != -1)
         _rawmode = 0;
 }
 
 static void 
 _atexit_restore(void) {
-    _rawmod_off(STDIN_FILENO);
+    _rawmod_off();
 }
 
 static int
@@ -29,12 +29,12 @@ lisatty(lua_State *L) {
 }
 
 static int 
-_rawmod_on(int fd) {
+_rawmod_on() {
     if (!isatty(STDIN_FILENO)) 
         return 1;
 
     struct termios raw;
-    if (tcgetattr(fd,&_orig_termios) == -1)
+    if (tcgetattr(0,&_orig_termios) == -1)
         return 1;
 
     raw = _orig_termios;
@@ -53,7 +53,7 @@ _rawmod_on(int fd) {
     raw.c_cc[VMIN] = 1; raw.c_cc[VTIME] = 0; /* 1 byte, no timer */
 
     /* put terminal in raw mode after flushing */
-    if (tcsetattr(fd,TCSAFLUSH,&raw) < 0)
+    if (tcsetattr(0,TCSAFLUSH,&raw) < 0)
         return 1;
     
     _rawmode = 1;
@@ -67,8 +67,7 @@ _rawmod_on(int fd) {
 
 static int 
 lrawmode_on(lua_State* L) {
-    int fd = luaL_checkinteger(L,1);
-    if (_rawmod_on(fd) == 0)
+    if (_rawmod_on() == 0)
         lua_pushboolean(L, 1);
     else
         lua_pushboolean(L, 0);
@@ -77,8 +76,7 @@ lrawmode_on(lua_State* L) {
 
 static int 
 lrawmode_off(lua_State* L) {
-    int fd = luaL_checkinteger(L,1);
-    _rawmod_off(fd);
+    _rawmod_off();
     return 0;
 }
 

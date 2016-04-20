@@ -1,10 +1,14 @@
 local c = require "linenoise.c"
-local io = io
-local table = table
-local string = string
+local stdout = io.stdout
+local tinsert = table.insert
+local tremove = table.remove
+local assert = assert
+local sbyte = string.byte
+local sformat = string.format
 
 local linenoise = {}
 
+local _prompt
 local _line
 local _cursor_pos
 local _historys = {}
@@ -18,12 +22,12 @@ local function clear_line()
 end
 
 local function refresh()
-    local line = '\r'.._line..'\x1b[0K\r'
-    if _cursor_pos > 1 then
-        line = line..string.format('\x1b[%dC', _cursor_pos-1)
+    local line = '\r'.._prompt.._line..'\x1b[0K\r'
+    if _cursor_pos >= 1 then
+        line = line..sformat('\x1b[%dC', _cursor_pos-1 + #_prompt)
     end
-    io.stdout:write(line)
-    io.stdout:flush()
+    stdout:write(line)
+    stdout:flush()
 end
 
 local function append_char(c)
@@ -64,12 +68,12 @@ local function append_history()
             return 
         end
         if last=='' then
-            table.remove(_historys)
+            tremove(_historys)
         end
     end
     if _line~='' then
         if #_historys >= _history_max then
-            table.remove(_historys,1)
+            tremove(_historys,1)
         end
         _historys[#_historys+1] = _line
     end
@@ -137,15 +141,15 @@ local function key_ctrl_k()
 end
 
 local function key_ctrl_l()
-    io.stdout:write("\x1b[H\x1b[2J")
+    stdout:write("\x1b[H\x1b[2J")
     refresh()
 end
 
 local function key_enter()
-    io.stdout:write('\n')
-    io.stdout:flush()
     append_history()
-    return true
+    stdout:write('\n')
+    stdout:flush()
+    return _line
 end
 
 local function key_ctrl_t()
@@ -230,18 +234,21 @@ local control = {
     [27] = key_esc,         --ESC
 }
 
-function linenoise.read(fd, getc, gets)
+function linenoise.read(prompt, getc, gets)
     local ok, err
     if c.isatty() then -- Not a tty: read from file / pipe
         ok, err = pcall(gets)
     else
+        _prompt = prompt or ''
         ok, err = pcall(function()
             local res
             clear_line()
-            assert(c.rawmode_on(fd))
+            assert(c.rawmode_on())
+            stdout:write(_prompt)
+            stdout:flush()
             while true do
                 local c = assert(getc())
-                local b = string.byte(c)
+                local b = sbyte(c)
                 local func = control[b]
                 if func then
                     res = func(getc)
@@ -253,9 +260,9 @@ function linenoise.read(fd, getc, gets)
                     refresh()
                 end
             end
-            return res and _line or nil
+            return res or nil
         end)
-        c.rawmode_off(fd)
+        c.rawmode_off()
     end
     if not ok then
         print('\x1b[31m'..err..'\x1b[0m')
@@ -278,7 +285,7 @@ function linenoise.loadhistory(file)
         for c in f:lines('l') do
             if #_historys < _history_max then
                 if c ~= '' then
-                    table.insert(_historys, 1, c)
+                    tinsert(_historys, 1, c)
                 end
             else break
             end

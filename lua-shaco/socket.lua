@@ -267,7 +267,7 @@ function socket.read(id, format)
             end
         end
         socket_pool[id] = nil
-        return false, __error
+        return nil, __error
     end
 end
 
@@ -288,7 +288,7 @@ function socket.send(id, data, i, j)
     -- do not clear socket when connected is false,
     -- do this only when reading
     -- socket_pool[id] = nil
-    return false, __error
+    return nil, __error
 end
 
 function socket.ipc_read(id, format)
@@ -313,7 +313,7 @@ function socket.ipc_readfd(id, format)
             end
         end
     end
-    return false, __error
+    return nil, __error
 end
 
 function socket.ipc_sendfd(id, fd, ...)
@@ -329,7 +329,7 @@ function socket.ipc_sendfd(id, fd, ...)
     -- do not clear socket when connected is false,
     -- do this only when reading
     -- socket_pool[id] = nil
-    return false, __error
+    return nil, __error
 end
 
 function socket.ipc_send(id, data, i, j)
@@ -345,7 +345,7 @@ function socket.ipc_send(id, data, i, j)
     -- do not clear socket when connected is false,
     -- do this only when reading
     -- socket_pool[id] = nil
-    return false, __error
+    return nil, __error
 end
 
 function socket.limit(id, rlimit, slimit)

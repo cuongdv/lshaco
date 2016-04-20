@@ -14,7 +14,7 @@ shaco.start(function()
         local reader = function()
             local id = assert(socket.stdin())
             return function()
-                return linenoise.read(0,
+                return linenoise.read('',
                     function() return socket.read(id, 1) end,
                     --todo why this do not work ?
                     --function() return socket.read(id, "\n") end)
@@ -72,19 +72,10 @@ shaco.start(function()
                 socket.start(id)
                 socket.readon(id)
                 local read = function()
-                    local ok, info = pcall(function()
-                        return assert(socket.read(id, '\n'))
-                    end)
-                    if ok then
-                        return info
-                    else -- return nil to break commandline loop
-                        shaco.error(info)
-                        return nil
-                    end
+                    return socket.read(id, '\n')
                 end
                 local response = function(...)
-                    local msg = {...}
-                    socket.send(id, table.concat(msg, ' ')..'\n')
+                    socket.send(id, table.concat({...}, ' ')..'\n')
                 end
                 commandline.loop(read, response)
                 socket.close(id)

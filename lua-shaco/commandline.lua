@@ -19,13 +19,15 @@ local _expand = {}
 
 local command = {}
 
-function command.help(response)
+function command.help()
+    local t = {}
     for k,v in pairs(command) do
-        response('* '..k)
+        t[#t+1] = '* '..k
     end
+    return table.concat(t)
 end
 
-function command.time(response)
+function command.time()
     local starttime = tonumber(shaco.command("STARTTIME")) // 1000
     local now = shaco.now() // 1000
     local elapsed = now - starttime
@@ -40,28 +42,28 @@ function command.time(response)
     min = elapsed // 60
     sec = elapsed % 60
 
-    response(sformat("%dd%dh%dm%ss [%s ~ %s]", day, hour, min, sec, starttime, now))
+    return sformat("%dd%dh%dm%ss [%s ~ %s]", day, hour, min, sec, starttime, now)
 end
 
-function command.loglevel(response, level)
+function command.loglevel(level)
     if level then
         shaco.command("SETLOGLEVEL", level)
     end
-    response(shaco.command("GETLOGLEVEL"))
+    return shaco.command("GETLOGLEVEL")
 end
 
-function command.start(response, name, ...)
+function command.start(name, ...)
     assert(name, 'no name')
     local args = {...}
     args = table.concat(args, ' ')
-    assert(shaco.newservice(name..' '..args))
+    print("start newservice...",name)
+    return assert(shaco.newservice(name..' '..args))
 end
 
-function command.load(response, name, ...)
+function command.load(name, ...)
     assert(name, 'no name')
     if _expand[name] then
-        response('Expand already load')
-        return
+        return 'Expand already load'
     end
     local func
     local errv = {}
@@ -76,29 +78,26 @@ function command.load(response, name, ...)
         end
     end
     if not func then
-        response(table.concat(errv, '\n'))
-        return
+        return table.concat(errv, '\n')
     end
     local ok, h = pcall(func)
     if not ok then
-        response(h)
-        return
+        return h
     end
     assert(h and type(h.handle)=='function', 'no handle')
     if h.init then
-        local ok, err = xpcall(h.init, debug.traceback, response, ...)
+        local ok, err = xpcall(h.init, debug.traceback, ...)
         if not ok then
-            response(err)
             if h.fini then
                 h.fini()
             end
-            return
+            return err
         end
     end
     _expand[name] = h
 end
 
-function command.unload(response, name)
+function command.unload(name)
     local h = _expand[name]
     if h then
         if h.fini then
@@ -108,7 +107,7 @@ function command.unload(response, name)
     end
 end
 
-local function handle_private(response, cmdline)
+local function handle_private(cmdline)
     if string.byte(cmdline,1)==58 then --':' mod
         cmdline = string.sub(cmdline, 2)
         local args = {}
@@ -120,9 +119,9 @@ local function handle_private(response, cmdline)
         --local handle = shaco.queryservice(name) -- will block
         local value = shaco.call(handle, "lua", args[2], select(3, table.unpack(args)))
         if type(value) == "table" then
-            response(tbl(value, "result"))
+            return tbl(value, "result")
         else
-            response(tostring(value))
+            return tostring(value)
         end
     else
         local args = {}
@@ -132,9 +131,9 @@ local function handle_private(response, cmdline)
         if #args > 0 then
             local func = command[args[1]]
             if func then
-                func(response, select(2, table.unpack(args)))
+                return func(select(2, table.unpack(args)))
             else
-                response("Unknown command "..args[1])
+                return "Unknown command "..args[1]
             end
         end
     end
@@ -157,13 +156,13 @@ function commandline.loop(read, response)
                     if name and cmdline then
                         local h = _expand[name]
                         if h then
-                            h.handle(response, cmdline)
+                            response(h.handle(cmdline))
                         else
                             response('No expand '..name)
                         end
                     end
                 else
-                    handle_private(response, cmdline)
+                    response(handle_private(cmdline))
                 end
             end
         end, debug.traceback)

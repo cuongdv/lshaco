@@ -21,9 +21,6 @@ shaco.start(function()
                     function() return io.stdin:read("l") end)
             end
         end
-        local response = function(...)
-            print(...)
-        end
         shaco.fork(function(...)
             linenoise.history(tonumber(shaco.getenv('console_historymax')))
             local history_file = shaco.getenv('console_historyfile')
@@ -35,7 +32,7 @@ shaco.start(function()
                 linenoise.savehistory(history_file)
             end
             shaco.abort('by console')
-        end, reader(), response)
+        end, reader(), print)
     end
     -- harbor
     --if tonumber(shaco.getenv('slaveid')) then

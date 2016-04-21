@@ -78,7 +78,7 @@ $(LUA_A):
 # pbc
 PBC_A=3rd/pbc/build/libpbc.a
 $(PBC_A):
-	cd 3rd/pbc && make lib CFLAGS="$(SHACO_MALLOC_FLAG)"
+	cd 3rd/pbc && make lib CFLAGS="$(SHACO_MALLOC_FLAG) -fPIC"
 
 # jemalloc
 IJEMALLOC=-I3rd/jemalloc/include/jemalloc
@@ -191,6 +191,9 @@ dist:
 	3rd
 	scp lshaco.tgz qzsource:
 	ssh qzsource "mkdir -pv lshaco && tar -mzxf lshaco.tgz -C lshaco && cd lshaco && make cleanall && make && make 3rd && make server"
+
+distclean:
+	ssh qzsource "rm -rf lshaco lshaco.tgz"
 
 clean:	
 	rm -f $(all_t) 

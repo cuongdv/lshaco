@@ -1,5 +1,5 @@
 
-›
+±
 examples/test.proto"-
 	mail_item
 itemid (
@@ -18,4 +18,6 @@
 info (2
 .mail_info
 count (
-count2 (
+count2 ("
+test
+intv (

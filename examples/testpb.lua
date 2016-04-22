@@ -86,5 +86,25 @@ end
 print("=========================================")
 --test_error(pb.decode)
 --test_ok(pb.decode)
-test_decode(pb.decode)
+--test_decode(pb.decode)
+
+local function test_intv()
+    local r
+    r = pb.decode("test", "")
+    print(r, r.intv)
+
+    local t = {intv={}}
+    r = pb.encode("test", t)
+    r = pb.decode("test", r)
+    print(r, r.intv)
+
+    local t = {intv={1,0,0, 0, 9}}
+    r = pb.encode("test", t)
+    r = pb.decode("test", r)
+    print(r, tbl(r.intv))
+
+end
+
+test_intv()
+
 os.exit(0)

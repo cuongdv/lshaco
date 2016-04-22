@@ -142,36 +142,36 @@ end
 #define PBC_REPEATED 128
 ]]
 
+local function __no_default_table() return false end
+
 _reader[1] = function(msg) return _reader.int end
 _reader[2] = function(msg) return _reader.real end
 _reader[3] = function(msg) return _reader.bool end
 _reader[4] = function(msg) return _reader.string end
 _reader[5] = function(msg) return _reader.string end
-_reader[6] = function(msg)
-    return function(self, key) return false end
+_reader[6] = function(msg) return __no_default_table end
 	--local message = _reader.message
 	--return	function(self,key)
 	--		return message(self, key, msg)
 	--	end
-end
+--end
 _reader[7] = _reader[1]
 _reader[8] = _reader[1]
 _reader[9] = _reader[5]
 _reader[10] = _reader[7]
 _reader[11] = _reader[7]
 
-_reader[128+1] = function(msg) return _reader.int_repeated end
-_reader[128+2] = function(msg) return _reader.real_repeated end
-_reader[128+3] = function(msg) return _reader.bool_repeated end
-_reader[128+4] = function(msg) return _reader.string_repeated end
-_reader[128+5] = function(msg) return _reader.string_repeated end
-_reader[128+6] = function(msg)
-    return function(self, key) return false end
+_reader[128+1] = function(msg) return __no_default_table end --return _reader.int_repeated end
+_reader[128+2] = function(msg) return __no_default_table end --return _reader.real_repeated end
+_reader[128+3] = function(msg) return __no_default_table end --return _reader.bool_repeated end
+_reader[128+4] = function(msg) return __no_default_table end --return _reader.string_repeated end
+_reader[128+5] = function(msg) return __no_default_table end --return _reader.string_repeated end
+_reader[128+6] = function(msg) return __no_default_table end
 	--local message = _reader.message_repeated
 	--return	function(self,key)
 	--		return message(self, key, msg)
 	--	end
-end
+--end
 _reader[128+7] = _reader[128+1]
 _reader[128+8] = _reader[128+1]
 _reader[128+9] = _reader[128+5]

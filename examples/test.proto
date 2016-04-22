@@ -22,3 +22,6 @@ message mail_list {
     optional uint32 count2=4;
 }
 
+message test {
+    repeated uint32 intv=1;
+}

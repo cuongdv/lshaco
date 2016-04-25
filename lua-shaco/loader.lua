@@ -31,7 +31,7 @@ __newindex = function(_, k)
 end,
 })
 
-package.path  = LUA_PATH..';'..package.path
-package.cpath = LUA_CPATH..';'..package.cpath
+package.path  = LUA_PATH--..';'..package.path
+package.cpath = LUA_CPATH--..';'..package.cpath
 
 main(select(2, table.unpack(args)))

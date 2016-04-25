@@ -29,15 +29,13 @@ function gateserver.closeclient(id)
 end
 
 function gateserver.send(id, data)
-    if connection[id] then
-        local size = socket.send(id, data)
-        if size then
-            if size > slimit then
-                shaco.error(sformat('Connection %d send buffer too large %d', id, size))
-                disconnect(id, true, "sendbuffer")
-            end
-        else disconnect(id, false, "socket")
+    local size = socket.send(id, data)
+    if size then
+        if size > slimit then
+            shaco.error(sformat('Connection %d send buffer too large %d', id, size))
+            disconnect(id, true, "sendbuffer")
         end
+    else disconnect(id, false, "socket")
     end
 end
 

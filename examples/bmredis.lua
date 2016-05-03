@@ -10,12 +10,17 @@ local conf = {
 shaco.start(function()
     local times = 100000
     local db = redis.connect(conf)
-    print("start:", db, times)
-    local t1 = os.clock()
-    for i=1,times do
-        db:ping()
+
+    local function bm(times, func)
+        local t1 = os.clock()
+        for i=1, times do
+            func()
+        end
+        local t2 = os.clock()
+        print(string.format("use time: %.3f, qps: %.3f", t2-t1, times/(t2-t1)))
     end
-    local t2 = os.clock()
-    print(t2-t1, times/(t2-t1))
+    bm(times, function() 
+        assert(db:ping() == "PONG") 
+    end)
     db:close()
 end)

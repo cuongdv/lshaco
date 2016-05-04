@@ -5,7 +5,7 @@ local tbl = require "tbl"
 local conf = {
     host = "127.0.0.1",
     port = 6379,
-    db = 1,
+--    db = 1,
 }
 shaco.start(function()
     shaco.fork(function()
@@ -53,15 +53,23 @@ shaco.start(function()
     print(tbl(db:brpop('list_l', 10)))
     db:close()
 
+    db:set('a', 1)
+    db:set('b', 2)
+    db:set('c', 3)
     print('[multi]')
     print(db:multi())
     print(db:get('a'))
-    print(db:get('A'))
-    print(db:get('C'))
+    print(db:get('b'))
+    print(db:get('c'))
     local r = db:exec()
-    for k, v in pairs(r) do
-        print(k, v)
-    end
+    print(tbl(r))
+
+    print('[multi 2]')
+    local r = db:multiexec(function()
+        print(db:zrevrank('rank1', 'A'))
+        print(db:zrevrange('rank1', 0, 1, "withscores"))
+    end)
+    print(tbl(r))
 
     print('[publish]')
     for i = 1,10 do

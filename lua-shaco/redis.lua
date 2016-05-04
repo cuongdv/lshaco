@@ -113,6 +113,12 @@ function __M:exists(...) return command(self, 'exists', ...) == 1 end
 function __M:hexists(key, field) return command(self, 'hexists', key, field) == 1 end
 function __M:sismember(key, member) return command(self, 'sismember', key, member) == 1 end
 
+function __M:multiexec(func)
+    self:multi()
+    pcall(func)
+    return self:exec()
+end
+
 setmetatable(__M, { __index = function(t, k)
     local f = function(self, ...)
         return command(self, k, ...)

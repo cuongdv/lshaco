@@ -156,6 +156,25 @@ ltopointstring(lua_State *L) {
     return 1;
 }
 
+static int
+ltobytes(lua_State *L) {
+    size_t l;
+    const char *s = luaL_checklstring(L,1,&l);
+    char *p = shaco_malloc(l);
+    memcpy(p,s,l);
+    lua_pushlightuserdata(L,p);
+    lua_pushinteger(L,l);
+    return 2;
+}
+
+static int
+lfreebytes(lua_State *L) {
+    luaL_checktype(L, 1, LUA_TLIGHTUSERDATA);
+    void *p = lua_touserdata(L,1);
+    shaco_free(p);
+    return 0;
+}
+
 int
 luaopen_shaco_c(lua_State *L) {
 	luaL_checkversion(L);
@@ -172,6 +191,8 @@ luaopen_shaco_c(lua_State *L) {
         { "now",            lnow },
         { "tostring",       ltostring },
         { "topointstring",  ltopointstring },
+        { "tobytes",        ltobytes},
+        { "freebytes",      lfreebytes},
         { NULL, NULL},
     };
 	luaL_newlibtable(L, l);

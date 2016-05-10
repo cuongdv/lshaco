@@ -10,10 +10,9 @@ local function tbl(t, name)
     local function key(k)           return type(k)=="number" and "["..k.."]" or tostring(k) end
     local function value(v)         return type(v)=="string" and '"'..sgsub(v,'"','\\"')..'"' or tostring(v) end
     local function fullkey(ns, k)   return ns..(type(k)=="number" and "["..k.."]" or "."..tostring(k)) end
+   
+    name = tostring(name)
     
-    if type(name) ~= 'string' then
-        name = tostring(t)
-    end
     local cache = { [t] = name }
 	local function serialize(t, name, tab, ns)
         local tab2 = tab.."  "

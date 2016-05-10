@@ -122,19 +122,21 @@ freebuffer(struct socket_buffer *sb,
 static struct buffer_node *
 checksep(struct buffer_node *node, 
          int offset, 
-         const char *sep, int l, int *end) {
+         const char *sep, int len, int *end) {
     int n=0;
+    int m=len;
     do {
         int sz = node->sz-offset;
-        if (sz > l)
-            sz = l;
+        if (sz > m)
+            sz = m;
         if (memcmp(node->p+offset, sep+n, sz))
             return NULL;
         n += sz;
-        if (n>=l) {
+        if (n>=len) {
             *end = offset+sz;
             return node;
         }
+        m -= sz;
         offset = 0;
         node = node->next;
     } while (node);
@@ -144,14 +146,14 @@ checksep(struct buffer_node *node,
 static int
 readsep(struct lua_State *L, 
         struct socket_buffer *sb, 
-        const char *sep, int l) {
+        const char *sep, int len) {
     struct buffer_node *current = sb->head;
     struct buffer_node *end_node;
     int offset = sb->offset;
     int end, i;
     while (current) {
         for (i=offset; i<current->sz; ++i) {
-            end_node = checksep(current, i, sep, l, &end);
+            end_node = checksep(current, i, sep, len, &end);
             if (end_node) {
                 pushpack(L, sb, current, i);
                 freebuffer(sb, end_node, end);

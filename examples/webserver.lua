@@ -1,5 +1,6 @@
 local shaco = require "shaco"
 local http = require "http"
+local httpsocket = require "httpsocket"
 local tbl = require "tbl"
 local socket = require "socket"
 
@@ -13,7 +14,7 @@ shaco.start(function()
             print ("accept", id)
             socket.start(id)
             socket.readon(id)
-            local code, method, uri, head_t, body = http.read(id)
+            local code, method, uri, head_t, body = http.read(httpsocket.reader(id))
             print ('code:'..code, 'method:'..method, 'uri:'..uri)
             tbl.print(head_t, '[head]')
             print('[body]='..body)
@@ -21,7 +22,7 @@ shaco.start(function()
             body = "1234"
             head_t = {}
             head_t["content-type"] = "text/html; charset=utf8"
-            http.response(id, code, body, head_t)
+            http.response(code, body, head_t, httpsocket.sender(id))
             socket.shutdown(id)
         end))
 end)

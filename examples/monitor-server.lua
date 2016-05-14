@@ -3,6 +3,7 @@
 
 local shaco = require "shaco"
 local http = require "http"
+local httpsocket = require "httpsocket"
 local socket = require "socket"
 local websocket = require "websocket"
 local tbl = require "tbl"
@@ -74,7 +75,8 @@ shaco.start(function()
             shaco.trace(string.format("new connection [%d] %s", id, addr))
             socket.start(id)
             socket.readon(id)
-            local code, method, uri, head_t, body, version = http.read(id)
+            local code, method, uri, head_t, body, version = http.read(
+                httpsocket.reader(id))
             if code ~= 200 then
                 socket.close(id)
                 return
@@ -90,14 +92,16 @@ shaco.start(function()
                 websocket.handshake(id, code, method, uri, head_t, body, version)
                 read_routine(id)
             elseif string.find(uri, "favicon") then
-                http.response(id, 200, nil, 
-                    {["content-type"]="image/x-icon", connection="close"})
+                http.response(200, nil, 
+                    {["content-type"]="image/x-icon", connection="close"},
+                    httpsocket.sender(id))
                 socket.close(id)
             else
                 local f = io.open(root..uri)
                 local body = f and f:read("*a") or "not resouce"
-                http.response(id, 200, body, 
-                    {["content-type"]="text/html; charset=utf8", connection="close"})
+                http.response(200, body, 
+                    {["content-type"]="text/html; charset=utf8", connection="close"},
+                    httpsocket.sender(id))
                 socket.close(id)
             end
         end)

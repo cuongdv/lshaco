@@ -1,4 +1,5 @@
 local http = require "http"
+local httpsocket = require "httpsocket"
 local socket = require "socket"
 local crypt = require "crypt.c"
 local tbl = require "tbl"
@@ -39,7 +40,7 @@ local function accept_response(id, code, key, uri)
         head_t["sec-websocket-accept"] = crypt.base64encode(
             crypt.sha1(key.."258EAFA5-E914-47DA-95CA-C5AB0DC85B11"))
     end
-    http.response(id,code, nil, head_t) 
+    http.response(code, nil, head_t, httpsocket.sender(id)) 
 end
 
 function websocket.handshake(id, code, method, uri, head_t, body, version)
@@ -51,13 +52,16 @@ function websocket.connect(host, uri, headers)
     host, port = host:match("([^:]+):?(%d*)$")
     port = tonumber(port) or 80
     local id = assert(socket.connect(host, port))
+    socket.readon(id)
     local headers = headers or {}
     headers['host'] = host
     headers['upgrade'] = 'websocket'
     headers['connection'] = 'upgrade'
     headers['sec-websocket-key'] = 'test-websocket-key'
     headers['sec-websocket-version'] = '13'
-    local code = http.get(id, uri, headers) -- skip check header ?
+    local code = http.request("GET", host, uri, headers, nil,
+        httpsocket.reader(id),
+        httpsocket.sender(id)) -- skip check header ?
     if code == 101 then
         return id
     else
@@ -167,7 +171,7 @@ function websocket.close(id, code, reason, maskkey)
         end
     end
     send_frame(id, 0x88, data, maskkey)
-    socket.close(id, false) -- just not force close
+    socket.close(id) 
 end
 
 function websocket.send(id, data, maskkey)

@@ -35,9 +35,9 @@ end
 local function accept_response(id, code, key, uri)
     local head_t = {}
     if code == 101 then
-        head_t["upgrade"] = "websocket"
-        head_t["connection"] = "upgrade"
-        head_t["sec-websocket-accept"] = crypt.base64encode(
+        head_t["Upgrade"] = "Websocket"
+        head_t["Connection"] = "Upgrade"
+        head_t["Sec-WebSocket-Accept"] = crypt.base64encode(
             crypt.sha1(key.."258EAFA5-E914-47DA-95CA-C5AB0DC85B11"))
     end
     http.response(code, nil, head_t, httpsocket.sender(id)) 

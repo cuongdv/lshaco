@@ -191,6 +191,11 @@ dist:
 	3rd
 	scp lshaco.tgz qzcs:
 	ssh qzcs "mkdir -pv lshaco && tar -mzxf lshaco.tgz -C lshaco && cd lshaco && make cleanall && make && make 3rd && make server"
+	mkdir -pv ~/server_linux
+	mkdir -pv ~/server_linux/bin
+	scp qzcs:server/bin/shaco ~/server_linux/bin
+	scp qzcs:server/bin/*.so ~/server_linux/bin
+	scp qzcs:server/bin/*.lso ~/server_linux/bin
 
 distclean:
 	ssh qzcs "rm -rf lshaco lshaco.tgz"

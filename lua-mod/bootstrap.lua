@@ -5,7 +5,8 @@ shaco.start(function()
     handle = assert(tonumber(shaco.command('LAUNCH', 'lua launcher')))
     shaco.command('REG', 'launcher '..handle)
 
-    if shaco.getenv('console') ~= "0" then
+    local con = shaco.getenv('console')
+    if con and con ~= "0" then
         handle = assert(shaco.uniqueservice('console'))
         shaco.command('REG', 'console '..handle)
     end

@@ -47,6 +47,19 @@ function websocket.handshake(id, code, method, uri, head_t, body, version)
     accept_response(id, accept(code, method, uri, head_t, body, version))
 end
 
+function websocket.accept(id)
+    local code, method, uri, head_t, body, version = http.read(
+        httpsocket.reader(id))
+    if code ~= 200 then
+        error("Invalid code:"..code)
+    end
+    if method ~= "GET" then
+        error("Invalid method:"..method)
+    end
+    websocket.handshake(id, code, method, uri, head_t, body, version)
+
+end
+
 function websocket.connect(host, uri, headers)
     local port
     host, port = host:match("([^:]+):?(%d*)$")

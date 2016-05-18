@@ -192,10 +192,11 @@ function socket.connect(...)
                 return s.id
             else
                 socket_pool[id] = nil
-                return
+                return nil
             end
         end
         return id
+    else return nil
     end
 end
 

@@ -7,8 +7,8 @@ local tbl = require "tbl"
 shaco.start(function()
     local history_file = ".redis-cli.history"
     
-    local ip = shaco.getenv("redis_host")
-    local port = tonumber(shaco.getenv("redis_port"))
+    local ip = shaco.getenv("redis_host") or "127.0.0.1"
+    local port = tonumber(shaco.getenv("redis_port")) or "17000"
     local host = ip..":"..port
     local auth = shaco.getenv("redis_passwd")
     local db

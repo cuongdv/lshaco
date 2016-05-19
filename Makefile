@@ -189,16 +189,16 @@ dist:
 	lua-mod \
 	examples \
 	3rd
-	scp lshaco.tgz qzcs:
-	ssh qzcs "mkdir -pv lshaco && tar -mzxf lshaco.tgz -C lshaco && cd lshaco && make cleanall && make && make 3rd && make server"
+	scp lshaco.tgz qzsource:
+	ssh qzsource "mkdir -pv lshaco && tar -mzxf lshaco.tgz -C lshaco && cd lshaco && make cleanall && make && make 3rd && make server"
 	mkdir -pv ~/server_linux
 	mkdir -pv ~/server_linux/bin
-	scp qzcs:server/bin/shaco ~/server_linux/bin
-	scp qzcs:server/bin/*.so ~/server_linux/bin
-	scp qzcs:server/bin/*.lso ~/server_linux/bin
+	scp qzsource:server/bin/shaco ~/server_linux/bin
+	scp qzsource:server/bin/*.so ~/server_linux/bin
+	scp qzsource:server/bin/*.lso ~/server_linux/bin
 
 distclean:
-	ssh qzcs "rm -rf lshaco lshaco.tgz"
+	ssh qzsource "rm -rf lshaco lshaco.tgz"
 
 clean:	
 	rm -f $(all_t) 

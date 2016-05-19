@@ -291,6 +291,10 @@ function shaco.wakeup(co)
     end
 end
 
+function shaco.iswait(co)
+    return _sleep_co[co] ~= nil
+end
+
 function shaco.wait()
     local session = gen_session()
     coyield('SLEEP', session)

@@ -38,9 +38,17 @@ llog(lua_State *L) {
 	return 0;
 }
 
+static void pushnumint (lua_State *L, lua_Number d) {
+  lua_Integer n;
+  if (lua_numbertointeger(d, &n))  /* does 'd' fit in an integer? */
+    lua_pushinteger(L, n);  /* result is integer */
+  else
+    lua_pushnumber(L, d);  /* result is float */
+}
+
 static int 
 lnow(lua_State *L) {
-    lua_pushnumber(L, shaco_timer_now());
+    pushnumint(L, shaco_timer_now());
     return 1;
 }
 

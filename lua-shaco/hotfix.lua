@@ -83,8 +83,17 @@ local function __collect_patch_fun_ups(fnew, fold)
             break
         end
         -- keep old, except local function or '_ENV'
-        if upn ~= '_ENV' and type(upv) ~= "function" then
-            tinsert(ups, {upn, i, __getupvaluei(fold, upn)})
+        if upn ~= '_ENV' then
+            local upi = __getupvaluei(fold, upn)
+            if type(upv) == "function" then
+                if upi then
+                    tinsert(ups, {upn, i, upi})
+                else
+                    -- not support
+                end
+            else
+                tinsert(ups, {upn, i, upi})
+            end
         end
         i = i+1
     end

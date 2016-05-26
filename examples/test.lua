@@ -1,6 +1,7 @@
 local shaco = require "shaco"
 local crypt = require "crypt.c"
 shaco.start(function()
+    shaco.debug("Hello World")
     shaco.trace("Hello World")
     local key = "MTMtMTQ2MzI5NzcwMjU5Nw=="
     print(crypt.base64encode(

@@ -13,7 +13,7 @@
 
 static FILE *F;
 static int LEVEL = LOG_INFO;
-static const char *STR_LEVELS = ".*#!";
+static const char *STR_LEVELS = "-.*#!";
 
 static int 
 _levelid(char level) {

@@ -1,11 +1,12 @@
 #ifndef __shaco_log_h__
 #define __shaco_log_h__
 
-#define LOG_TRACE   0
-#define LOG_INFO    1
-#define LOG_WARN    2
-#define LOG_ERROR   3
-#define LOG_MAX     4
+#define LOG_DEBUG   0
+#define LOG_TRACE   1
+#define LOG_INFO    2
+#define LOG_WARN    3
+#define LOG_ERROR   4
+#define LOG_MAX     5
 
 struct shaco_context;
 

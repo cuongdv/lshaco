@@ -163,7 +163,7 @@ local function statusline(read)
     local chunk = ""
     while true do
         chunk = chunk..read()
-        shaco.trace("http statusline start read")
+        --shaco.trace("http statusline start read")
         local i = chunk:find("\r\n",1,true)
         if i then
             return chunk:sub(1,i), chunk:sub(i+2)
@@ -259,7 +259,7 @@ local function request(method, host, uri, headers, form, read, send)
     local status, chunk
     status, chunk = statusline(read)
     local code = tonumber(status:match("HTTP/%d+%.%d+%s+(%d%d%d)%s+.*$"))
-    shaco.trace("http read code:", code)
+    --shaco.trace("http read code:", code)
 
     local head_t, tmp_t
     tmp_t, chunk = header(chunk, read)
@@ -271,17 +271,17 @@ local function request(method, host, uri, headers, form, read, send)
     end
     local body
     local mode = head_t["transfer-encoding"]
-    shaco.trace("http read header:", tostring(length), tostring(mode))
+    --shaco.trace("http read header:", tostring(length), tostring(mode))
     if mode then
         if mode == "identity" then
             assert(length, "Not content-length")
             body = content(length, chunk, read) 
-            shaco.trace("http content read by mode identity")
+            --shaco.trace("http content read by mode identity")
         elseif mode == "chunked" then
             body, chunk = chunkbody(chunk, read)
-            shaco.trace("http content read by mode chunked")
+            --shaco.trace("http content read by mode chunked")
             tmp_t, chunk = header(chunk, read)
-            shaco.trace("http content read by mode chunked, header")
+            --shaco.trace("http content read by mode chunked, header")
             head_t = parse_header(tmp_t, head_t)
         else
             error("Unsupport transfer-encoding")
@@ -291,10 +291,10 @@ local function request(method, host, uri, headers, form, read, send)
             --in websocket no this
             --assert(length, "Not content-length")
             body = content(length, chunk, read)
-            shaco.trace("http content read by mode none")
+            --shaco.trace("http content read by mode none")
         end
     end
-    shaco.trace("http read over")
+    --shaco.trace("http read over")
     return code, body
 end
 
@@ -321,9 +321,9 @@ end
 function http.post(host, uri, headers, form)
     local host, port = host:match("([^:]+):?(%d*)$")
     port = tonumber(port) or 80
-    shaco.trace("http post:"..host..":"..port)
+    --shaco.trace("http post:"..host..":"..port)
     local id = assert(socket.connect(host, port))
-    shaco.trace("http post:"..host..":"..port.." ok")
+    --shaco.trace("http post:"..host..":"..port.." ok")
     socket.readon(id)
     local code, body
     local ok, err = pcall(function()

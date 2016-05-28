@@ -166,7 +166,7 @@ local function move(id)
         movestat()
         
         local now = shaco.now()
-        if now - start_time > math.random(60*1000, 65*1000) then
+        if now - start_time > math.random(60*1000, 120*1000) then
             break
         end
     end

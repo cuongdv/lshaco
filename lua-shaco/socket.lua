@@ -196,7 +196,8 @@ function socket.connect(...)
             end
         end
         return id
-    else return nil
+    else 
+        return nil
     end
 end
 

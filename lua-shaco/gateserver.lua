@@ -24,8 +24,8 @@ function gateserver.openclient(id)
     end
 end
 
-function gateserver.closeclient(id)
-    disconnect(id, true)
+function gateserver.closeclient(id, err)
+    disconnect(id, true, err)
 end
 
 function gateserver.send(id, data)

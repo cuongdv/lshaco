@@ -40,37 +40,25 @@ np_fini(struct np_state* np) {
 static int
 np_del(struct np_state* np, int fd) {
     struct kevent ke;
-	EV_SET(&ke, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-	kevent(np->kqueue_fd, &ke, 1, NULL, 0, NULL);
-	EV_SET(&ke, fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
-	kevent(np->kqueue_fd, &ke, 1, NULL, 0, NULL);
+    EV_SET(&ke, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+    kevent(np->kqueue_fd, &ke, 1, NULL, 0, NULL);
+    EV_SET(&ke, fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
+    kevent(np->kqueue_fd, &ke, 1, NULL, 0, NULL);
     return 0;
 }
 
 static int
 np_add(struct np_state* np, int fd, int mask, void* ud) {
     struct kevent ke;
-	EV_SET(&ke, fd, EVFILT_READ, EV_ADD, 0, 0, ud);
-	if (kevent(np->kqueue_fd, &ke, 1, NULL, 0, NULL) == -1) {
-        return -1;
-    }
-	EV_SET(&ke, fd, EVFILT_WRITE, EV_ADD, 0, 0, ud);
-	if (kevent(np->kqueue_fd, &ke, 1, NULL, 0, NULL) == -1) {
-        EV_SET(&ke, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-        kevent(np->kqueue_fd, &ke, 1, NULL, 0, NULL);
-        return -1;
-    }
-    if (!(mask & NP_WABLE)) {
-        EV_SET(&ke, fd, EVFILT_WRITE, EV_DISABLE, 0, 0, ud);
+    if (mask & NP_RABLE) {
+        EV_SET(&ke, fd, EVFILT_READ, EV_ADD, 0, 0, ud);
         if (kevent(np->kqueue_fd, &ke, 1, NULL, 0, NULL) == -1) {
-            np_del(np, fd);
             return -1;
         }
     }
-    if (!(mask & NP_RABLE)) {
-        EV_SET(&ke, fd, EVFILT_READ, EV_DISABLE, 0, 0, ud);
+    if (mask & NP_WABLE) {
+        EV_SET(&ke, fd, EVFILT_WRITE, EV_ADD, 0, 0, ud);
         if (kevent(np->kqueue_fd, &ke, 1, NULL, 0, NULL) == -1) {
-            np_del(np, fd);
             return -1;
         }
     }
@@ -80,15 +68,21 @@ np_add(struct np_state* np, int fd, int mask, void* ud) {
 static int
 np_mod(struct np_state* np, int fd, int mask, void* ud) {
     struct kevent ke;
-    if (!(mask & NP_WABLE)) {
-        EV_SET(&ke, fd, EVFILT_WRITE, EV_DISABLE, 0, 0, ud);
-        return kevent(np->kqueue_fd, &ke, 1, NULL, 0, NULL);
-    } else if (!(mask & NP_RABLE)) {
-        EV_SET(&ke, fd, EVFILT_READ, EV_DISABLE, 0, 0, ud);
-        return kevent(np->kqueue_fd, &ke, 1, NULL, 0, NULL);
+    if (mask & NP_WABLE) {
+        EV_SET(&ke, fd, EVFILT_WRITE, EV_ADD, 0, 0, ud);
+        kevent(np->kqueue_fd, &ke, 1, NULL, 0, NULL);
     } else {
-        return -1;
+        EV_SET(&ke, fd, EVFILT_WRITE, EV_DELETE, 0, 0, ud);
+        kevent(np->kqueue_fd, &ke, 1, NULL, 0, NULL);
     }
+    if (mask & NP_RABLE) {
+        EV_SET(&ke, fd, EVFILT_READ, EV_ADD, 0, 0, ud);
+        kevent(np->kqueue_fd, &ke, 1, NULL, 0, NULL);
+    } else {
+        EV_SET(&ke, fd, EVFILT_READ, EV_DELETE, 0, 0, ud);
+        kevent(np->kqueue_fd, &ke, 1, NULL, 0, NULL);
+    }
+    return 0;
 }
 
 static int

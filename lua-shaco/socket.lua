@@ -140,7 +140,7 @@ shaco.register_protocol {
 
 local function alloc(id, callback)
     local s = socket_pool[id]
-    assert(s == nil)
+    assert(s == nil, id)
     s = { 
         id = id,
         connected = false,
@@ -224,7 +224,10 @@ function socket.stdin()
 end
 
 function socket.close(id, force)
-    force = force or true
+    if force ==nil then
+        force = true
+    end
+    --force = force or true
     local s = socket_pool[id]
     if s then 
         close(s, force) 

@@ -6,6 +6,9 @@ local tonumber = tonumber
 local pairs = pairs
 local string = string
 local table = table
+local sfmt = string.format
+local sgsub = string.gsub
+local sbyte = string.byte
 
 local CHUNK_LIMIT=64*1024
 
@@ -56,12 +59,12 @@ local strcode = {
 }
 
 local function unneed_body(code)
-    return (code==204) or (code==304) or (math.floor(code/100)==1)
+    return (code==204) or (code==304) or ((code//100)==1)
 end
 
 local function escape(s)
-    return string.gsub(s, "([^A-Za-z0-9_])", function(c)
-        return string.format("%%%02X", string.byte(c))
+    return sgsub(s, "([^A-Za-z0-9_])", function(c)
+        return sfmt("%%%02X", sbyte(c))
     end)
 end
 
@@ -218,7 +221,7 @@ local function format_form(form)
                 v = escape(v)
                 table.insert(body, v)
             else
-                table.insert(body, string.format("%s=%s", escape(k), escape(v)))
+                table.insert(body, sfmt("%s=%s", escape(k), escape(v)))
             end
         end
         form = table.concat(body, "&")
@@ -240,20 +243,20 @@ local function request(method, host, uri, headers, form, read, send)
 
     local strhead = ""
     for k, v in pairs(headers) do
-        strhead = strhead..string.format("%s:%s\r\n", k,v)
+        strhead = strhead..sfmt("%s:%s\r\n", k,v)
     end
 
     local request_line = method.." "..uri.." HTTP/1.1\r\n"
 
     local total
     if not form then
-        total = string.format("%s%scontent-length:0\r\n\r\n", 
+        total = sfmt("%s%scontent-length:0\r\n\r\n", 
             request_line, strhead)
     else
-        total = string.format("%s%scontent-length:%d\r\n\r\n%s\r\n", 
+        total = sfmt("%s%scontent-length:%d\r\n\r\n%s\r\n", 
             request_line, strhead, #form, form)
     end
-
+    --shaco.trace(total)
     send(total)
 
     local status, chunk
@@ -295,7 +298,7 @@ local function request(method, host, uri, headers, form, read, send)
         end
     end
     --shaco.trace("http read over")
-    return code, body
+    return code, body, head_t
 end
 
 http.request = request
@@ -305,9 +308,9 @@ function http.get(host, uri, headers)
     port = tonumber(port) or 80
     local id = assert(socket.connect(host, port))
     socket.readon(id)
-    local code, body
+    local code, body, head_t
     local ok, err = pcall(function()
-        code, body = request("GET", host, uri, headers, nil,
+        code, body,head_t = request("GET", host, uri, headers, nil,
             httpsocket.reader(id),
             httpsocket.sender(id))
         end)
@@ -315,7 +318,7 @@ function http.get(host, uri, headers)
     if not ok then
         error(err)
     end
-    return code, body
+    return code, body, head_t
 end
 
 function http.post(host, uri, headers, form)
@@ -381,23 +384,23 @@ function http.read(read)
 end
 
 function http.response(code, body, head_t, send)
-    local status_line = string.format("HTTP/1.1 %03d %s\r\n", code, strcode[code] or "")
+    local status_line = sfmt("HTTP/1.1 %03d %s\r\n", code, strcode[code] or "")
     send(status_line)
     if head_t then
         for k, v in pairs(head_t) do
-            send(string.format("%s: %s\r\n", k,v))
+            send(sfmt("%s: %s\r\n", k,v))
         end
     end
     local t = type(body)
     if t == "string" then
-        send(string.format("content-length: %d\r\n\r\n", #body))
+        send(sfmt("content-length: %d\r\n\r\n", #body))
         send(body)
     elseif t == "function" then
-        send(string.format("transfer-encoding: chunked\r\n"))
+        send(sfmt("transfer-encoding: chunked\r\n"))
         while true do
             local chunk = body()
             if chunk then
-                send("\r\n%x\r\n", #chunk)
+                send(sfmt("\r\n%x\r\n", #chunk))
                 send(chunk)
             else
                 send("\r\n0\r\n\r\n")
@@ -408,7 +411,7 @@ function http.response(code, body, head_t, send)
         if unneed_body(code) then
             send("\r\n")
         else
-            send(string.format("content-length: 0\r\n\r\n"))
+            send(sfmt("content-length: 0\r\n\r\n"))
         end
     else
         error("Invalid body type: "..t)

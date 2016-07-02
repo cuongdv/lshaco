@@ -143,6 +143,7 @@ function socketchannel.create(opts)
     }, socketchannel)
     if self.__id then
         self.__reconn_times = 0
+        self.__open = true
         shaco.fork(dispatch, self)
     end
     return self

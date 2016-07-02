@@ -72,7 +72,8 @@ shaco.start(function()
                     return socket.read(id, '\n')
                 end
                 local response = function(...)
-                    socket.send(id, table.concat({...}, ' ')..'\n')
+                    local data = table.concat({...}, ' ')..'\n'
+                    socket.send(id, '$'..#data..'\n'..data)
                 end
                 commandline.loop(read, response)
                 socket.close(id)

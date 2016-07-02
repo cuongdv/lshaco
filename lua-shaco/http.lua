@@ -253,7 +253,7 @@ local function request(method, host, uri, headers, form, read, send)
         total = sfmt("%s%scontent-length:0\r\n\r\n", 
             request_line, strhead)
     else
-        total = sfmt("%s%scontent-length:%d\r\n\r\n%s\r\n", 
+        total = sfmt("%s%scontent-length:%d\r\n\r\n%s", 
             request_line, strhead, #form, form)
     end
     --shaco.trace(total)

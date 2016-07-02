@@ -4,7 +4,7 @@ local linenoise = require "linenoise"
 
 shaco.start(function()
     local history_file = ".cmdcli.history"
-    local host = shaco.getenv("host") or "127.0.0.1:18001"
+    local host = shaco.getenv("host") or "127.0.0.1:1234"
     local sockid
 
     linenoise.loadhistory(history_file) 
@@ -24,7 +24,9 @@ shaco.start(function()
                     socket.readon(sockid)
                 end
                 assert(socket.send(sockid, s..'\n'))
-                io.stdout:write(assert(socket.read(sockid)))
+                local head = assert(socket.read(sockid, '\n'))
+                head = tonumber(string.gmatch(head, "%$(%d)+"))
+                io.stdout:write(assert(socket.read(sockid, head)))
                 io.stdout:flush()
             end)
             if not ok then

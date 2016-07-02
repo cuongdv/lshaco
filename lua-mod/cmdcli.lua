@@ -25,7 +25,7 @@ shaco.start(function()
                 end
                 assert(socket.send(sockid, s..'\n'))
                 local head = assert(socket.read(sockid, '\n'))
-                head = tonumber(string.gmatch(head, "%$(%d)+"))
+                head = tonumber(string.match(head, "%$(%d+)"))
                 io.stdout:write(assert(socket.read(sockid, head)))
                 io.stdout:flush()
             end)

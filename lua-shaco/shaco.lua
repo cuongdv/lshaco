@@ -21,7 +21,7 @@ local c_log = assert(c.log)
 local c_send = assert(c.send)
 local c_timer = assert(c.timer)
 
-local _co_pool = {}
+local _co_pool = setmetatable({}, { __mode = "kv" })
 local _call_session = {}
 local _yield_session_co = {}
 local _sleep_co = {}

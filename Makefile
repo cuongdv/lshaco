@@ -53,8 +53,18 @@ undefined:
 	@echo "Please do 'make PLATFORM' where PLATFORM is one of this:"
 	@echo "    $(PLATS)"
 
+# jemalloc
+#JEMALLOC_FLAG=
+#IJEMALLOC=
+#JEMALLOC_A=
+JEMALLOC_FLAG=-DHAVE_MALLOC
+IJEMALLOC=-I3rd/jemalloc/include/jemalloc
+JEMALLOC_A=3rd/jemalloc/lib/libjemalloc_pic.a
+$(JEMALLOC_A): 
+	cd 3rd/jemalloc && ./autogen.sh --with-jemalloc-prefix=je_ --disable-valgrind && make 
+
 SHACO_MALLOC_FLAG=-DUSE_SHACO_MALLOC
-CFLAGS=-g -Wall -Werror -DDHAVE_MALLOC $(SHACO_MALLOC_FLAG) $(CFLAG)
+CFLAGS=-g -Wall -Werror $(SHACO_MALLOC_FLAG) $(CFLAG)
 
 linux: SHARED:=-fPIC -shared
 linux: EXPORT:=-Wl,-E
@@ -80,20 +90,10 @@ PBC_A=3rd/pbc/build/libpbc.a
 $(PBC_A):
 	cd 3rd/pbc && make lib CFLAGS="$(SHACO_MALLOC_FLAG) -fPIC"
 
-# jemalloc
-IJEMALLOC=-I3rd/jemalloc/include/jemalloc
-JEMALLOC_A=3rd/jemalloc/lib/libjemalloc_pic.a
-
-$(JEMALLOC_A): 3rd/jemalloc/Makefile
-	cd 3rd/jemalloc && make lib/libjemalloc_pic.a
-
-3rd/jemalloc/Makefile:
-	cd 3rd/jemalloc && ./autogen.sh --with-jemalloc-prefix=je_ --enable-cc-silence --disable-valgrind
-
-#shaco: src-shaco/shaco_main.c $(LIBSHACO_SRC) $(LUA_A) $(JEMALLOC_A)
-#	gcc $(CFLAGS) $(EXPORT) -o $@ $^ $(ISHACO) $(ILUA) $(IJEMALLOC) $(LDLIB) -lpthread
-shaco: src-shaco/shaco_main.c $(LIBSHACO_SRC) $(LUA_A) 
-	gcc $(CFLAGS) $(EXPORT) -o $@ $^ $(ISHACO) $(ILUA) $(LDLIB) -lpthread
+shaco: src-shaco/shaco_main.c $(LIBSHACO_SRC) $(LUA_A) $(JEMALLOC_A)
+	gcc $(CFLAGS) $(JEMALLOC_FLAG) $(EXPORT) -o $@ $^ $(ISHACO) $(ILUA) $(IJEMALLOC) $(LDLIB) -lpthread
+#shaco: src-shaco/shaco_main.c $(LIBSHACO_SRC) $(LUA_A) 
+#	gcc $(CFLAGS) $(EXPORT) -o $@ $^ $(ISHACO) $(ILUA) $(LDLIB) -lpthread
 
 # openssl
 #CRYPTO_A=3rd/openssl/libcrypto.a

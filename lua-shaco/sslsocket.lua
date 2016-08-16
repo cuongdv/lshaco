@@ -11,8 +11,11 @@ function sslsocket.reader(id, s)
     return function(format)
         local i=0
         while true do
-            -- todo s:decode first
-            --print ("------------------"..i)
+            -- s:decode first (debug this in ios recharge cehck d:)
+            local data = s:decode()
+            if data and data ~= "" then
+              return data
+            end
             local data = socket.read(id, format)
             if data then
                 --print ("--write size:"..#data)

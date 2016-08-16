@@ -94,7 +94,7 @@ void
 shaco_init() {
     int daemon = shaco_optint("daemon", 0);
     if (daemon)
-        daemonize(1);
+        daemonize(0);
     shaco_timer_init();
     if (daemon)
         shaco_log_open(shaco_optstr("logfile", "./shaco.log"));

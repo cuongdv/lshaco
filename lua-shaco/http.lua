@@ -256,7 +256,7 @@ local function request(method, host, uri, headers, form, read, send)
         total = sfmt("%s%scontent-length:%d\r\n\r\n%s", 
             request_line, strhead, #form, form)
     end
-    --shaco.trace(total)
+    --shaco.trace("send:", total)
     send(total)
 
     local status, chunk
@@ -293,6 +293,7 @@ local function request(method, host, uri, headers, form, read, send)
         if length then
             --in websocket no this
             --assert(length, "Not content-length")
+            --shaco.trace("http content read by mode none", length, #chunk)
             body = content(length, chunk, read)
             --shaco.trace("http content read by mode none")
         end

@@ -26,13 +26,13 @@ local function handshake(id, s)
     end
 end
 
-function ssl.request(id, host, uri, headers, form)
+function ssl.request(id, host, uri, headers, form, method)
     local s = core.new()
     s:connect()
     handshake(id, s)
     --print ("handshake ok")
-    
-    return http.request("POST", host, uri, headers, form, 
+    method = method or "POST" 
+    return http.request(method, host, uri, headers, form, 
             sslsocket.reader(id, s),
             sslsocket.sender(id, s))
 

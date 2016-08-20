@@ -14,7 +14,7 @@ function sslsocket.reader(id, s)
             -- s:decode first (debug this in ios recharge cehck d:)
             local data = s:decode()
             if data and data ~= "" then
-              return data
+                return data
             end
             local data = socket.read(id, format)
             if data then
@@ -38,11 +38,19 @@ end
 
 function sslsocket.sender(id, s)
     return function(data)
+        --print("--- send", #data)
         s:encode(data)
-        data = s:read()
-        local ok = socket.send(id, data)
-        if not ok then
-            error(socket_error)
+        while true do
+            --print ("--- s:encode ok")
+            data = s:read()
+            if not data then
+                break
+            end
+            --print ("--- s:read", #data)
+            local ok = socket.send(id, data)
+            if not ok then
+                error(socket_error)
+            end
         end
     end
 end

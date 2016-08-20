@@ -258,7 +258,7 @@ local function request(method, host, uri, headers, form, read, send)
     end
     --shaco.trace("send:", total)
     send(total)
-
+    --shaco.trace("send ok")
     local status, chunk
     status, chunk = statusline(read)
     local code = tonumber(status:match("HTTP/%d+%.%d+%s+(%d%d%d)%s+.*$"))

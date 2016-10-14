@@ -205,7 +205,7 @@ local function read_row_compact(channel, s, pack, columns)
         v, pos = string_lenenc(s,pos)
         pack[#pack+1] = v
     end
-    return pack
+    return {pack}
 end
 
 local function read_row(channel, s, columns)
@@ -216,7 +216,7 @@ local function read_row(channel, s, columns)
         v, pos = string_lenenc(s,pos)
         pack[c.name] = v
     end
-    return pack
+    return {pack}
 end
 
 local function read_resultset(channel, s, self)
@@ -236,7 +236,7 @@ local function read_resultset(channel, s, self)
         if result == "EOF" then
             break
         elseif result.type == nil then
-            rows[#rows+1] = result
+            rows[#rows+1] = result[1]
         end
     end
     if result == "EOF" or

@@ -74,9 +74,11 @@ macosx: CFLAG:=-Wno-deprecated
 macosx: SHARED:=-fPIC -dynamiclib -Wl,-undefined,dynamic_lookup
 macosx: EXPORT:=
 macosx: LDLIB:=
+macosx: IOPENSSL:=-I/usr/local/opt/openssl/include
+macosx: LOPENSSL:=-L/usr/local/opt/openssl/lib
 
 linux macosx:
-	$(MAKE) all CFLAG="$(CFLAG)" SHARED="$(SHARED)" EXPORT="$(EXPORT)" LDLIB="$(LDLIB)"
+	$(MAKE) all CFLAG="$(CFLAG)" SHARED="$(SHARED)" EXPORT="$(EXPORT)" LDLIB="$(LDLIB)" IOPENSSL="$(IOPENSSL)" AOPENSSL="$(AOPENSSL)"
 
 all: $(all_t) 
 
@@ -133,7 +135,7 @@ lib-l/util.so: src-l/lutil.c | lib-l
 	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO) $(ILUA)
 
 lib-l/crypt.so: src-l/lcrypt.c src-l/lsha1.c  | lib-l
-	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO) $(ILUA) -lcrypto
+	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO) $(ILUA) -lcrypto $(IOPENSSL) $(AOPENSSL) 
 
 lib-l/mysqlaux.so: src-l/lmysqlaux.c | lib-l
 	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO) $(ILUA) 
@@ -148,7 +150,7 @@ lib-l/signal.so: src-l/lsignal.c | lib-l
 	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO) $(ILUA) 
 
 lib-l/ssl.so: src-l/lssl.c | lib-l
-	gcc $(CFLAGS) $(SHARED) -lssl -o $@ $^ $(ISHACO) $(ILUA) 
+	gcc $(CFLAGS) $(SHARED) -lssl -o $@ $^ $(ISHACO) $(ILUA) $(IOPENSSL) $(AOPENSSL) 
 
 lib-l/protobuf.so: 3rd/pbc/binding/lua53/pbc-lua53.c $(PBC_A)
 	gcc $(CFLAGS) $(SHARED) -o $@ $^ $(ISHACO) $(ILUA) -I3rd/pbc

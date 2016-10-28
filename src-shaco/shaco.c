@@ -65,6 +65,67 @@ rlimit_check() {
     }
 }
 
+static const char *
+get_pidfile() {
+    int daemon = shaco_optint("daemon", 0);
+    if (daemon) {
+        return shaco_optstr("pidfile", "./shaco.pid");
+    } else {
+        return shaco_getenv("pidfile");
+    }
+}
+
+static int
+check_pid(const char *pidfile) {
+	int pid = 0;
+	FILE *f = fopen(pidfile,"r");
+	if (f == NULL)
+		return 0;
+	int n = fscanf(f,"%d", &pid);
+	fclose(f);
+
+	if (n !=1 || pid == 0 || pid == getpid()) {
+		return 0;
+	}
+
+	if (kill(pid, 0) && errno == ESRCH)
+		return 0;
+
+	return pid;
+}
+
+static void
+write_pid(const char *pidfile) {
+    shaco_trace(NULL, "write_pid\n");
+	FILE *f;
+	int pid = 0;
+	int fd = open(pidfile, O_RDWR|O_CREAT, 0644);
+	if (fd == -1) {
+		shaco_exit(NULL, "Can't create %s", pidfile);
+	}
+	f = fdopen(fd, "r+");
+	if (f == NULL) {
+		shaco_exit(NULL, "Can't open %s", pidfile);
+	}
+
+	if (flock(fd, LOCK_EX|LOCK_NB) == -1) {
+		int n = fscanf(f, "%d", &pid);
+		fclose(f);
+		if (n != 1) {
+			shaco_exit(NULL, "Can't lock and read pidfile");
+		} else {
+			shaco_exit(NULL, "Can't lock pidfile, lock is held by pid %d", pid);
+		}
+	}
+
+	pid = getpid();
+	if (!fprintf(f,"%d\n", pid)) {
+		close(fd);
+		shaco_exit(NULL, "Can't write pid");
+	}
+	fflush(f);
+}
+
 static void
 daemonize(int noclose) {
     int fd;
@@ -93,14 +154,27 @@ reopenlog() {
 void 
 shaco_init() {
     int daemon = shaco_optint("daemon", 0);
-    if (daemon)
-        daemonize(0);
     shaco_timer_init();
     if (daemon)
         shaco_log_open(shaco_optstr("logfile", "./shaco.log"));
     else
         shaco_log_open(NULL);
     shaco_log_setlevel(shaco_optstr("loglevel", ""));
+
+    const char *pidfile = get_pidfile();
+    if (pidfile) {
+        int pid = check_pid(pidfile);
+        if (pid) {
+            shaco_exit(NULL, "Shaco is already running, pid = %d", pid);
+        }
+    }
+    if (daemon) {
+        daemonize(0);
+    }
+    if (pidfile) {
+        write_pid(pidfile);
+    }
+
     shaco_module_init(shaco_optstr("modpath", "./lib-mod"));
     shaco_handle_init();
     sig_handler_init();
@@ -119,6 +193,10 @@ shaco_init() {
 
 void
 shaco_fini() {
+    const char *pidfile = get_pidfile();
+    if (pidfile) {
+        unlink(pidfile);
+    }
     shaco_msg_dispatcher_fini();
     shaco_handle_fini();
     shaco_module_fini();

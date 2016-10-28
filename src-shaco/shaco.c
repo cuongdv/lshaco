@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <sys/file.h>
 #include <string.h>
 #include <errno.h>
 #include <signal.h>

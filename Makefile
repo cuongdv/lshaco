@@ -178,7 +178,7 @@ server: package
 	cp -r lib-mod/* ~/server/bin
 	cp -r lib-package/* ~/server/bin
 
-dist:
+remote:
 	rm -rf lshaco.tgz
 	tar -zcf lshaco.tgz \
 	Makefile \
@@ -192,12 +192,18 @@ dist:
 	examples \
 	3rd
 	scp lshaco.tgz qzsource:
-	ssh qzsource "mkdir -pv lshaco && tar -mzxf lshaco.tgz -C lshaco && cd lshaco && make cleanall && make && make 3rd && make server"
+	ssh qzsource "mkdir -pv lshaco && tar -mzxf lshaco.tgz -C lshaco && cd lshaco && make cleanall && make && make 3rd && make package"
 	mkdir -pv ~/server_linux
 	mkdir -pv ~/server_linux/bin
-	scp qzsource:server/bin/shaco ~/server_linux/bin
-	scp qzsource:server/bin/*.so ~/server_linux/bin
-	scp qzsource:server/bin/*.lso ~/server_linux/bin
+	scp qzsource:lshaco/shaco ~/server_linux/bin
+	scp qzsource:lshaco/lib-3rd/*.so ~/server_linux/bin
+	scp qzsource:lshaco/lib-l/*.so ~/server_linux/bin
+	scp qzsource:lshaco/lib-mod/*.so ~/server_linux/bin
+	scp qzsource:lshaco/lib-package/*.lso ~/server_linux/bin
+dist:
+	scp ~/server_linux/bin/shaco qzdev_lxj:server/trunk/bin
+	scp ~/server_linux/bin/*.so qzdev_lxj:server/trunk/bin
+	scp ~/server_linux/bin/*.lso qzdev_lxj:server/trunk/bin
 
 distclean:
 	ssh qzsource "rm -rf lshaco lshaco.tgz"

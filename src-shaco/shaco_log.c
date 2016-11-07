@@ -54,13 +54,13 @@ _color_begin(int level) {
     } 
     return 0;
 }
-
+/*
 static inline void
 _color_end(int tag) {
     if (tag)
         fprintf(F, "\x1b[0m");
 }
-
+*/
 static inline void
 _prefix(struct shaco_context *ctx, int level) {
     char tmp[64];
@@ -75,8 +75,10 @@ static inline void
 _log(struct shaco_context *ctx, int level, const char *log) {
     _prefix(ctx, level);
     int tag = _color_begin(level);
-    fprintf(F, "%s\n", log);
-    _color_end(tag);
+    if (tag)
+        fprintf(F, "%s\x1b[0m\n", log);
+    else
+        fprintf(F, "%s\n", log);
     fflush(F);
 }
 
@@ -85,8 +87,10 @@ _logv(struct shaco_context *ctx, int level, const char *fmt, va_list ap) {
     _prefix(ctx, level);
     int tag = _color_begin(level);
     vfprintf(F, fmt, ap);
-    fprintf(F, "%s", "\n");
-    _color_end(tag);
+    if (tag)
+        fprintf(F, "\x1b[0m%s", "\n");
+    else
+        fprintf(F, "%s", "\n");
     fflush(F);
 }
 

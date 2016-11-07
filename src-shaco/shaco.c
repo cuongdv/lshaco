@@ -97,7 +97,6 @@ check_pid(const char *pidfile) {
 
 static void
 write_pid(const char *pidfile) {
-    shaco_trace(NULL, "write_pid\n");
 	FILE *f;
 	int pid = 0;
 	int fd = open(pidfile, O_RDWR|O_CREAT, 0644);
